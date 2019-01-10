@@ -1,126 +1,12 @@
 /*
 
-Steve Bot Version 2.0 Official (REMOTE)
+Steve Bot Version 2.0 Official [Herobrine] (REMOTE)
 Begin work date: 07 September 2017
 Official "birthday": 25 September 2017
-
-TODO:
-- edit emojis with a command
-- change nickname
-- autoroles (given when member joins)
-- menus to other things, like mod commands
-
-- Database
-|----> Get rid of "users" and "roles" for each server.
-|----> One table for selfroles (find by server and role and ID)
-|----> Don't even worry about the role name, in fact.
-|----> Get rid of the entire unused bank table.
-|----> Table for strikes (ONLY INDEX PEOPLE WITH STRIKES)
-|----> Maaaaaybe a dm_cfg feedback table. Like Alex's. Maybe.
-
-- Join/leave
-|----> Leave messages
-|----> Ban messages
-|----> Autoroles
-
-- Responses
-|----> I'm gay -> "Space is also gay!"
-|----> Safety
-|----> Gay tracker
-|----> "Heysteve I hate you" -> "I'm telling dad"
-|----> Matt's request
-|----> "BOOB"
-|----> "lol gay"
-
-- General Fixes
-|----> toLowerCase() in emoji urls.
-
-Admin
-
-- To delete
-|----> Testimg
-|----> Textimg
-
-- Help
-|----> Work on a better embed.
-
-- Feedback
-|----> Refeed (reset feedback table)
-|----> Cfeed (count rows in feedback table)
-|----> Anon?
-|----> Copy over Alex's code. Maybe.
-
-- Strikes
-|----> Index by srv_id, usr_id, amount
-|----> Add, remove, set
-
-- Bundles
-|----> New, delete, assign, remove, edit
-|----> Maybe figure out some new names
-
-- Roles
-|----> 
-
-
-Regular
-
-- Triggers
-|----> Edit
-|----> Delete
-
-- Daily
-
-- Bank
-
-- What's/whats
-|----> Up
-
-- Lovebomb
-|----> Add more responses
-
-- I
-|----> Love you
-|----> Hate you => "I'm telling dad"
-
-- I'm/I am
-|----> Lesbian
-|----> Gay
-|----> Bi
-|----> Trans
-|----> Ace
-
-- Am I
-|----> Real?
-|----> Crazy?
-|----> Safe?
-
-- You're/You are
-|----> Gay
-|----> Adorable
-|----> Cute
-
-- Good
-|----> Night
-|----> Morning
-
-- Random
-
-- Flip
-
-- Emojify
-
-- Responses
-|----> Gay
-|----> Fool
-|----> Oof
-|----> Valid
-|----> Yikes
-|----> Vore
 
 ---------------------------------------------------------------------------------------------
 */
 
-//quick tst to make sure this stuff is readable lol
 const Eris = 		require("eris-additions")(require("eris")); //da lib
 const config =		require('./config.json'); //configs
 const Texts =		require('./strings.json'); //json full of text for different things
@@ -443,7 +329,7 @@ commands.prefix=bot.registerCommand("prefix",(msg,args)=>{
 
 //- - - - - - - - - - Eval - - - - - - - - - -
 commands.evl=bot.registerCommand("eval",(msg,args)=>{
-	if(!config.accepted_ids[msg.author.id]){ return msg.channel.createMessage("Only the bot owner can use this command."); }
+	if(!config.accepted_ids.includes(msg.author.id)){ return msg.channel.createMessage("Only the bot owner can use this command."); }
 
 		try {
 			const toeval = args.join(" ");
@@ -463,7 +349,7 @@ commands.evl=bot.registerCommand("eval",(msg,args)=>{
 
 commands.evl.registerSubcommand("prm",(msg,args)=>{
 
-	if(!config.accepted_ids[msg.author.id]){ return msg.channel.createMessage("Only the bot owner can use this command."); }
+	if(!config.accepted_ids.includes(msg.author.id)){ return msg.channel.createMessage("Only the bot owner can use this command."); }
 
 	async function f(){
 
