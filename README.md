@@ -1,6 +1,6 @@
 # Herobrine
 
-A rewrite of [Steve](https://github.com/greysdawn/Sterv-Boot).
+A rewrite of [Steve](https://github.com/greysdawn/steve).
 
 ---
 
