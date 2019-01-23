@@ -10,7 +10,7 @@ Official "birthday": 25 September 2017
 const Eris = 		require("eris-additions")(require("eris")); //da lib
 const fs =			require("fs"); //file stuff
 const {Client} =	require("pg"); //postgres, for data things
-const dblite =		require('dblite'); //sqlite, also for data things
+const dblite =		require('dblite'); //dblite, also for data things
 const pimg =		require('pngjs-image'); //for image manipulation
 const helptext =	require("./help.js"); //help text
 const config =		require('./config.json'); //configs

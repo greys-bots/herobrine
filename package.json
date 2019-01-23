@@ -2,7 +2,7 @@
   "name": "herobrine",
   "version": "1.0.0",
   "description": "Sterv-boot dev mode uwu",
-  "main": "Steve.js",
+  "main": "bot.js",
   "engines": {
     "node": "8.x",
     "npm": "*"
@@ -24,7 +24,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/XGreySkiesX/Sterv-Boot.git"
+    "url": "git+https://github.com/greysdawn/herobrine.git"
   },
   "keywords": [
     "steve"
@@ -32,7 +32,7 @@
   "author": "GS",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/XGreySkiesX/Sterv-Boot/issues"
+    "url": "https://github.com/greysdawn/herobrine#issues"
   },
-  "homepage": "https://github.com/XGreySkiesX/Sterv-Boot#readme"
+  "homepage": "https://github.com/greysdawn/herobrine#readme"
 }
