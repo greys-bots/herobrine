@@ -8,14 +8,13 @@ Official "birthday": 25 September 2017
 */
 
 const Eris = 		require("eris-additions")(require("eris")); //da lib
-const config =		require('./config.json'); //configs
-const Texts =		require('./strings.json'); //json full of text for different things
 const fs =			require("fs"); //file stuff
 const {Client} =	require("pg"); //postgres, for data things
-const sql =			require('sqlite'); //sqlite, also for data things
+const dblite =		require('dblite'); //sqlite, also for data things
 const pimg =		require('pngjs-image'); //for image manipulation
-const sharp =		require('sharp'); //also for image manipulation
 const helptext =	require("./help.js"); //help text
+const config =		require('./config.json'); //configs
+const Texts =		require('./strings.json'); //json full of text for different things
 
 var cur_logs =		"";
 
