@@ -10,11 +10,12 @@ Official "birthday": 25 September 2017
 const Eris = 		require("eris-additions")(require("eris")); //da lib
 const fs =			require("fs"); //file stuff
 const {Client} =	require("pg"); //postgres, for data things
-const dblite =		require('dblite'); //dblite, also for data things
+const dblite =		require('dblite').withSQLite('3.8.6+'); //dblite, also for data things
 const pimg =		require('pngjs-image'); //for image manipulation
 const helptext =	require("./help.js"); //help text
 const config =		require('./config.json'); //configs
 const Texts =		require('./strings.json'); //json full of text for different things
+const Util =		require("./utilities.js");
 
 var cur_logs =		"";
 
@@ -26,61 +27,11 @@ const bot = new Eris.CommandClient(config.token,{},{
 	defaultHelpCommand: false
 });
 
-const db = new Client({
-	connectionString: config.pg,
-	ssl: true,
-});
+//commenting the line below may cause "kill einvalid" errors on some computers;
+//make sure the config is set up if you're getting issues
+dblite.bin = config.sqlite;
 
-function hex2rgb(hex){
-	var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-    hex = hex.replace(shorthandRegex, function(m, r, g, b) {
-        return r + r + g + g + b + b;
-    });
-
-	var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-    } : null;
-}
-
-function toLit(str,torep,repwith){
-	if(str.indexOf(torep)!==-1){
-		var repd=str.replace(torep,repwith);
-		return eval('`'+repd+'`')
-	} else {
-		console.log("Nothing to replace.")
-		return eval('`'+str+'`')
-	}
-
-};
-
-function cleanText(text){
-
-	if (typeof(text) === "string") {
-		return text.replace(/`/g, "`" + String.fromCharCode(8203)).replace(/@/g, "@" + String.fromCharCode(8203));
-	} else	{
-		return text;
-	}
-
-}
-
-function genCode(num){
-	var codestring=""
-	var codenum=0
-	while (codenum<(num==undefined ? 4 : num)){
-		codestring=codestring+Texts.codestab[Math.floor(Math.random() * (Texts.codestab.length))]
-		codenum=codenum+1
-	}
-	return codestring;
-}
-
-function randomText(table){
-	var r=Math.floor(Math.random() * table.length);
-	return table[r];
-}
-
+var db = dblite("./data.sqlite","-header");
 
 
 /***********************************
@@ -89,11 +40,18 @@ SETUP
 
 const setup = async function(){
 
-	db.connect()
-	db.query(`SELECT * FROM triggers`).catch(()=>{
-		db.query(`CREATE TABLE IF NOT EXISTS triggers (user_id TEXT, code TEXT, list TEXT, alias TEXT)`);
+	db.query(".databases");
+	db.query(`SELECT * FROM triggers`,(err,rows)=>{
+		if(!err){
+			console.log(rows[0]);
+			return;
+		};
+		db.query(`CREATE TABLE IF NOT EXISTS triggers (user_id TEXT, code TEXT, list TEXT, alias TEXT)`,(err,rows)=>{
+			if(err){
+				console.log("Triggers doesn't exist or there was an error")
+			}
+		});
 	});
-	db.query(`CREATE TABLE IF NOT EXISTS tracking (server_id TEXT, word TEXT, last_tracked TEXT)`);
 }
 
 
@@ -114,11 +72,11 @@ bot.registerCommandAlias("h","help")
 commands.trigs=bot.registerCommand("trigs",(msg,args)=>{
 	if(args.length==0){
 		var tgs=[];
-		db.query(`SELECT * FROM triggers WHERE user_id='${msg.author.id}'`,(err,res)=>{
+		db.query(`SELECT * FROM triggers WHERE user_id='${msg.author.id}'`,(err,rows)=>{
 			if(err){
 				console.log(err)
 			}
-			tgs=res.rows.map(t=>t.alias+": "+t.code);
+			tgs=rows.map(t=>t.alias+": "+t.code);
 		})
 
 		setTimeout(function(){
@@ -126,8 +84,8 @@ commands.trigs=bot.registerCommand("trigs",(msg,args)=>{
 		},500)
 
 	} else {
-		db.query(`SELECT * FROM triggers WHERE code='${args[0]}'`).then(list=>{
-			list=list.rows[0];
+		db.query(`SELECT * FROM triggers WHERE code='${args[0]}'`,(err,rows)=>{
+			list=rows[0];
 			if(list){
 				msg.channel.createMessage({embed:{
 					title:"Triggers for "+list.alias,
@@ -137,19 +95,19 @@ commands.trigs=bot.registerCommand("trigs",(msg,args)=>{
 			} else {
 				msg.channel.createMessage("That list wasn't found.");
 			}
-		})
+		});
 	}
 },{
 	description: "Used for indexing triggers",
 	fullDescription: "Indexes triggers so that they can be easily shown to others"
-})
+});
 
 commands.trigs.registerSubcommand("help",(msg,args)=>{
 	msg.channel.createMessage({embed: helptext.trigs})
 })
 
 commands.trigs.registerSubcommand("new",(msg,args)=>{
-	let cd=genCode();
+	let cd=Util.genCode(4,Texts.codestab);
 	let listname = "";
 
 	msg.channel.createMessage("Please enter a name/alias for the list");
@@ -157,16 +115,17 @@ commands.trigs.registerSubcommand("new",(msg,args)=>{
 		if(tlname.length>0){
 			if(tlname[0].content.toLowerCase()=="cancel"){ return msg.channel.createMessage("Action cancelled.") }
 			listname=tlname[0].content;
-			msg.channel.createMessage("Type (preferably, comma, separated) triggers to add to the list.").then(()=>{
-				msg.channel.awaitMessages(m => m.author.id == msg.author.id,{time:20000,maxMatches:1}).then(trigs_received=>{
+			msg.channel.createMessage("Type (preferably, comma, separated) triggers to add to the list. You have 60 seconds to do this.").then(()=>{
+				msg.channel.awaitMessages(m => m.author.id == msg.author.id,{time:60000,maxMatches:1}).then(trigs_received=>{
 					if(trigs_received.length>0){
 						if(trigs_received[0].content.toLowerCase()=="cancel"){ return msg.channel.createMessage("Action cancelled.")}
-						db.query(`INSERT INTO triggers VALUES ($1,$2,$3,$4)`,[msg.author.id,cd,trigs_received[0].content,listname]).then(()=>{
-								msg.channel.createMessage(`List created. Code: ${cd}`);
-							
-						}).catch(e => {
-							console.log(e);
-							msg.channel.createMessage("An error occurred.")
+						db.query(`INSERT INTO triggers VALUES (?,?,?,?)`,[msg.author.id,cd,trigs_received[0].content,listname],(err,rows)=>{
+							if(err){
+								console.log(err);
+								msg.channel.createMessage("There was an error.");
+							} else {
+								msg.channel.createMessage("List created. Code: "+cd);
+							}
 						});
 					} else {
 						msg.channel.createMessage("Action cancelled.");
@@ -182,8 +141,8 @@ commands.trigs.registerSubcommand("new",(msg,args)=>{
 })
 
 commands.trigs.registerSubcommand("delete",(msg,args)=>{
-	db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`).then(tg=>{
-		tg=tg.rows[0];
+	db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
+		tg=rows[0];
 		if(!tg){ return msg.channel.createMessage("That list doesn't exist."); }
 		if(!(tg.user_id == msg.author.id)){ return msg.channel.createMessage("That list does't belong to you.")}
 		msg.channel.createMessage(`Are you sure you want to delete this set? Enter \`${tg.code}\` to delete it.`)
@@ -198,19 +157,19 @@ commands.trigs.registerSubcommand("delete",(msg,args)=>{
 })
 
 commands.trigs.registerSubcommand("add",(msg,args)=>{
-	db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`).then(tl=>{
-		tl = tl.rows[0];
+	db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
+		tl = rows[0];
 		if(!tl){ return msg.channel.createMessage("List does not exist."); }
 		if(!(tl.user_id == msg.author.id)){ return msg.channel.createMessage("That list doesn't belong to you.");}
 		if(args.length > 1){
-			db.query(`UPDATE triggers SET list='${tl.list},${args.slice(1)}' WHERE code='${args[0].toLowerCase()}'`).then(()=>{
+			db.query(`UPDATE triggers SET list='${tl.list},${args.slice(1)}' WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
 				msg.channel.createMessage("Appended to list.");
 			})
 			return;
 		}
 		msg.channel.createMessage("Write what you want to add.");
 		msg.channel.awaitMessages(m=> m.author.id == msg.author.id,{time:60000,maxMatches:1}).then(resp=>{
-			db.query(`UPDATE triggers SET list='${tl.list},${resp[0].content}' WHERE code='${args[0].toLowerCase()}'`).then(()=>{
+			db.query(`UPDATE triggers SET list='${tl.list},${resp[0].content}' WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
 				msg.channel.createMessage("Appended to list.")
 			})
 		})
@@ -219,8 +178,8 @@ commands.trigs.registerSubcommand("add",(msg,args)=>{
 
 
 commands.trigs.registerSubcommand("remove",(msg,args)=>{
-	db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`).then(tl=>{
-		tl = tl.rows[0];
+	db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
+		tl = rows[0];
 		if(!tl){ return msg.channel.createMessage("List does not exist."); }
 		if(!(tl.user_id == msg.author.id)){ return msg.channel.createMessage("That list doesn't belong to you.");}
 		var tlist = tl.list;
@@ -230,25 +189,25 @@ commands.trigs.registerSubcommand("remove",(msg,args)=>{
 			for(var i=0;i<rmlist.length;i++){
 				var rmregex = new RegExp("(?:^|,\\s*)"+rmlist[i]+"(?:$|,\\s*)","i");
 				if(tlist.match(new RegExp("^"+rmlist[i]+",\\s*")) || tlist.endsWith(new RegExp(",\\s*"+rmlist[i])+"$")){
-					tlist = tlist.replace(new RegExp(",*"+rmlist+",*",""));
+					tlist = tlist.replace(new RegExp(",*"+rmlist[i]+",*"),"");
 				} else if(tlist.match(rmregex)) {
 					tlist = tlist.replace(rmregex,",");
 				}
 			}
 			setTimeout(function(){
-				db.query(`UPDATE triggers SET list=$$${tlist}$$ WHERE code='${args[0].toLowerCase()}'`).then(()=>{
+				db.query(`UPDATE triggers SET list='${tlist}' WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
 					msg.channel.createMessage("Removed from list.").then(()=>{
-						db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`).then(nlist=>{
-							nlist=nlist.rows[0];
+						db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
+							nlist=rows[0];
 							if(!nlist){ console(`Error finding list ${args[0].toLowerCase()} after removing triggers.`) }
 							if(nlist.list.replace(/,*/g,"")==""||nlist.list==undefined){
-								db.query(`DELETE FROM triggers WHERE code='${args[0].toLowerCase()}'`).then(()=>{
+								db.query(`DELETE FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
 									msg.channel.createMessage("List is empty; deleted.");
-								}).catch(()=>{console.log("Couldn't delete trigger list "+args[0])});
+								})
 							}
-						}).catch(()=>{console.log("Couldn't select trigger list "+args[0])});
+						})
 					})
-				}).catch(()=>{console.log("Couldn't update trigger list "+args[0])});
+				})
 			},500)
 			return;
 		}
@@ -258,19 +217,19 @@ commands.trigs.registerSubcommand("remove",(msg,args)=>{
 			for(var i=0;i<rmlist.length;i++){
 				var rmregex = new RegExp("(?:^|,\\s*)"+rmlist[i]+"(?:$|,\\s*)","i");
 				if(tlist.match(new RegExp("^"+rmlist[i]+",\\s*")) || tlist.endsWith(new RegExp(",\\s*"+rmlist[i])+"$")){
-					tlist = tlist.replace(new RegExp(",*"+rmlist+",*",""));
+					tlist = tlist.replace(new RegExp(",*"+rmlist[i]+",*"),"");
 				} else if(tlist.match(rmregex)) {
 					tlist = tlist.replace(rmregex,",");
 				}
 			}
 			setTimeout(function(){
-				db.query(`UPDATE triggers SET list='${tlist}' WHERE code='${args[0].toLowerCase()}'`).then(()=>{
+				db.query(`UPDATE triggers SET list='${tlist}' WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
 					msg.channel.createMessage("Removed from list.").then(()=>{
-						db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`).then(nlist=>{
-							nlist=nlist.rows[0];
+						db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
+							nlist=rows[0];
 							if(!nlist){ console(`Error finding list ${args[0].toLowerCase()} after removing triggers.`) }
 							if(nlist.list.replace(/,*/g,"")==""||nlist.list==undefined){
-								db.query(`DELETE FROM triggers WHERE code='${args[0].toLowerCase()}'`).then(()=>{
+								db.query(`DELETE FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
 									msg.channel.createMessage("List is empty; deleted.");
 								})
 							}
@@ -338,7 +297,7 @@ commands.evl=bot.registerCommand("eval",(msg,args)=>{
 				evld=require("util").inspect(evld);
 			}
 
-			msg.channel.createMessage(cleanText(evld));
+			msg.channel.createMessage(Util.cleanText(evld));
 		} catch (err) {
 			if(err){console.log(err)}
 		};
@@ -360,7 +319,7 @@ commands.evl.registerSubcommand("prm",(msg,args)=>{
 				evlp=require("util").inspect(evlp);
 			}
 
-			msg.channel.createMessage(cleanText(evlp));
+			msg.channel.createMessage(Util.cleanText(evlp));
 		} catch (err) {
 			if(err){console.log(err)}
 		}
@@ -380,7 +339,7 @@ commands.evl.registerSubcommand("prm",(msg,args)=>{
 commands.whats=bot.registerCommand("whats",(msg,args)=>{
 	if(!args[0]){ return }
 	if(args[0].match(/up\?*/)){
-		msg.channel.createMessage(randomText(Texts.wass));
+		msg.channel.createMessage(Util.randomText(Texts.wass));
 	}
 })
 bot.registerCommandAlias("what's","whats");

@@ -15,7 +15,8 @@ This version of Herobrine is made using the [Eris](https://abal.moe/Eris) framew
 "token" : "biglongthingfromdiscord",
 
 "prefix" : ["hh!","heyhero ","heyherobrine "],
-"accepted_ids" : ["yourdiscordidhere"]
+"accepted_ids" : ["yourdiscordidhere"],
+"sqlite": "./path/to/sqlite/executable.exe"
 
 }
 
@@ -26,3 +27,4 @@ The prefix can be just one word, but it'll take tweaking the code unless you kee
 `token`: The token from the Discord bot you have registered on your account [here](https://discordapp.com/developers/applications/).
 `prefix`: The prefix(es) you want Herobrine to respond to.
 `accepted_ids`: Your/the bot owner's ID. Made to accept multiple in case of multiple accounts.
+`sqlite`: The path to your sqlite3 executable. Fixes "kill einvalid" errors on Windows, may not be needed for other platforms.
