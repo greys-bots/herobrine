@@ -29,9 +29,19 @@ const bot = new Eris.CommandClient(config.token,{},{
 
 //commenting the line below may cause "kill einvalid" errors on some computers;
 //make sure the config is set up if you're getting issues
-dblite.bin = config.sqlite;
+// dblite.bin = config.sqlite;
 
-var db = dblite("./data.sqlite","-header");
+var db;
+
+try{
+	db = dblite("./data.sqlite","-header");
+} catch(e){
+	console.log(
+		["Error opening database with dblite.",
+		"You may need to set sqlite's location in config",
+		"and uncomment the dblite.bin line in bot.js (line 32)"
+		].join("\n"))
+}
 
 
 /***********************************
@@ -42,15 +52,13 @@ const setup = async function(){
 
 	db.query(".databases");
 	db.query(`SELECT * FROM triggers`,(err,rows)=>{
-		if(!err){
-			console.log(rows[0]);
-			return;
-		};
-		db.query(`CREATE TABLE IF NOT EXISTS triggers (user_id TEXT, code TEXT, list TEXT, alias TEXT)`,(err,rows)=>{
-			if(err){
-				console.log("Triggers doesn't exist or there was an error")
-			}
-		});
+		if(err){
+			db.query(`CREATE TABLE IF NOT EXISTS triggers (user_id TEXT, code TEXT, list TEXT, alias TEXT)`,(err,rows)=>{
+				if(err){
+					console.log("Triggers doesn't exist or there was an error")
+				}
+			});
+		}
 	});
 }
 
