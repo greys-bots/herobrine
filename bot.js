@@ -27,7 +27,7 @@ const bot = new Eris.CommandClient(config.token,{},{
 	defaultHelpCommand: false
 });
 
-//commenting the line below may cause "kill einvalid" errors on some computers;
+//uncommenting the line below may cause "kill einvalid" errors on some computers;
 //make sure the config is set up if you're getting issues
 // dblite.bin = config.sqlite;
 
@@ -40,7 +40,8 @@ try{
 		["Error opening database with dblite.",
 		"You may need to set sqlite's location in config",
 		"and uncomment the dblite.bin line in bot.js (line 32)"
-		].join("\n"))
+		].join("\n") + "\nError:\n"+e);
+	process.exit(1);
 }
 
 
@@ -73,7 +74,8 @@ commands.help = bot.registerCommand("help",(msg,args)=>{
 	msg.channel.createMessage({embed: helptext.help2});
 })
 
-bot.registerCommandAlias("h","help")
+bot.registerCommandAlias("h","help");
+
 
 //- - - - - - - - - - - Triggers - - - - - - - - - -
 
@@ -396,6 +398,21 @@ bot.on("messageCreate",(msg)=>{
 		})
 	}
 })
+
+
+//--------------------------------------------- Admin --------------------------------------------------
+//======================================================================================================
+//------------------------------------------------------------------------------------------------------
+
+
+commands.admin = bot.registerCommand("admin",(msg,args)=>{
+	msg.channel.createMessage({embed: helptext.adhelp});
+});
+
+bot.registerCommandAlias("ad","admin");
+bot.registerCommandAlias("*","admin");
+
+//----------------------------------------------------------------------------------------------------//
 
 setup();
 bot.connect()
