@@ -3,3 +3,5 @@ logs/
 node_modules/
 config.json
 data.sqlite
+Procfile
+run.bat
