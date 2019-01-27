@@ -52,13 +52,14 @@ SETUP
 const setup = async function(){
 
 	db.query(".databases");
-	db.query(`SELECT * FROM triggers`,(err,rows)=>{
+	db.query(`CREATE TABLE IF NOT EXISTS triggers (user_id TEXT, code TEXT, list TEXT, alias TEXT)`,(err,rows)=>{
 		if(err){
-			db.query(`CREATE TABLE IF NOT EXISTS triggers (user_id TEXT, code TEXT, list TEXT, alias TEXT)`,(err,rows)=>{
-				if(err){
-					console.log("Triggers doesn't exist or there was an error")
-				}
-			});
+			console.log("There was an error creating the triggers table.")
+		}
+	});
+	db.query(`CREATE TABLE IF NOT EXISTS roles (srv_id TEXT, id TEXT, sar TEXT, bundle TEXT)`,(err,rows)=>{
+		if(err){
+			console.log("There was an error creating the roles table.")
 		}
 	});
 }
@@ -253,6 +254,87 @@ commands.trigs.registerSubcommand("remove",(msg,args)=>{
 })
 
 
+//- - - - - - - - - - Roles - - - - - - -  - -
+
+commands.role = bot.registerCommand("role",(msg,args)=>{
+	msg.channel.createMessage("Usage:\n`heysteve role [add|remove] comma, separated, role names`")
+});
+
+commands.role.registerSubcommand("add",(msg,args)=>{
+	var rls = args.join(" ").split(/,\s*/g);
+	var nad = [];
+	var ad = [];
+	async function handleroles(){
+		await Promise.all(rls.map((r)=>{
+			if(msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase())){
+				db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase()).id}'`,async (err,rows)=>{
+					if(err){
+						console.log(err);
+						msg.channel.createMessage("There was an error.");
+					} else if(rows.length<1) {
+						nad.push({name:r,reason:"Role has not been indexed."});
+					} else if(rows[0].sar=="0"){
+						nad.push({name:r,reason:"Role is not self assignable."});
+					} else if(msg.member.roles.includes(rows[0].id)){
+						console.log("Could not add "+r+" because they have it already.");
+						nad.push({name:r,reason:"You already have this role."});
+					} else {
+						ad.push(r);
+						msg.member.addRole(rows[0].id);
+					}
+				})
+			} else {
+				nad.push({name:r,reason:"Role does not exist."});
+			}
+			return new Promise((resolve,reject)=>{
+				setTimeout(()=>{
+					resolve("done");
+				},100);
+			});
+		})).then(()=>{
+			console.log(ad);
+			console.log(nad);
+			msg.channel.createMessage({
+				embed: {
+					fields:[
+					{name:"Added",value: (ad.length>0 ? ad.join("\n") : "None")},
+					{name:"Not added: Reason",value: (nad.length>0 ? nad.map(nar=>nar.name+": "+nar.reason).join("\n") : "None")}
+					]
+				}
+			});
+		})
+
+	}
+
+	handleroles();
+});
+
+commands.roles = bot.registerCommand("roles",(msg,args)=>{
+	db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
+		if(rows.length>0){
+			msg.channel.createMessage({
+				embed: {
+					fields:[{
+						name:"\\~\\~\\* Available Roles \\*\\~\\~",
+						value:rows.map(r => {if(msg.guild.roles.find(rl => rl.id == r.id) && r.sar == "1") return msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase();})
+							.filter(x => x!=null)
+							.sort()
+							.join("\n")
+					}]
+				}
+			});
+		}
+		db.query("BEGIN TRANSACTION");
+		rows.forEach(r =>{
+			if(!msg.guild.roles.find(rl => rl.id == r.id)){
+				db.query(`DELETE FROM roles WHERE id='${r.id}'`);
+			}
+		})
+		db.query("COMMIT");
+	});
+})
+
+
 //- - - - - - - - - - Pings - - - - - - - - - -
 
 commands.ping=bot.registerCommand("ping",["pong!","pang!","peng!","pung!"],{
@@ -355,6 +437,131 @@ commands.whats=bot.registerCommand("whats",(msg,args)=>{
 bot.registerCommandAlias("what's","whats");
 
 
+//--------------------------------------------- Admin --------------------------------------------------
+//======================================================================================================
+//------------------------------------------------------------------------------------------------------
+
+
+commands.admin = bot.registerCommand("admin",(msg,args)=>{
+	msg.channel.createMessage({embed: helptext.adhelp});
+});
+
+bot.registerCommandAlias("ad","admin");
+bot.registerCommandAlias("*","admin");
+
+commands.adroles = commands.admin.registerSubcommand("roles",(msg,args)=>{
+	db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
+		if(rows.length>0){
+			msg.channel.createMessage({
+				embed: {
+					title:"Roles",
+					fields:[{
+						name:"\\~\\~\\* Assignable Roles \\*\\~\\~",
+						value:rows.map(r => (msg.guild.roles.find(rl => rl.id == r.id) && r.sar==1 ? msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase() : null)).filter(x=>x!=null).sort().join("\n")
+					},{
+						name:"\\~\\~\\* Mod-Only Roles \\*\\~\\~",
+						value:rows.map(r => (msg.guild.roles.find(rl => rl.id == r.id) && r.sar==0 ? msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase() : null)).filter(x=>x!=null).sort().join("\n")
+					}]
+				}
+			});
+		}
+		db.query("BEGIN TRANSACTION");
+		rows.forEach(r =>{
+			if(!msg.guild.roles.find(rl => rl.id == r.id)){
+				db.query(`DELETE FROM roles WHERE id='${r.id}'`);
+			}
+		})
+		db.query("COMMIT");
+	})
+})
+
+commands.adroles.registerSubcommand("index",(msg,args)=>{
+	if(!msg.member.permission.has("manageGuild") || !msg.member.permission.has("administrator")) return msg.channel.createMessage("You do not have permission to use this command.");
+	if(args.length>1){
+		var role_name = args.slice(0,-1).join(" ");
+		var sar = args[args.length-1];
+		console.log(role_name + ": " + sar);
+		if(msg.guild.roles.find(r => r.name.toLowerCase() == role_name.toLowerCase())){
+			var role_id = msg.guild.roles.find(r => r.name.toLowerCase() == role_name.toLowerCase()).id;
+			db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${role_id}'`,(err,rows)=>{
+				if(err){
+					console.log(err);
+					msg.channel.createMessage("There was an error.");
+				} else {
+					if(rows.length>0){
+						setTimeout(function(){
+							switch(sar){
+								case "1":
+									db.query(`UPDATE roles SET sar='${"1"}' WHERE srv_id='${msg.guild.id}' AND id='${role_id}'`,(err,rows)=>{
+										if(err){
+											console.log(err);
+											msg.channel.createMessage("There was an error.");
+										} else {
+											msg.channel.createMessage("Self assignable role updated.")
+										}
+									})
+									break;
+								case "0":
+									db.query(`UPDATE roles SET sar='${"0"}' WHERE srv_id='${msg.guild.id}' AND id='${role_id}'`,(err,rows)=>{
+										if(err){
+											console.log(err);
+											msg.channel.createMessage("There was an error.");
+										} else {
+											msg.channel.createMessage("Self assignable role updated.")
+										}
+									})
+									break;
+								default:
+									msg.channel.createMessage("Please provide a 1 or a 0.\nUsage:\n`hh!admin roles add role name [1/0]`");
+									break;
+							}
+						},500);
+					} else {
+						setTimeout(function(){
+							switch(sar){
+								case "1":
+									db.query(`INSERT INTO roles VALUES (?,?,?,?)`,[msg.guild.id,role_id,1,0],(err,rows)=>{
+										if(err){
+											console.log(err);
+											msg.channel.createMessage("There was an error.");
+										} else {
+											msg.channel.createMessage("Self assignable role indexed.")
+										}
+									})
+									break;
+								case "0":
+									db.query(`INSERT INTO roles VALUES (?,?,?,?)`,[msg.guild.id,role_id,0,0],(err,rows)=>{
+										if(err){
+											console.log(err);
+											msg.channel.createMessage("There was an error.");
+										} else {
+											msg.channel.createMessage("Role indexed.")
+										}
+									})
+									break;
+								default:
+									msg.channel.createMessage("Please provide a 1 or a 0.\nUsage:\n`hh!admin roles add role name [1/0]`");
+									break;
+							}
+						},500);
+					}
+				}
+			})
+			
+		} else {
+			msg.channel.createMessage("Role does not exist.");
+		}
+	} else {
+		msg.channel.createMessage("Usage:\n`hh!admin roles add role name [1/0]`");
+	}
+})
+
+
+//************************************** BOT EVENTS **************************************************
+//----------------------------------------------------------------------------------------------------
+//****************************************************************************************************
+
+
 bot.on("ready",()=>{
 	console.log("Ready.");
 	let now = new Date();
@@ -399,18 +606,6 @@ bot.on("messageCreate",(msg)=>{
 	}
 })
 
-
-//--------------------------------------------- Admin --------------------------------------------------
-//======================================================================================================
-//------------------------------------------------------------------------------------------------------
-
-
-commands.admin = bot.registerCommand("admin",(msg,args)=>{
-	msg.channel.createMessage({embed: helptext.adhelp});
-});
-
-bot.registerCommandAlias("ad","admin");
-bot.registerCommandAlias("*","admin");
 
 //----------------------------------------------------------------------------------------------------//
 

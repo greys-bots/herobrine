@@ -40,5 +40,10 @@ module.exports = {
 	randomText: function(table){
 		var r=Math.floor(Math.random() * table.length);
 		return table[r];
+	},
+	asyncForEach: async function(array,callback){
+		for (let index = 0; index < array.length; index++) {
+			await callback(array[index], index, array);
+		}
 	}
 };
