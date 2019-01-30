@@ -32,17 +32,27 @@ module.exports={
 	},
 	help2: {
 		"title":"NORMAL COMMANDS",
-		"description":"Commands usable by everyone.",
+		"description":"Commands usable by everyone.\nDefault prefixes: \"hh!command\", \"heyherobrine command\", \"heyhero command\"",
 		"color":16755455,
 		"fields":[
 			{
-				"name":"\u200B",
-				"value":"hh!help or hh!h - *returns this help message*\n"+
-						"hh!ping - *pong!*\n"+
-						"hh!trigs - *used for indexing triggers. use `hh!trigs help` for more info*\n"+
-						"hh!what's up(?) or hh!whats up(?) - *ask him what's up!*\n"+
-						"hh!random [number] - *gives a random number*"
-}
+				"name":"Util",
+				"value":[
+							"**hh!help** or **hh!h** - *returns this help message*",
+							"**hh!trigs** - *used for indexing triggers. use `hh!trigs help` for more info*",
+							"**hh!random [number]** - *gives a random number*",
+							"**hh!roles** - *lists all roles in the server*",
+							"**hh!role** - *add and remove self roles*"
+						].sort().join("\n")
+			},
+			{
+				"name":"Fun",
+				"value":[
+							"**hh!what's up(?)** or **hh!whats up(?)** - *ask him what's up!*",
+							"**hh!ping** - *pong!*",
+							"**hh!lovebomb** - *get a bomb of love*"
+						].sort().join("\n")
+			}
 		],
 		"footer":{
 			"icon_url":"https://cdn.discordapp.com/avatars/486525763252649985/d674fd06a6fd5617b1dbfba01ae139b3.jpg",

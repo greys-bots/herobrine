@@ -1,5 +1,5 @@
 module.exports = {
-	hex2rgb: function(hex){
+	hex2rgb: (hex)=>{
 		var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
 	    hex = hex.replace(shorthandRegex, function(m, r, g, b) {
 	        return r + r + g + g + b + b;
@@ -28,7 +28,7 @@ module.exports = {
 			return text;
 		}
 	},
-	genCode: function(num,table){
+	genCode: (num,table) =>{
 		var codestring="";
 		var codenum=0;
 		while (codenum<(num==undefined ? 4 : num)){
