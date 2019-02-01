@@ -63,7 +63,28 @@ const setup = async function(){
 		}
 	});
 
-	commands.test = await require("./test.js");
+	commands.test = await require("./commands/test.js");
+	commands.trigs = await require("./commands/trigs.js");
+}
+
+const cmdHandle = function(clist,cmd,msg,args){
+	cmd = cmd.toLowerCase();
+	if(clist[cmd]){
+		if(args[0] == undefined || clist[cmd].subcommands == undefined){
+			clist[cmd].execute(msg,args);
+		} else if(clist[cmd].subcommands[args[0].toLowerCase()]){
+			if(clist[cmd].subcommands[args[0]].subcommands){
+				cmdHandle(clist[cmd].subcommands[args[0].toLowerCase()].subcommands,args.slice(1),msg,args.slice(1) || [])
+			} else {
+				clist[cmd].subcommands[args[0].toLowerCase()].execute(msg,(args.length > 0 ? args.slice(1) : []));
+
+			}
+		} else {
+			clist[cmd].execute(msg,args);
+		}
+	} else {
+		msg.channel.createMessage("That command does not exist.");
+	}
 }
 
 
@@ -86,6 +107,7 @@ commands.help = {
 							commands[command].usage().map(l => (bot.guildPrefixes[msg.guild.id] ? bot.guildPrefixes[msg.guild.id] : config.prefix[0]) + command + l)
 							.join("\n") +
 							(commands[command].desc!=undefined ? "\n\n"+commands[command].desc() : "") +
+							(commands[command].subcommands ? "\n\n**Subcommands**\n" + Object.keys(commands[command].subcommands).map(sc => "**" + sc + "**" + " - " + commands[command].subcommands[sc].help()) : "") +
 							"\n\nThis command is part of the **" + commands[command].module + "** module.",
 				color: 16755455,
 				footer:{
@@ -121,181 +143,6 @@ commands.h = Object.assign({alias:true},commands.help);
 
 
 //- - - - - - - - - - - Triggers - - - - - - - - - -
-
-commands.trigs= {
-	help: () => "List, register, add, and remove triggers.",
-	usage: () => [" - List your trigger lists, if you have any.",
-					" [code] - List triggers registered at that code.",
-					" new - Creates a new list, using a handy menu.",
-					" add [code] <triggers, to, add> - Adds triggers to a list. If no triggers are given, runs a menu.",
-					" remove [code] <triggers, to, remove> - Removes triggers from a list. If no triggers are given, runs a menu.",
-					" delete [code] - Deletes a trigger list."],
-	execute: (msg,args) => {
-		if(args[0]){
-			let command = args.shift().toLowerCase();
-			switch(command){
-				case "new":
-					let cd=Util.genCode(4,Texts.codestab);
-					let listname = "";
-
-					msg.channel.createMessage("Please enter a name/alias for the list");
-					msg.channel.awaitMessages(m => m.author.id == msg.author.id,{time:20000,maxMatches:1}).then(tlname=>{
-						if(tlname.length>0){
-							if(tlname[0].content.toLowerCase()=="cancel"){ return msg.channel.createMessage("Action cancelled.") }
-							listname=tlname[0].content;
-							msg.channel.createMessage("Type (preferably, comma, separated) triggers to add to the list. You have 60 seconds to do this.").then(()=>{
-								msg.channel.awaitMessages(m => m.author.id == msg.author.id,{time:60000,maxMatches:1}).then(trigs_received=>{
-									if(trigs_received.length>0){
-										if(trigs_received[0].content.toLowerCase()=="cancel"){ return msg.channel.createMessage("Action cancelled.")}
-										db.query(`INSERT INTO triggers VALUES (?,?,?,?)`,[msg.author.id,cd,trigs_received[0].content,listname],(err,rows)=>{
-											if(err){
-												console.log(err);
-												msg.channel.createMessage("There was an error.");
-											} else {
-												msg.channel.createMessage("List created. Code: "+cd);
-											}
-										});
-									} else {
-										msg.channel.createMessage("Action cancelled.");
-									}
-								})
-							});
-						} else {
-							console.log("Error: no message received");
-							msg.channel.createMessage("Action cancelled.");
-						}
-					})
-					break;
-				case "add":
-					db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
-						tl = rows[0];
-						if(!tl){ return msg.channel.createMessage("List does not exist."); }
-						if(!(tl.user_id == msg.author.id)){ return msg.channel.createMessage("That list doesn't belong to you.");}
-						if(args.length > 1){
-							db.query(`UPDATE triggers SET list='${tl.list},${args.slice(1).join(" ")}' WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
-								msg.channel.createMessage("Appended to list.");
-							})
-							return;
-						}
-						msg.channel.createMessage("Write what you want to add.");
-						msg.channel.awaitMessages(m=> m.author.id == msg.author.id,{time:60000,maxMatches:1}).then(resp=>{
-							db.query(`UPDATE triggers SET list='${tl.list},${resp[0].content}' WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
-								msg.channel.createMessage("Appended to list.")
-							})
-						})
-					})
-					break;
-				case "remove":
-					db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
-						tl = rows[0];
-						if(!tl){ return msg.channel.createMessage("List does not exist."); }
-						if(!(tl.user_id == msg.author.id)){ return msg.channel.createMessage("That list doesn't belong to you.");}
-						var tlist = tl.list.split(/,\s*/);
-						if(args.length > 1){
-							var rmlist = args.slice(1).join(" ");
-							console.log(rmlist);
-							rmlist = rmlist.split(/,\s*/);
-							tlist = tlist.filter((t,ind)=>{
-								var f = true;
-								for(var i = 0; i < rmlist.length; i++){
-									if(t == rmlist[i]){
-										f = false;
-									}
-								}
-								return f;
-							})
-							db.query(`UPDATE triggers SET list='${tlist}' WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
-								msg.channel.createMessage("Removed from list.").then(()=>{
-									db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
-										nlist=rows[0];
-										if(!nlist){ console(`Error finding list ${args[0].toLowerCase()} after removing triggers.`) }
-										if(nlist.list.replace(/,*/g,"")==""||nlist.list==undefined){
-											db.query(`DELETE FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
-												msg.channel.createMessage("List is empty; deleted.");
-											})
-										}
-									})
-								})
-							})
-							return;
-						}
-						msg.channel.createMessage("Write what you want to remove.");
-						msg.channel.awaitMessages(m=> m.author.id == msg.author.id,{time:60000,maxMatches:1}).then(resp=>{
-							var rmlist = resp[0].content.split(/,\s*/);
-							tlist = tlist.filter((t,ind)=>{
-								var f = true;
-								for(var i = 0; i < rmlist.length; i++){
-									if(t == rmlist[i]){
-										f = false;
-									}
-								}
-								return f;
-							})
-							setTimeout(function(){
-								db.query(`UPDATE triggers SET list='${tlist}' WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
-									msg.channel.createMessage("Removed from list.").then(()=>{
-										db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
-											nlist=rows[0];
-											if(!nlist){ console(`Error finding list ${args[0].toLowerCase()} after removing triggers.`) }
-											if(nlist.list.replace(/,*/g,"")==""||nlist.list==undefined){
-												db.query(`DELETE FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
-													msg.channel.createMessage("List is empty; deleted.");
-												})
-											}
-										})
-									})
-								})
-							},500)
-
-						})
-					})
-					break;
-				case "delete":
-					db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
-						tg=rows[0];
-						if(!tg){ return msg.channel.createMessage("That list doesn't exist."); }
-						if(!(tg.user_id == msg.author.id)){ return msg.channel.createMessage("That list does't belong to you.")}
-						msg.channel.createMessage(`Are you sure you want to delete this set? Enter \`${tg.code}\` to delete it.`)
-						msg.channel.awaitMessages(m=> m.author.id == msg.author.id,{time:10000,maxMatches:1}).then(resp=>{
-							if(resp[0].content.toLowerCase() == tg.code){
-								db.query(`DELETE FROM triggers WHERE code='${tg.code}'`,(err,rows)=>{
-									if(err) console.log(err);
-									else msg.channel.createMessage("Deleted.");
-								})
-							}
-						})
-					})
-					break;
-				default:
-					db.query(`SELECT * FROM triggers WHERE code='${command}'`,(err,rows)=>{
-						list=rows[0];
-						if(list){
-							msg.channel.createMessage({embed:{
-								title:"Triggers for "+list.alias,
-								description: list.list.split(/,\s*/).join("\n"),
-								color: 11433333
-							}})
-						} else {
-							msg.channel.createMessage("That list wasn't found.");
-						}
-					});
-					break;
-			}
-		} else {
-			db.query(`SELECT * FROM triggers WHERE user_id='${msg.author.id}'`,(err,rows)=>{
-				if(err){
-					console.log(err)
-				} else {
-					msg.channel.createMessage({embed:{
-						title:"triggers - (alias: code)",
-						description: (rows.map(t=>t.alias+": "+t.code).length > 0 ? rows.map(t=>t.alias+": "+t.code).join("\n") : "None found.")
-					}})
-				}
-			})
-		}
-	},
-	module: "utility"
-}
 
 
 //- - - - - - - - - - Roles - - - - - - -  - -
@@ -472,6 +319,17 @@ commands.ping= {
 	execute: (msg,args)=>{
 		var pongs = ["pong!","peng!","pung!","pang!"];
 		msg.channel.createMessage(pongs[Math.floor(Math.random()*pongs.length)]);
+	},
+	module: "fun",
+	subcommands: []
+}
+
+commands.ping.subcommands.test = {
+	help: ()=> "Test the Boy:tm:",
+	usage: ()=> [" - yeet"],
+	execute: (msg,args)=>{
+		var yeets = ["yeet!","yate!","yote!","yute!", "yite!"];
+		msg.channel.createMessage(yeets[Math.floor(Math.random()*yeets.length)]);
 	},
 	module: "fun"
 }
@@ -765,9 +623,7 @@ bot.on("messageCreate",(msg)=>{
 		let args = msg.content.replace(new RegExp("^"+config.prefix.join("|")+((msg.guild != undefined && bot.guildPrefixes[msg.guild.id]) ? "|"+bot.guildPrefixes[msg.guild.id] : ""),"i"), "").split(" ");
 		let cmd = args.shift();
 		console.log("Command: "+cmd+"\nArgs: "+args.join(", "));
-		if(commands[cmd.toLowerCase()]){
-			commands[cmd.toLowerCase()].execute(msg, args);
-		}
+		cmdHandle(commands,cmd,msg,args);
 
 	}
 })
