@@ -19,7 +19,7 @@ const Util =		require("./utilities.js");
 
 var cur_logs =		"";
 
-const bot = new Eris.CommandClient(config.token,{},{
+const bot = new Eris.CommandClient(config.token,{restMode: true},{
 	name: "Herobrine",
 	description: "Temporary test rewrite of Steve",
 	owner: "The Grey Skies",
@@ -67,14 +67,15 @@ const setup = async function(){
 	commands.trigs = await require("./commands/trigs.js");
 }
 
-const cmdHandle = function(clist,cmd,msg,args){
+const cmdHandle = async function(clist,cmd,msg,args){
 	cmd = cmd.toLowerCase();
-	if(clist[cmd]){
-		if(args[0] == undefined || clist[cmd].subcommands == undefined){
+	if(clist[cmd] || (clist.aliases != undefined && clist.aliases.filter(c => c.alias == cmd).length > 0)){
+		if(clist.aliases != undefined && clist.aliases.filter(c => c.alias == cmd).length > 0) cmd = await clist.aliases.filter(c => c.alias == cmd)[0].base;
+		if(args[0] == undefined || clist[cmd].subcommands == undefined || Object.keys(clist[cmd].subcommands).length == 0){
 			clist[cmd].execute(msg,args);
 		} else if(clist[cmd].subcommands[args[0].toLowerCase()]){
-			if(clist[cmd].subcommands[args[0]].subcommands){
-				cmdHandle(clist[cmd].subcommands[args[0].toLowerCase()].subcommands,args.slice(1),msg,args.slice(1) || [])
+			if(clist[cmd].subcommands[args[0].toLowerCase()].subcommands && Object.keys(clist[cmd].subcommands[args[0].toLowerCase()].subcommands).length > 0){
+				cmdHandle(clist[cmd].subcommands[args[0].toLowerCase()].subcommands,args.slice(1,2).join(""),msg,args.slice(2) || [])
 			} else {
 				clist[cmd].subcommands[args[0].toLowerCase()].execute(msg,(args.length > 0 ? args.slice(1) : []));
 
@@ -93,40 +94,55 @@ COMMANDS
 ***********************************/
 
 const commands={};
+commands.aliases = [];
 
 commands.help = {
 	help: () => "Use this to list commands or get help with a specific command",
 	usage: () => ["- List commands and basic help functions."," [command] - Get help with that command"],
 	execute: (msg,args)=>{
-		if(args[0] && commands[args[0].toLowerCase()]){
-			let command = args[0].toLowerCase();
+		let cmdname = (args[0] ? args[0].toLowerCase() : "");
+		let command;
+		let parentcmd;
+		let parentcmdname;
+		if(args[0] && (commands[cmdname] || commands.aliases.filter(x => x.alias == cmdname).length > 0)){
+			if(commands.aliases.filter(x => x.alias == cmdname).length > 0){
+				command = commands[commands.aliases.filter(x => x.alias == cmdname)[0].base];
+			} else {
+				command = commands[cmdname];
+			}
+			if(args[1] && command.subcommands != undefined && command.subcommands[args[1].toLowerCase()] != undefined){
+				parentcmd = command;
+				parentcmdname = cmdname;
+				command = command.subcommands[args[1].toLowerCase()];
+				cmdname = args[1].toLowerCase();
+			}
 			msg.channel.createMessage({embed:{
-				title: "Herobrine - Help: "+command,
-				description: commands[command].help() + 
-							"\n\n**Usage**\n" +
-							commands[command].usage().map(l => (bot.guildPrefixes[msg.guild.id] ? bot.guildPrefixes[msg.guild.id] : config.prefix[0]) + command + l)
-							.join("\n") +
-							(commands[command].desc!=undefined ? "\n\n"+commands[command].desc() : "") +
-							(commands[command].subcommands ? "\n\n**Subcommands**\n" + Object.keys(commands[command].subcommands).map(sc => "**" + sc + "**" + " - " + commands[command].subcommands[sc].help()) : "") +
-							"\n\nThis command is part of the **" + commands[command].module + "** module.",
-				color: 16755455,
-				footer:{
-					icon_url: bot.user.avatarURL,
-					text: "Arguments like [this] are required, arguments like <this> are optional."
-				}
-			}})
+				title: "Herobrine - Help: "+ (parentcmdname != undefined ? parentcmdname + " - " : "") + cmdname,
+				description: command.help() + 
+				"\n\n**Usage**\n" +
+				command.usage().map(l => (bot.guildPrefixes[msg.guild.id] ? bot.guildPrefixes[msg.guild.id] : config.prefix[0]) + (parentcmd != undefined ? parentcmdname + " " : "") + cmdname + l)
+				.join("\n") +
+							// (command.subcommands ? "\n\n**Subcommands**\n" + Object.keys(command.subcommands).map(sc => "**" + sc + "**" + " - " + commands[command].subcommands[sc].help()).join("\n") : "") +
+							(command.desc!=undefined ? "\n\n"+command.desc() : "") +
+							(command.module!=undefined || parentcmd.module!=undefined ? "\n\nThis command is part of the **" + (command.module || parentcmd.module) + "** module." : ""),
+							color: 16755455,
+							footer:{
+								icon_url: bot.user.avatarURL,
+								text: "Arguments like [this] are required, arguments like <this> are optional."
+							}
+						}})
 		} else {
 			msg.channel.createMessage({embed: {
 				title: "Herobrine - Help",
 				description: "I'm Herobrine! This bot is multi-purpose and intended for a wide range of functions.",
 				fields:[
-					{name:"**FUN**",
-					value: Object.keys(commands).filter(x => commands[x].module == "fun" && !commands[x].alias).map( c => "**"+(bot.guildPrefixes[msg.guild.id] ? bot.guildPrefixes[msg.guild.id] : config.prefix[0]) + c + "** - " + commands[c].help()).sort().join("\n")},
-					{name:"**UTILITY**",
-					value: Object.keys(commands).filter(x => commands[x].module == "utility" && !commands[x].alias).map( c => "**"+(bot.guildPrefixes[msg.guild.id] ? bot.guildPrefixes[msg.guild.id] : config.prefix[0]) + c + "** - " + commands[c].help()).sort().join("\n")}
-					// {name:"****",
-					// value: Object.keys(commands).filter(x => commands[x].module == "fun").map( c => "**"+(bot.guildPrefixes[msg.guild.id] ? bot.guildPrefixes[msg.guild.id] : config.prefix[0]) + c + "** - " + commands[c].help()).join("\n")},
-					
+				{name:"**FUN**",
+				value: Object.keys(commands).filter(x => commands[x].module == "fun" && !commands[x].alias).map( c => "**"+(bot.guildPrefixes[msg.guild.id] ? bot.guildPrefixes[msg.guild.id] : config.prefix[0]) + c + "** - " + commands[c].help()).sort().join("\n")},
+				{name:"**UTILITY**",
+				value: Object.keys(commands).filter(x => commands[x].module == "utility" && !commands[x].alias).map( c => "**"+(bot.guildPrefixes[msg.guild.id] ? bot.guildPrefixes[msg.guild.id] : config.prefix[0]) + c + "** - " + commands[c].help()).sort().join("\n")},
+				{name:"**ADMIN**",
+				value: Object.keys(commands).filter(x => commands[x].module == "admin").map( c => "**"+(bot.guildPrefixes[msg.guild.id] ? bot.guildPrefixes[msg.guild.id] : config.prefix[0]) + c + "** - " + commands[c].help()).join("\n")},
+
 				],
 				color: 16755455,
 				footer:{
@@ -139,150 +155,25 @@ commands.help = {
 	module: "utility"
 }
 
-commands.h = Object.assign({alias:true},commands.help);
-
-
-//- - - - - - - - - - - Triggers - - - - - - - - - -
-
+commands.aliases.push({base: "help", alias: "h"});
 
 //- - - - - - - - - - Roles - - - - - - -  - -
 
 commands.role = {
 	help: ()=> "Add and remove self roles.",
-	usage: ()=> ["s - list available roles",
-				" add [comma, separated, role names] - adds [a] self role(s)",
-				" remove [comma, separated, role names] - removes [a] self role(s)",
-				" list - Lists available roles."],
+	usage: ()=> [" - display this help text","s - list available roles"],
 	desc: () => "This command can only be used in guilds.",
 	execute: (msg,args)=>{
-		if(args[0] && msg.guild!=undefined){
-			var command = args.shift().toLowerCase();
-			switch(command){
-				case "add":
-					let rls = args.join(" ").split(/,\s*/g);
-					let nad = [];
-					let ad = [];
-					let addRoles = async function (){
-						await Promise.all(rls.map((r)=>{
-							if(msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase())){
-								db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase()).id}'`,async (err,rows)=>{
-									if(err){
-										console.log(err);
-										msg.channel.createMessage("There was an error.");
-									} else if(rows.length<1) {
-										nad.push({name:r,reason:"Role has not been indexed."});
-									} else if(rows[0].sar=="0"){
-										nad.push({name:r,reason:"Role is not self assignable."});
-									} else if(msg.member.roles.includes(rows[0].id)){
-										console.log("Could not add "+r+" because they have it already.");
-										nad.push({name:r,reason:"You already have this role."});
-									} else {
-										ad.push(r);
-										msg.member.addRole(rows[0].id);
-									}
-								})
-							} else {
-								nad.push({name:r,reason:"Role does not exist."});
-							}
-							return new Promise((resolve,reject)=>{
-								setTimeout(()=>{
-									resolve("done");
-								},100);
-							});
-						})).then(()=>{
-							msg.channel.createMessage({
-								embed: {
-									fields:[
-									{name:"Added",value: (ad.length>0 ? ad.join("\n") : "None")},
-									{name:"Not added: Reason",value: (nad.length>0 ? nad.map(nar=>nar.name+": "+nar.reason).join("\n") : "None")}
-									]
-								}
-							});
-						})
-					}
-					addRoles();
-					break;
-				case "remove":
-					let rlstrmv = args.join(" ").split(/,\s*/g);
-					let nrem = [];
-					let rem = [];
-					let rmvRoles = async function (){
-						await Promise.all(rlstrmv.map((r)=>{
-							if(msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase())){
-								db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase()).id}'`,async (err,rows)=>{
-									if(err){
-										console.log(err);
-										msg.channel.createMessage("There was an error.");
-									} else if(rows.length<1) {
-										nrem.push({name:r,reason:"Role has not been indexed."});
-									} else if(rows[0].sar=="0"){
-										nrem.push({name:r,reason:"Role is not self assignable."});
-									} else if(!msg.member.roles.includes(rows[0].id)){
-										console.log("Could not remove "+r+" because they don't have it.");
-										nrem.push({name:r,reason:"You don't have this role."});
-									} else {
-										rem.push(r);
-										msg.member.removeRole(rows[0].id);
-									}
-								})
-							} else {
-								nad.push({name:r,reason:"Role does not exist."});
-							}
-							return new Promise((resolve,reject)=>{
-								setTimeout(()=>{
-									resolve("done");
-								},100);
-							});
-						})).then(()=>{
-							msg.channel.createMessage({
-								embed: {
-									fields:[
-									{name:"Added",value: (rem.length>0 ? rem.join("\n") : "None")},
-									{name:"Not added: Reason",value: (nrem.length>0 ? nrem.map(nar=>nar.name+": "+nar.reason).join("\n") : "None")}
-									]
-								}
-							});
-						})
-					}
-					rmvRoles();
-					break;
-				case "list":
-					db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
-						if(rows.length>0){
-							msg.channel.createMessage({
-								embed: {
-									fields:[{
-										name:"\\~\\~\\* Available Roles \\*\\~\\~",
-										value:rows.map(r => {if(msg.guild.roles.find(rl => rl.id == r.id) && r.sar == "1") return msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase();})
-											.filter(x => x!=null)
-											.sort()
-											.join("\n")
-									}]
-								}
-							});
-						}
-						db.query("BEGIN TRANSACTION");
-						rows.forEach(r =>{
-							if(!msg.guild.roles.find(rl => rl.id == r.id)){
-								db.query(`DELETE FROM roles WHERE id='${r.id}'`);
-							}
-						})
-						db.query("COMMIT");
-					});
-					break;
-				default:
-					break;
-			}
-		} else {
-			commands.help.execute(msg,["role"]);
-		}
+		if(!msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
+		commands.help.execute(msg,["role"]);
 	},
-	module: "utility"
+	module: "utility",
+	subcommands: {}
 }
 
-commands.roles = {
-	help: ()=> "List all available self roles for a guild.",
-	usage: ()=> [" - Lists available roles."],
+commands.role.subcommands.list = {
+	help: ()=> "Lists available roles for a server.",
+	usage: ()=> [" - Lists all selfroles for the server"],
 	execute: (msg,args)=>{
 		db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
 			if(rows.length>0){
@@ -290,13 +181,146 @@ commands.roles = {
 					embed: {
 						fields:[{
 							name:"\\~\\~\\* Available Roles \\*\\~\\~",
-							value:rows.map(r => {if(msg.guild.roles.find(rl => rl.id == r.id) && r.sar == "1") return msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase();})
+							value:(rows.map(r => {if(msg.guild.roles.find(rl => rl.id == r.id) && r.sar == "1") return msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase();})
 								.filter(x => x!=null)
 								.sort()
-								.join("\n")
+								.join("\n") || "None")
 						}]
 					}
 				});
+			} else {
+				msg.channel.createMessage("There are no roles indexed for this server.")
+			}
+			db.query("BEGIN TRANSACTION");
+			rows.forEach(r =>{
+				if(!msg.guild.roles.find(rl => rl.id == r.id)){
+					db.query(`DELETE FROM roles WHERE id='${r.id}'`);
+				}
+			})
+			db.query("COMMIT");
+		});
+	}
+}
+
+commands.role.subcommands.remove = {
+	help: ()=> "Removes a selfrole.",
+	usage: ()=> [" [comma, separated, role names] - Removes given roles, if applicable"],
+	execute: (msg,args)=>{
+		let rlstrmv = args.join(" ").split(/,\s*/g);
+		let nrem = [];
+		let rem = [];
+		let rmvRoles = async function (){
+			await Promise.all(rlstrmv.map((r)=>{
+				if(msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase())){
+					db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase()).id}'`,async (err,rows)=>{
+						if(err){
+							console.log(err);
+							msg.channel.createMessage("There was an error.");
+						} else if(rows.length<1) {
+							nrem.push({name:r,reason:"Role has not been indexed."});
+						} else if(rows[0].sar=="0"){
+							nrem.push({name:r,reason:"Role is not self assignable."});
+						} else if(!msg.member.roles.includes(rows[0].id)){
+							console.log("Could not remove "+r+" because they don't have it.");
+							nrem.push({name:r,reason:"You don't have this role."});
+						} else {
+							rem.push(r);
+							msg.member.removeRole(rows[0].id);
+						}
+					})
+				} else {
+					nad.push({name:r,reason:"Role does not exist."});
+				}
+				return new Promise((resolve,reject)=>{
+					setTimeout(()=>{
+						resolve("done");
+					},100);
+				});
+			})).then(()=>{
+				msg.channel.createMessage({
+					embed: {
+						fields:[
+						{name:"Added",value: (rem.length>0 ? rem.join("\n") : "None")},
+						{name:"Not added: Reason",value: (nrem.length>0 ? nrem.map(nar=>nar.name+": "+nar.reason).join("\n") : "None")}
+						]
+					}
+				});
+			})
+		}
+		rmvRoles();
+	}
+}
+
+commands.role.subcommands.add = {
+	help: ()=> "Adds selfroles.",
+	usage: ()=> [" [comma, separated, role names] - Adds given roles, if available"],
+	execute: (msg,args)=>{
+		let rls = args.join(" ").split(/,\s*/g);
+		let nad = [];
+		let ad = [];
+		let addRoles = async function (){
+			await Promise.all(rls.map((r)=>{
+				if(msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase())){
+					db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase()).id}'`,async (err,rows)=>{
+						if(err){
+							console.log(err);
+							msg.channel.createMessage("There was an error.");
+						} else if(rows.length<1) {
+							nad.push({name:r,reason:"Role has not been indexed."});
+						} else if(rows[0].sar=="0"){
+							nad.push({name:r,reason:"Role is not self assignable."});
+						} else if(msg.member.roles.includes(rows[0].id)){
+							console.log("Could not add "+r+" because they have it already.");
+							nad.push({name:r,reason:"You already have this role."});
+						} else {
+							ad.push(r);
+							msg.member.addRole(rows[0].id);
+						}
+					})
+				} else {
+					nad.push({name:r,reason:"Role does not exist."});
+				}
+				return new Promise((resolve,reject)=>{
+					console.log("Resolving...")
+					setTimeout(()=>{
+						resolve("done");
+					},100);
+				});
+			})).then(()=>{
+				msg.channel.createMessage({
+					embed: {
+						fields:[
+						{name:"Added",value: (ad.length>0 ? ad.join("\n") : "None")},
+						{name:"Not added: Reason",value: (nad.length>0 ? nad.map(nar=>nar.name+": "+nar.reason).join("\n") : "None")}
+						]
+					}
+				});
+			})
+		}
+		addRoles();
+	}
+}
+
+commands.roles = {
+	help: ()=> "List all available self roles for a guild.",
+	usage: ()=> [" - Lists available roles."],
+	execute: (msg,args)=>{
+		if(!msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
+		db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
+			if(rows.length>0){
+				msg.channel.createMessage({
+					embed: {
+						fields:[{
+							name:"\\~\\~\\* Available Roles \\*\\~\\~",
+							value:rows.map(r => {if(msg.guild.roles.find(rl => rl.id == r.id) && r.sar == "1") return msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase();})
+							.filter(x => x!=null)
+							.sort()
+							.join("\n")
+						}]
+					}
+				});
+			} else {
+				msg.channel.createMessage("There are no indexed roles for this server.");
 			}
 			db.query("BEGIN TRANSACTION");
 			rows.forEach(r =>{
@@ -313,7 +337,7 @@ commands.roles = {
 
 //- - - - - - - - - - Pings - - - - - - - - - -
 
-commands.ping= {
+commands.ping = {
 	help: ()=> "Ping the Boy:tm:",
 	usage: ()=> [" - Returns a random pingy-pongy response."],
 	execute: (msg,args)=>{
@@ -321,7 +345,7 @@ commands.ping= {
 		msg.channel.createMessage(pongs[Math.floor(Math.random()*pongs.length)]);
 	},
 	module: "fun",
-	subcommands: []
+	subcommands: {}
 }
 
 commands.ping.subcommands.test = {
@@ -334,7 +358,7 @@ commands.ping.subcommands.test = {
 	module: "fun"
 }
 
-commands["ping!"] = Object.assign({alias:true},commands.ping);
+commands.aliases.push({base:"ping",alias:"ping!"});
 
 //- - - - - - - - - - Random - - - - - - - - - - - -
 
@@ -389,7 +413,7 @@ commands.lovebomb = {
 // })
 
 //- - - - - - - - - - Eval - - - - - - - - - -
-commands.eval= {
+commands.eval = {
 	help: ()=>"Evaluate javascript code.",
 	usage: ()=>[" [code] - Evaluates given code."," prm [code] - Evaluates given code, and any returned promises."],
 	desc: ()=>"Only the bot owner can use this command.",
@@ -398,22 +422,22 @@ commands.eval= {
 		if(args[0] == "prm"){
 			async function f(){
 
-			try {
-				const promeval = args.join(" ");
-				let evlp = await eval(promeval);
+				try {
+					const promeval = args.join(" ");
+					let evlp = await eval(promeval);
 
-				if(typeof(evlp)!=="string"){
-					evlp=require("util").inspect(evlp);
+					if(typeof(evlp)!=="string"){
+						evlp=require("util").inspect(evlp);
+					}
+
+					msg.channel.createMessage(Util.cleanText(evlp));
+				} catch (err) {
+					if(err){console.log(err)}
 				}
 
-				msg.channel.createMessage(Util.cleanText(evlp));
-			} catch (err) {
-				if(err){console.log(err)}
 			}
 
-		}
-
-		f();
+			f();
 
 		} else {
 			try {
@@ -429,7 +453,7 @@ commands.eval= {
 				if(err){console.log(err)}
 			};
 		}
-		
+
 	},
 	module: "admin"
 }
@@ -456,121 +480,369 @@ commands["what's"] = Object.assign({alias:true},commands.whats);
 //--------------------------------------------- Admin --------------------------------------------------
 //======================================================================================================
 //------------------------------------------------------------------------------------------------------
+//368245507744727054
+
+commands.admin = {
+	help: ()=> "For admin commands. Use `hh!admin help` or `hh!help admin` for more info.",
+	usage: ()=>[" - WIP",
+	" ban [userID] - [hack]bans user from the server",
+	" index [role name] [1/0] - indexes self and mod-only roles",
+	" roles - lists all indexed roles (selfroleable and mod-only) for the server"],
+	execute: (msg,args)=>{
+		msg.channel.createMessage({embed: helptext.adhelp});
+	},
+	module: "admin",
+	subcommands: {}
+}
+
+commands.aliases.push({base:"admin",alias:"ad"});
+commands.aliases.push({base:"admin",alias:"*"});
+
+commands.admin.subcommands.ban = {
+	help: ()=> "[Hack]bans members.",
+	usage: ()=> [" [userID] - Bans member with that ID."],
+	execute: async (msg,args)=>{
+		if(!msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
+		var membs = args.join(" ").split(/,*\s+|\n+/);
+		var succ = [];
+		async function banMembers (){
+			return await Promise.all(membs.map(async (m) => {
+				console.log(succ);
+				await bot.getRESTUser(m).then(async (u)=>{
+					await msg.guild.getBans().then(b=>{
+						console.log(b);
+						if(b){
+							if(b.filter(x => x.user.id == m).length > 0){
+								succ.push({id:m,pass:false,reason:"User already banned"});
+							} else {
+								bot.banGuildMember(msg.guild.id,m,0,"Banned through command.");
+								succ.push({id:m,pass:true})
+							}
+						} else {
+							bot.banGuildMember(msg.guild.id,m,0,"Banned through command.");
+							succ.push({id:m,pass:true})
+						}
+					})
+				}).catch(e=>{
+					succ.push({id:m,pass:false,reason:"User does not exist."});
+				})
+
+				return new Promise((res,rej)=>{
+					setTimeout(()=>{
+						res({id:m});
+					},100)
+				})
+			})
+			)
+		}
+		banMembers().then(()=>{
+			console.log(succ)
+			msg.channel.createMessage({embed:{
+				title: "Ban Results",
+				fields: [
+				{
+					name: "Banned",
+					value: (succ.filter(m => m.pass).length > 0 ? succ.filter(x=> x.pass).map(m => m.id).join("\n") : "None")
+				},
+				{
+					name: "Not Banned",
+					value: (succ.filter(m => !m.pass).length > 0 ? succ.filter(x => !x.pass).map(m => m.id + " - " + m.reason).join("\n") : "None")
+				}
+				]
+			}})
+		});
+	}
+}
+
+commands.admin.subcommands.roles = {
+	help: ()=> "List all indexed roles for a server.",
+	usage: ()=> [" - lists all indexed roles for the server"],
+	execute: (msg,args)=> {
+		db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
+			if(rows.length>0){
+				msg.channel.createMessage({
+					embed: {
+						title:"Roles",
+						fields:[{
+							name:"\\~\\~\\* Assignable Roles \\*\\~\\~",
+							value:rows.map(r => (msg.guild.roles.find(rl => rl.id == r.id) && r.sar==1 ? msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase() : null)).filter(x=>x!=null).sort().join("\n")
+						},{
+							name:"\\~\\~\\* Mod-Only Roles \\*\\~\\~",
+							value:rows.map(r => (msg.guild.roles.find(rl => rl.id == r.id) && r.sar==0 ? msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase() : null)).filter(x=>x!=null).sort().join("\n")
+						}]
+					}
+				});
+			}
+			db.query("BEGIN TRANSACTION");
+			rows.forEach(r =>{
+				if(!msg.guild.roles.find(rl => rl.id == r.id)){
+					db.query(`DELETE FROM roles WHERE id='${r.id}'`);
+				}
+			})
+			db.query("COMMIT");
+		})
+	}
+}
+
+commands.admin.subcommands.role = {
+	help: ()=> "Create, delete, edit, add, and remove roles.",
+	usage: ()=> [" - shows this help",
+				" create [role name] - creates new role",
+				" delete [role name] - deletes existing role",
+				" edit [role name] [color/name/etc] [new value] - edits existing role",
+				" add [comma, separated, role names] [@memberping] - adds roles to specified member",
+				" remove [comma, separated, role names] [@memberping] - removes roles from specified member"],
+	execute: (msg, args) =>{
+		msg.channel.createMessage("WIP");
+	},
+	subcommands: {}
+}
+
+var adroles = commands.admin.subcommands.role;
+
+adroles.subcommands.add = {
+	help: ()=> "Add roles to mentioned users.",
+	usage: ()=>[" [roles, to, add] [@user,@mentions] - adds roles to these users"],
+	execute: async (msg,args)=>{
+		if(msg.mentions.length > 0){
+			var l = msg.mentions.length;
+			var ments = args.slice(-l);
+			var rta = args.slice(0,-l).join(" ").split(/,\s*/);
+			var members = {};
+			await Promise.all(ments.map(async m=>{
+				var member = await msg.guild.members.find(mb => mb.mention == m || mb.user.mention == m);
+				if(member){
+					members[m] = {
+						title: "**"+member.username+"**",
+						fields: [ 
+						{name: "Added",
+						value: ""},
+						{name: "Not Added",
+						value: ""}
+						]
+					}
+					await Promise.all(rta.map((r)=>{
+						if(msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase())){
+							db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase()).id}'`,async (err,rows)=>{
+								if(err){
+									console.log(err);
+									msg.channel.createMessage("There was an error.");
+								} else if(rows.length<1) {
+									members[m].fields[1].value += r + " - role has not been indexed.\n";
+								} else if(member.roles.includes(rows[0].id)){
+									members[m].fields[1].value += r + " - already has this role.\n";
+								} else {
+									members[m].fields[0].value += r + "\n";
+									member.addRole(rows[0].id);
+								}
+							})
+						} else {
+							members[m].fields[1].value += r + " - role does not exist.\n";
+						}
+						return new Promise((resolve,reject)=>{
+							setTimeout(()=>{
+								resolve("done");
+							},100);
+						});
+					}))
+					return new Promise((res,rej)=>{
+						setTimeout(()=>{
+							res("done");
+						},100);
+					})
+				} else {
+					members.push({
+						title: m,
+						description: "Couldn't find member."
+					});
+				}
+			})).then(()=>{
+				Object.keys(members).map(mb => {
+					msg.channel.createMessage({embed:{
+						title: members[mb].title,
+						fields: [
+							{name: "Added",
+							value: (members[mb].fields[0].value == "" ? "None" : members[mb].fields[0].value)
+							},
+							{name: "Not Added",
+							value: (members[mb].fields[1].value == "" ? "None" : members[mb].fields[1].value)
+							}
+						]
+					}
+					}).catch(e=> console.log(e));
+				})
+			})
+		} else {
+			msg.channel.createMessage("Please mention a user.");
+		}
+	}
+}
+
+adroles.subcommands.remove = {
+	help: ()=> "Remove roles from mentioned users.",
+	usage: ()=> [" [roles, to, remove] [@user @mention] - removes roles from users"],
+	execute: async (msg,args)=> {
+		if(msg.mentions.length > 0){
+			var l = msg.mentions.length;
+			var ments = args.slice(-l);
+			var rtr = args.slice(0,-l).join(" ").split(/,\s*/);
+			var members = {};
+			await Promise.all(ments.map(async m=>{
+				var member = await msg.guild.members.find(mb => mb.mention == m || mb.user.mention == m);
+				if(member){
+					members[m] = {
+						title: "**"+member.username+"**",
+						fields: [ 
+						{name: "Added",
+						value: ""},
+						{name: "Not Added",
+						value: ""}
+						]
+					}
+					await Promise.all(rtr.map((r)=>{
+						if(msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase())){
+							db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase()).id}'`,async (err,rows)=>{
+								if(err){
+									console.log(err);
+									msg.channel.createMessage("There was an error.");
+								} else if(rows.length<1) {
+									members[m].fields[1].value += r + " - role has not been indexed.\n";
+								} else if(!member.roles.includes(rows[0].id)){
+									members[m].fields[1].value += r + " - doesn't have this role.\n";
+								} else {
+									members[m].fields[0].value += r + "\n";
+									member.removeRole(rows[0].id);
+								}
+							})
+						} else {
+							members[m].fields[1].value += r + " - role does not exist.\n";
+						}
+						return new Promise((resolve,reject)=>{
+							setTimeout(()=>{
+								resolve("done");
+							},100);
+						});
+					}))
+					return new Promise((res,rej)=>{
+						setTimeout(()=>{
+							res("done");
+						},100);
+					})
+				} else {
+					members.push({
+						title: m,
+						description: "Couldn't find member."
+					});
+				}
+			})).then(()=>{
+				Object.keys(members).map(mb => {
+					msg.channel.createMessage({embed:{
+						title: members[mb].title,
+						fields: [
+							{name: "Added",
+							value: (members[mb].fields[0].value == "" ? "None" : members[mb].fields[0].value)
+							},
+							{name: "Not Added",
+							value: (members[mb].fields[1].value == "" ? "None" : members[mb].fields[1].value)
+							}
+						]
+					}
+					}).catch(e=> console.log(e));
+				})
+			})
+		} else {
+			msg.channel.createMessage("Please mention a user.");
+		}
+	} 
+}
 
 
-// commands.admin = bot.registerCommand("admin",(msg,args)=>{
-// 	msg.channel.createMessage({embed: helptext.adhelp});
-// });
+commands.admin.subcommands.index = {
+	help: ()=> "Index new selfroles.",
+	usage: ()=> [" [role name] [1/0] - Indexes new role, either self-roleable (1) or mod-roleable (0)"],
+	execute: (msg,args)=>{
+		if(!msg.member.permission.has("manageGuild") || !msg.member.permission.has("administrator")) return msg.channel.createMessage("You do not have permission to use this command.");
+		if(args.length>1){
+			var role_name = args.slice(0,-1).join(" ");
+			var sar = args[args.length-1];
+			console.log(role_name + ": " + sar);
+			if(msg.guild.roles.find(r => r.name.toLowerCase() == role_name.toLowerCase())){
+				var role_id = msg.guild.roles.find(r => r.name.toLowerCase() == role_name.toLowerCase()).id;
+				db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${role_id}'`,(err,rows)=>{
+					if(err){
+						console.log(err);
+						msg.channel.createMessage("There was an error.");
+					} else {
+						if(rows.length>0){
+							setTimeout(function(){
+								switch(sar){
+									case "1":
+									db.query(`UPDATE roles SET sar='${"1"}' WHERE srv_id='${msg.guild.id}' AND id='${role_id}'`,(err,rows)=>{
+										if(err){
+											console.log(err);
+											msg.channel.createMessage("There was an error.");
+										} else {
+											msg.channel.createMessage("Self assignable role updated.")
+										}
+									})
+									break;
+									case "0":
+									db.query(`UPDATE roles SET sar='${"0"}' WHERE srv_id='${msg.guild.id}' AND id='${role_id}'`,(err,rows)=>{
+										if(err){
+											console.log(err);
+											msg.channel.createMessage("There was an error.");
+										} else {
+											msg.channel.createMessage("Self assignable role updated.")
+										}
+									})
+									break;
+									default:
+									msg.channel.createMessage("Please provide a 1 or a 0.\nUsage:\n`hh!admin roles add role name [1/0]`");
+									break;
+								}
+							},500);
+						} else {
+							setTimeout(function(){
+								switch(sar){
+									case "1":
+									db.query(`INSERT INTO roles VALUES (?,?,?,?)`,[msg.guild.id,role_id,1,0],(err,rows)=>{
+										if(err){
+											console.log(err);
+											msg.channel.createMessage("There was an error.");
+										} else {
+											msg.channel.createMessage("Self assignable role indexed.")
+										}
+									})
+									break;
+									case "0":
+									db.query(`INSERT INTO roles VALUES (?,?,?,?)`,[msg.guild.id,role_id,0,0],(err,rows)=>{
+										if(err){
+											console.log(err);
+											msg.channel.createMessage("There was an error.");
+										} else {
+											msg.channel.createMessage("Role indexed.")
+										}
+									})
+									break;
+									default:
+									msg.channel.createMessage("Please provide a 1 or a 0.\nUsage:\n`hh!admin roles add role name [1/0]`");
+									break;
+								}
+							},500);
+						}
+					}
+				})
+				
+			} else {
+				msg.channel.createMessage("Role does not exist.");
+			}
+		} else {
+			msg.channel.createMessage("Usage:\n`hh!admin index [role name] [1/0]`");
+		}
+	}
+}
 
-// bot.registerCommandAlias("ad","admin");
-// bot.registerCommandAlias("*","admin");
 
-// commands.adroles = commands.admin.registerSubcommand("roles",(msg,args)=>{
-// 	db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
-// 		if(rows.length>0){
-// 			msg.channel.createMessage({
-// 				embed: {
-// 					title:"Roles",
-// 					fields:[{
-// 						name:"\\~\\~\\* Assignable Roles \\*\\~\\~",
-// 						value:rows.map(r => (msg.guild.roles.find(rl => rl.id == r.id) && r.sar==1 ? msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase() : null)).filter(x=>x!=null).sort().join("\n")
-// 					},{
-// 						name:"\\~\\~\\* Mod-Only Roles \\*\\~\\~",
-// 						value:rows.map(r => (msg.guild.roles.find(rl => rl.id == r.id) && r.sar==0 ? msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase() : null)).filter(x=>x!=null).sort().join("\n")
-// 					}]
-// 				}
-// 			});
-// 		}
-// 		db.query("BEGIN TRANSACTION");
-// 		rows.forEach(r =>{
-// 			if(!msg.guild.roles.find(rl => rl.id == r.id)){
-// 				db.query(`DELETE FROM roles WHERE id='${r.id}'`);
-// 			}
-// 		})
-// 		db.query("COMMIT");
-// 	})
-// })
-
-// commands.adroles.registerSubcommand("index",(msg,args)=>{
-// 	if(!msg.member.permission.has("manageGuild") || !msg.member.permission.has("administrator")) return msg.channel.createMessage("You do not have permission to use this command.");
-// 	if(args.length>1){
-// 		var role_name = args.slice(0,-1).join(" ");
-// 		var sar = args[args.length-1];
-// 		console.log(role_name + ": " + sar);
-// 		if(msg.guild.roles.find(r => r.name.toLowerCase() == role_name.toLowerCase())){
-// 			var role_id = msg.guild.roles.find(r => r.name.toLowerCase() == role_name.toLowerCase()).id;
-// 			db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${role_id}'`,(err,rows)=>{
-// 				if(err){
-// 					console.log(err);
-// 					msg.channel.createMessage("There was an error.");
-// 				} else {
-// 					if(rows.length>0){
-// 						setTimeout(function(){
-// 							switch(sar){
-// 								case "1":
-// 									db.query(`UPDATE roles SET sar='${"1"}' WHERE srv_id='${msg.guild.id}' AND id='${role_id}'`,(err,rows)=>{
-// 										if(err){
-// 											console.log(err);
-// 											msg.channel.createMessage("There was an error.");
-// 										} else {
-// 											msg.channel.createMessage("Self assignable role updated.")
-// 										}
-// 									})
-// 									break;
-// 								case "0":
-// 									db.query(`UPDATE roles SET sar='${"0"}' WHERE srv_id='${msg.guild.id}' AND id='${role_id}'`,(err,rows)=>{
-// 										if(err){
-// 											console.log(err);
-// 											msg.channel.createMessage("There was an error.");
-// 										} else {
-// 											msg.channel.createMessage("Self assignable role updated.")
-// 										}
-// 									})
-// 									break;
-// 								default:
-// 									msg.channel.createMessage("Please provide a 1 or a 0.\nUsage:\n`hh!admin roles add role name [1/0]`");
-// 									break;
-// 							}
-// 						},500);
-// 					} else {
-// 						setTimeout(function(){
-// 							switch(sar){
-// 								case "1":
-// 									db.query(`INSERT INTO roles VALUES (?,?,?,?)`,[msg.guild.id,role_id,1,0],(err,rows)=>{
-// 										if(err){
-// 											console.log(err);
-// 											msg.channel.createMessage("There was an error.");
-// 										} else {
-// 											msg.channel.createMessage("Self assignable role indexed.")
-// 										}
-// 									})
-// 									break;
-// 								case "0":
-// 									db.query(`INSERT INTO roles VALUES (?,?,?,?)`,[msg.guild.id,role_id,0,0],(err,rows)=>{
-// 										if(err){
-// 											console.log(err);
-// 											msg.channel.createMessage("There was an error.");
-// 										} else {
-// 											msg.channel.createMessage("Role indexed.")
-// 										}
-// 									})
-// 									break;
-// 								default:
-// 									msg.channel.createMessage("Please provide a 1 or a 0.\nUsage:\n`hh!admin roles add role name [1/0]`");
-// 									break;
-// 							}
-// 						},500);
-// 					}
-// 				}
-// 			})
-			
-// 		} else {
-// 			msg.channel.createMessage("Role does not exist.");
-// 		}
-// 	} else {
-// 		msg.channel.createMessage("Usage:\n`hh!admin roles add role name [1/0]`");
-// 	}
-// })
 
 
 //************************************** BOT EVENTS **************************************************
@@ -633,4 +905,4 @@ bot.on("messageCreate",(msg)=>{
 
 setup();
 bot.connect()
-	.catch(e => console.log("Trouble connecting...\n"+e))
+.catch(e => console.log("Trouble connecting...\n"+e))

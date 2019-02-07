@@ -41,7 +41,7 @@ module.exports= {
 		subcommands: []
 	}
 
-module.exports.subcommands.new= {
+module.exports.subcommands.new = {
 	help: ()=> "Creates a new trigger list.",
 	usage: ()=> [" - Opens a menu for creating a new list"],
 	execute: (msg,args)=>{
@@ -77,7 +77,7 @@ module.exports.subcommands.new= {
 		})
 	}
 }
-module.exports.subcommands.add= {
+module.exports.subcommands.add = {
 	help: ()=> "Add new triggers.",
 	usage: ()=> [" <stuff, to, add> - Adds new triggers. Uses a menu if no triggers are given in the command."],
 	execute: (msg,args)=>{
@@ -101,7 +101,7 @@ module.exports.subcommands.add= {
 		})
 	}
 }
-module.exports.subcommands.remove= {
+module.exports.subcommands.remove = {
 	help: ()=> "Remove existing triggers.",
 	usage: ()=> [" <stuff, to, remove> - Removes triggers from a list. Runs a menu if triggers aren't specified."],
 	execute: (msg,args)=>{
@@ -171,7 +171,7 @@ module.exports.subcommands.remove= {
 		})
 	}
 }
-module.exports.subcommands.delete= {
+module.exports.subcommands.delete = {
 	help: ()=> "Delete a trigger list.",
 	usage: ()=> [" [code] - Delete a trigger list with code [code]."],
 	execute: (msg,args)=>{
