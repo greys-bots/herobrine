@@ -451,7 +451,7 @@ commands.color.subcommands.change = {
 	execute: (msg,args)=>{
 		var c = args.join(" ");
 		if(c.startsWith("#")) c = c.replace("#","");
-		if(Texts.colors[c]) c = Texts.colors[c];
+		if(Texts.colors[c.toLowerCase()]) c = Texts.colors[c.toLowerCase()];
 		if(msg.guild.roles.find(r=>r.name == msg.author.id)){
 			var role = msg.guild.roles.find(r=>r.name == msg.author.id);
 			role.edit({color:parseInt(c,16)}).then(()=>{
