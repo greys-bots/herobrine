@@ -60,7 +60,7 @@ const setup = async function(){
 		}
 	});
 
-	db.query(`CREATE TABLE IF NOT EXISTS configs (srv_id TEXT, welcome TEXT, autoroles TEXT, disabled TEXT, opped TEXT, feedback TEXT)`,(err,rows)=>{
+	db.query(`CREATE TABLE IF NOT EXISTS configs (srv_id TEXT, prefix TEXT, welcome TEXT, autoroles TEXT, disabled TEXT, opped TEXT, feedback TEXT)`,(err,rows)=>{
 		if(err){
 			console.log(err)
 		}
@@ -70,7 +70,7 @@ const setup = async function(){
 		if(err) return console.log(err);
 
 		await Promise.all(rows.map( s =>{
-			server_configs[s.srv_id] = s.welcome;
+			server_configs[s.srv_id] = s;
 			return new Promise((res,rej)=>{
 				setTimeout(res("config loaded"),100)
 			})
@@ -117,33 +117,37 @@ const cmdHandle = async function(clist,cmd,msg,args,lastcmd,lastargs){
 	}
 }
 
+const reloadConfig = async function(srv){
+	db.query(`SELECT * FROM configs WHERE srv_id='${srv}'`,(err,rows)=>{
+		if(err){
+			console.log(err)
+		} else {
+			server_configs[srv] = rows[0] || {srv_id: srv, prefix: undefined, welcome: undefined, autoroles: undefined, disabled: undefined, opped: undefined, fedback: undefined};
+		}
+	})
+}
+
 
 /***********************************
 COMMANDS
 ***********************************/
 
 const commands={};
-commands.aliases = [];
 
 commands.help = {
 	help: () => "Use this to list commands or get help with a specific command",
 	usage: () => ["- List commands and basic help functions."," [command] - Get help with that command"],
 	execute: (msg,args)=>{
 		let cmdname = (args[0] ? args[0].toLowerCase() : "");
-		let command;
+		let command = (commands[cmdname] ? commands[cmdname] : (Object.values(commands).find(c => c.alias && c.alias.includes(cmdname)) ? Object.values(commands).find(c => c.alias && c.alias.includes(cmdname)) : "notfound"));
 		let parentcmd;
 		let parentcmdname;
-		if(args[0] && (commands[cmdname] || commands.aliases.find(x => x.alias == cmdname))){
-			if(commands.aliases.find(x => x.alias == cmdname)){
-				command = commands[commands.aliases.find(x => x.alias == cmdname).base];
-			} else {
-				command = commands[cmdname];
-			}
-			if(args[1] && command.subcommands != undefined && command.subcommands[args[1].toLowerCase()] != undefined){
+		if(command!="notfound"){
+			if(args[1]!=undefined && command.subcommands != undefined && (command.subcommands[args[1].toLowerCase()] != undefined || Object.values(command.subcommands).find(c => c.alias && c.alias.includes(args[1].toLowerCase())))){
 				parentcmd = command;
 				parentcmdname = cmdname;
-				command = command.subcommands[args[1].toLowerCase()];
-				cmdname = args[1].toLowerCase();
+				cmdname = (Object.keys(command.subcommands).find(c => command.subcommands[c].alias && command.subcommands[c].alias.includes(args[1].toLowerCase())) ? Object.keys(command.subcommands).find(c => command.subcommands[c].alias && command.subcommands[c].alias.includes(args[1].toLowerCase())) : args[1].toLowerCase());
+				command = (command.subcommands[args[1].toLowerCase()] || Object.values(command.subcommands).find(c => c.alias && c.alias.includes(args[1].toLowerCase())))
 			}
 			msg.channel.createMessage({embed:{
 				title: "Herobrine - Help: "+ (parentcmdname != undefined ? parentcmdname + " - " : "") + cmdname,
@@ -153,7 +157,9 @@ commands.help = {
 				.join("\n") +
 							// (command.subcommands ? "\n\n**Subcommands**\n" + Object.keys(command.subcommands).map(sc => "**" + sc + "**" + " - " + commands[command].subcommands[sc].help()).join("\n") : "") +
 							(command.desc!=undefined ? "\n\n"+command.desc() : "") +
-							(command.module!=undefined || parentcmd.module!=undefined ? "\n\nThis command is part of the **" + (command.module || parentcmd.module) + "** module." : ""),
+							(command.subcommands ? "\n\n**Subcommands**: "+Object.keys(command.subcommands).join(", ") : "") +
+							(command.alias!=undefined ? "\n\n**Aliases:** "+command.alias.join(", ") : "") +
+							(command.module!=undefined || (parentcmd && parentcmd.module!=undefined) ? "\n\nThis command is part of the **" + (command.module || parentcmd.module) + "** module." : ""),
 							color: 16755455,
 							footer:{
 								icon_url: bot.user.avatarURL,
@@ -184,8 +190,6 @@ commands.help = {
 	module: "utility",
 	alias: ["h"]
 }
-
-// commands.aliases.push({base: "help", alias: "h"});
 
 //- - - - - - - - - - Roles - - - - - - -  - -
 
@@ -389,8 +393,6 @@ commands.ping.subcommands.test = {
 	module: "fun"
 }
 
-// commands.aliases.push({base:"ping",alias:"ping!"});
-
 //- - - - - - - - - - Random - - - - - - - - - - - -
 
 commands.random = {
@@ -485,23 +487,6 @@ commands.color.subcommands.change = {
 	guildOnly: true
 }
 
-//- - - - - - - - - - - Prefix - - - - - - - - - -
-
-// commands.prefix=bot.registerCommand("prefix",(msg,args)=>{
-
-// 	if(args[0]!=undefined && m){
-// 		bot.registerGuildPrefix(msg.guild.id,[args[0]].concat(config.prefix));
-// 		msg.channel.createMessage("Guild prefix updated.")
-// 	} else {
-// 		bot.registerGuildPrefix(msg.guild.id,"hh!")
-// 		msg.channel.createMessage("Guild prefix reset.")
-// 	}
-
-// },{
-// 	description: "Sets guild prefix",
-// 	fullDescription: "Sets prefix for the guild you're in. The defaults still work, of course."
-// })
-
 //- - - - - - - - - - Eval - - - - - - - - - -
 commands.eval = {
 	help: ()=>"Evaluate javascript code.",
@@ -569,14 +554,15 @@ commands.whats={
 //--------------------------------------------- Admin --------------------------------------------------
 //======================================================================================================
 //------------------------------------------------------------------------------------------------------
-//368245507744727054
 
 commands.admin = {
 	help: ()=> "For admin commands. Use `hh!admin help` or `hh!help admin` for more info.",
 	usage: ()=>[" - displays this help",
 	" ban [userID] - [hack]bans user from the server",
 	" index [role name] [1/0] - indexes self and mod-only roles",
-	" roles - lists all indexed roles (selfroleable and mod-only) for the server"],
+	" roles - lists all indexed roles (selfroleable and mod-only) for the server",
+	" role [add/remove] [roles, to, handle] [@user @member] - adds/removes roles from users",
+	" prune <num> - prunes [num] messages from the channel (100 default)"],
 	execute: (msg,args)=>{
 		commands.help.execute(msg,["admin"])
 	},
@@ -586,10 +572,48 @@ commands.admin = {
 	alias: ["ad","*"]
 }
 
-commands.admin.subcommands.aliases = []
+//- - - - - - - - - - - Prefix - - - - - - - - - -
 
-// commands.aliases.push({base:"admin",alias:"ad"});
-// commands.aliases.push({base:"admin",alias:"*"});
+commands.admin.subcommands.prefix = {
+	help: ()=> "Sets guild-specific prefix.",
+	usage: ()=> [ "[prefix] - Sets prefix for the guild"],
+	execute: (msg, args) =>{
+		db.query(`SELECT * FROM configs WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
+			if(err){
+				console.log(err);
+			} else {
+				var scfg = rows[0];
+				if(scfg){
+					db.query(`UPDATE configs SET prefix=? WHERE srv_id='${msg.guild.id}'`,[args[0]],(err,rows)=>{
+						if(err) console.log(err)
+					})
+				} else {
+					db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?)`,[msg.guild.id,args[0],"{}","","[]","","{}"],(err,rows)=>{
+						if(err) console.log(err);
+					})
+				}
+				console.log(server_configs);
+				reloadConfig(msg.guild.id);
+			}
+		})
+	}
+}
+// commands.prefix=bot.registerCommand("prefix",(msg,args)=>{
+
+// 	if(args[0]!=undefined && m){
+// 		bot.registerGuildPrefix(msg.guild.id,[args[0]].concat(config.prefix));
+// 		msg.channel.createMessage("Guild prefix updated.")
+// 	} else {
+// 		bot.registerGuildPrefix(msg.guild.id,"hh!")
+// 		msg.channel.createMessage("Guild prefix reset.")
+// 	}
+
+// },{
+// 	description: "Sets guild prefix",
+// 	fullDescription: "Sets prefix for the guild you're in. The defaults still work, of course."
+// })
+
+// - - - - - - - - - - - Ban - - - - - - - - - - -
 
 commands.admin.subcommands.ban = {
 	help: ()=> "[Hack]bans members.",
@@ -648,6 +672,7 @@ commands.admin.subcommands.ban = {
 	guildOnly: true
 }
 
+// - - - - - - - - - - - Prune  - - - - - - - - - - -
 commands.admin.subcommands.prune = {
 	help: ()=> "Prunes messages in a channel.",
 	usage: ()=> [" <number> - deletes [number] messages from the current channel, or 100 messages if not specified"],
@@ -667,8 +692,6 @@ commands.admin.subcommands.prune = {
 	alias: ["delete"]
 }
 
-// commands.admin.subcommands.aliases.push({base:"prune",alias:"delete"});
-
 commands.admin.subcommands.prune.subcommands.safe = {
 	help: ()=> "Prunes messages in a channel, unless pinned.",
 	usage: ()=> [" <number> - deletes [num] messages, or 100 if not specified"],
@@ -685,6 +708,9 @@ commands.admin.subcommands.prune.subcommands.safe = {
 	permissions: ["manageMessages"],
 	guildOnly: true
 }
+
+
+// - - - - - - - - - - - Adroles - - - - - - - - - - -
 
 commands.admin.subcommands.roles = {
 	help: ()=> "List all indexed roles for a server.",
@@ -1008,6 +1034,8 @@ bot.on("ready",()=>{
 
 //- - - - - - - - - - MessageCreate - - - - - - - - - -
 bot.on("messageCreate",async (msg)=>{
+	if(msg.author.bot) return;
+	
 	if(msg.content.toLowerCase()=="hey herobrine"){
 		msg.channel.createMessage("That's me!");
 		return;
@@ -1015,7 +1043,7 @@ bot.on("messageCreate",async (msg)=>{
 
 	//if(new RegExp("good\s").test(msg.content.toLowerCase()))
 
-	if(new RegExp("^"+config.prefix.join("|")).test(msg.content.toLowerCase()) /*|| (msg.guild!=undefined && bot.guildPrefixes[msg.guild.id] && msg.content.toLowerCase().startsWith(bot.guildPrefixes[msg.guild.id][0]))*/){
+	if(new RegExp("^"+config.prefix.join("|")).test(msg.content.toLowerCase()) || (msg.guild!=undefined && server_configs[msg.guild.id] && (server_configs[msg.guild.id].prefix!= undefined && server_configs[msg.guild.id].prefix!="") && msg.content.toLowerCase().startsWith(server_configs[msg.guild.id].prefix))){
 		let now = new Date();
 		let ndt = `${(now.getMonth() + 1).toString().length < 2 ? "0"+ (now.getMonth() + 1) : now.getMonth()+1}.${now.getDate().toString().length < 2 ? "0"+ now.getDate() : now.getDate()}.${now.getFullYear()}`;
 		if(!fs.existsSync(`./logs/${ndt}.log`)){
@@ -1031,7 +1059,7 @@ bot.on("messageCreate",async (msg)=>{
 			if(err) console.log(`Error while attempting to write log ${ndt}\n`+err);
 		});
 
-		let args = msg.content.replace(new RegExp("^"+config.prefix.join("|")/*+((msg.guild != undefined && bot.guildPrefixes[msg.guild.id]) ? "|"+bot.guildPrefixes[msg.guild.id] : "")*/,"i"), "").split(" ");
+		let args = msg.content.replace(new RegExp("^"+config.prefix.join("|")+((msg.guild != undefined && server_configs[msg.guild.id] && (server_configs[msg.guild.id].prefix!=undefined && server_configs[msg.guild.id].prefix!="")) ? "|"+server_configs[msg.guild.id].prefix : ""),"i"), "").split(" ");
 		let cmd = args.shift();
 		console.log("Command: "+cmd+"\nArgs: "+args.join(", "));
 		cmdHandle(commands,cmd,msg,args);
