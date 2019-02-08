@@ -67,24 +67,24 @@ const setup = async function(){
 	commands.trigs = await require("./commands/trigs.js");
 }
 
-const cmdHandle = async function(clist,cmd,msg,args){
-	cmd = cmd.toLowerCase();
-	if(clist[cmd] || (clist.aliases != undefined && clist.aliases.filter(c => c.alias == cmd).length > 0)){
-		if(clist.aliases != undefined && clist.aliases.filter(c => c.alias == cmd).length > 0) cmd = await clist.aliases.filter(c => c.alias == cmd)[0].base;
-		if(args[0] == undefined || clist[cmd].subcommands == undefined || Object.keys(clist[cmd].subcommands).length == 0){
+const cmdHandle = async function(clist,cmd,msg,args,lastcmd,lastargs){
+	console.log('1. cmd = "'+cmd+'"');
+	console.log(args);
+	cmd = (clist.aliases && clist.aliases.filter(c => c.alias == cmd.toLowerCase()).length > 0 ? clist.aliases.filter(c => c.alias == cmd.toLowerCase())[0].base : cmd.toLowerCase());
+	if(clist[cmd]){
+		if(args[0] == undefined || args[0]=="" || clist[cmd].subcommands == undefined || Object.keys(clist[cmd].subcommands).length == 0){
 			clist[cmd].execute(msg,args);
-		} else if(clist[cmd].subcommands[args[0].toLowerCase()]){
-			if(clist[cmd].subcommands[args[0].toLowerCase()].subcommands && Object.keys(clist[cmd].subcommands[args[0].toLowerCase()].subcommands).length > 0){
-				cmdHandle(clist[cmd].subcommands[args[0].toLowerCase()].subcommands,args.slice(1,2).join(""),msg,args.slice(2) || [])
-			} else {
-				clist[cmd].subcommands[args[0].toLowerCase()].execute(msg,(args.length > 0 ? args.slice(1) : []));
-
-			}
-		} else {
-			clist[cmd].execute(msg,args);
+		} else if(clist[cmd].subcommands){
+			cmdHandle(clist[cmd].subcommands,args.slice(0,1).toString(),msg,args.slice(1),clist[cmd],args);
 		}
 	} else {
-		msg.channel.createMessage("That command does not exist.");
+		if(lastcmd){
+			console.log("using last command...");
+			lastcmd.execute(msg,lastargs);
+		} else {
+			console.log('3. cmd = "'+cmd+'"');
+			msg.channel.createMessage("That command does not exist.");
+		}
 	}
 }
 
@@ -484,12 +484,12 @@ commands["what's"] = Object.assign({alias:true},commands.whats);
 
 commands.admin = {
 	help: ()=> "For admin commands. Use `hh!admin help` or `hh!help admin` for more info.",
-	usage: ()=>[" - WIP",
+	usage: ()=>[" - displays this help",
 	" ban [userID] - [hack]bans user from the server",
 	" index [role name] [1/0] - indexes self and mod-only roles",
 	" roles - lists all indexed roles (selfroleable and mod-only) for the server"],
 	execute: (msg,args)=>{
-		msg.channel.createMessage({embed: helptext.adhelp});
+		commands.help.execute(msg,["admin"])
 	},
 	module: "admin",
 	subcommands: {}
@@ -554,6 +554,21 @@ commands.admin.subcommands.ban = {
 	}
 }
 
+commands.admin.subcommands.prune = {
+	help: ()=> "Prunes messages in a channel.",
+	usage: ()=> [" <number> - deletes [number] messages from the current channel, or 100 messages if not specified"],
+	execute: async (msg,args)=>{
+		var del = (args[0] ? Number(args[0]) : 100);
+		await msg.channel.purge(del).then((n)=>{
+			msg.channel.createMessage(n + " messages deleted.").then(ms=>{
+				setTimeout(()=>{
+					ms.delete();
+				},5000)
+			});
+		}).catch(e=>console.log(e))
+	}
+}
+
 commands.admin.subcommands.roles = {
 	help: ()=> "List all indexed roles for a server.",
 	usage: ()=> [" - lists all indexed roles for the server"],
@@ -593,7 +608,7 @@ commands.admin.subcommands.role = {
 				" add [comma, separated, role names] [@memberping] - adds roles to specified member",
 				" remove [comma, separated, role names] [@memberping] - removes roles from specified member"],
 	execute: (msg, args) =>{
-		msg.channel.createMessage("WIP");
+		commands.help.execute(msg,["admin","role"])
 	},
 	subcommands: {}
 }
