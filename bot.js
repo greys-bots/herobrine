@@ -121,7 +121,7 @@ commands.help = {
 		let command;
 		let parentcmd;
 		let parentcmdname;
-		if(args[0] && (commands[cmdname] || commands.aliases.filter(x => x.alias == cmdname).length > 0)){
+		if(args[0] && (commands[cmdname] || commands.aliases.find(x => x.alias == cmdname))){
 			if(commands.aliases.find(x => x.alias == cmdname)){
 				command = commands[commands.aliases.find(x => x.alias == cmdname).base];
 			} else {
@@ -441,7 +441,34 @@ commands.color = {
 
 			}
 		})
-	} 
+	},
+	subcommands: {}
+}
+
+commands.color.subcommands.change = {
+	help: ()=> "Changes your current color",
+	usage: ()=>[" [hex color/name/etc] - changes current color to provided color"],
+	execute: (msg,args)=>{
+		var c = args.join(" ");
+		if(c.startsWith("#")) c = c.replace("#","");
+		if(Texts.colors[c]) c = Texts.colors[c];
+		if(msg.guild.roles.find(r=>r.name == msg.author.id)){
+			var role = msg.guild.roles.find(r=>r.name == msg.author.id);
+			role.edit({color:parseInt(c,16)}).then(()=>{
+				msg.channel.createMessage("Changed "+msg.author.username+"'s color to #"+c);
+			})
+		} else {
+			msg.guild.createRole({name: msg.author.id,color:parseInt(c,16)}).then(()=>{
+				msg.member.addRole(msg.guild.roles.find(r=>r.name == msg.author.id));
+				msg.channel.createMessage("Changed "+msg.author.username+"'s color to #"+c);
+			}).catch(e=>{
+				console.log(e);
+				msg.channel.createMessage("Something went wrong.")
+			})
+		}
+		
+	},
+	guildOnly: true
 }
 
 //- - - - - - - - - - - Prefix - - - - - - - - - -
@@ -563,7 +590,7 @@ commands.admin.subcommands.ban = {
 					await msg.guild.getBans().then(b=>{
 						console.log(b);
 						if(b){
-							if(b.filter(x => x.user.id == m).length > 0){
+							if(b.find(x => x.user.id == m)){
 								succ.push({id:m,pass:false,reason:"User already banned"});
 							} else {
 								bot.banGuildMember(msg.guild.id,m,0,"Banned through command.");

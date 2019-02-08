@@ -25,5 +25,28 @@
 "imlesbian":["I thought you were American?","Solidarity :heart::yellow_heart::green_heart::blue_heart::purple_heart:",":valid:"],
 "imace":["Solidarity :heart::yellow_heart::green_heart::blue_heart::purple_heart:",":valid:","Hope the discourse has been off your back :purple_heart:","Another LGBT+ friend! Woo!","Same hat!","I am too!"],
 "fool":["Fools!","Foolishly foolish fools",":hypereyes:",":regional_indicator_f: :regional_indicator_o: :regional_indicator_o: :regional_indicator_l:","Foolish fools in all your foolish foolery!","Foolish fools"],
-"valid":["Now that's what I call valid!",":valid:",":va::lid:","Everyone here? VALID!",":regional_indicator_v: :regional_indicator_a: :regional_indicator_l: :regional_indicator_i: :regional_indicator_d:"]
+"valid":["Now that's what I call valid!",":valid:",":va::lid:","Everyone here? VALID!",":regional_indicator_v: :regional_indicator_a: :regional_indicator_l: :regional_indicator_i: :regional_indicator_d:"],
+"colors":{
+	"default": "000000",
+	"aqua": "1ABC9C",
+	"green": "2ECC71",
+	"blue": "3498DB",
+	"purple": "9B59B6",
+	"gold": "F1C40F",
+	"orange": "9B59B6",
+	"red": "E74C3C",
+	"grey": "95A5A6",
+	"darker grey": "7F8C8D",
+	"navy": "34495E",
+	"dark aqua": "11806A",
+	"dark green": "1F8B4C",
+	"dark blue": "206694",
+	"dark purple": "71368A",
+	"dark gold": "C27C0E",
+	"dark orange": "A84300",
+	"dark red": "992D22",
+	"dark grey": "979C9F",
+	"light grey": "BCC0C0",
+	"dark navy": "2C3E50"
+}
 }
