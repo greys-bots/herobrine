@@ -73,7 +73,26 @@ const cmdHandle = async function(clist,cmd,msg,args,lastcmd,lastargs){
 	cmd = (clist.aliases && clist.aliases.filter(c => c.alias == cmd.toLowerCase()).length > 0 ? clist.aliases.filter(c => c.alias == cmd.toLowerCase())[0].base : cmd.toLowerCase());
 	if(clist[cmd]){
 		if(args[0] == undefined || args[0]=="" || clist[cmd].subcommands == undefined || Object.keys(clist[cmd].subcommands).length == 0){
-			clist[cmd].execute(msg,args);
+			if(clist[cmd].permissions != undefined){
+				await Promise.all(clist[cmd].permissions.map(p=>{
+					if(msg.member.permission.has(p)){
+						return new Promise((res,rej)=>{
+							setTimeout(res("passed"),100)
+						})
+					} else {
+						return new Promise((res,rej)=>{
+							setTimeout(rej("failed"),100)
+						})
+					}
+				})).then(()=>{
+					clist[cmd].execute(msg,args);
+				}).catch(e=>{
+					console.log(e);
+					msg.channel.createMessage("You do not have permission to use that command.");
+				})
+			} else {
+				clist[cmd].execute(msg,args);
+			}
 		} else if(clist[cmd].subcommands){
 			cmdHandle(clist[cmd].subcommands,args.slice(0,1).toString(),msg,args.slice(1),clist[cmd],args);
 		}
@@ -345,7 +364,8 @@ commands.ping = {
 		msg.channel.createMessage(pongs[Math.floor(Math.random()*pongs.length)]);
 	},
 	module: "fun",
-	subcommands: {}
+	subcommands: {},
+	permissions: ["banMembers"]
 }
 
 commands.ping.subcommands.test = {
@@ -503,6 +523,7 @@ commands.admin.subcommands.ban = {
 	usage: ()=> [" [userID] - Bans member with that ID."],
 	execute: async (msg,args)=>{
 		if(!msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
+		if(!msg.member.permission.has("banMembers") || !msg.member.permission.has("administrator")) return  msg.channel.createMessage("You do not have permission to use this command.");
 		var membs = args.join(" ").split(/,*\s+|\n+/);
 		var succ = [];
 		async function banMembers (){
@@ -558,8 +579,29 @@ commands.admin.subcommands.prune = {
 	help: ()=> "Prunes messages in a channel.",
 	usage: ()=> [" <number> - deletes [number] messages from the current channel, or 100 messages if not specified"],
 	execute: async (msg,args)=>{
+		if(!msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
+		if(!msg.member.permission.has("manageMessages") || !msg.member.permission.has("administrator")) return  msg.channel.createMessage("You do not have permission to use this command.");
 		var del = (args[0] ? Number(args[0]) : 100);
 		await msg.channel.purge(del).then((n)=>{
+			msg.channel.createMessage(n + " messages deleted.").then(ms=>{
+				setTimeout(()=>{
+					ms.delete();
+				},5000)
+			});
+		}).catch(e=>console.log(e))
+	},
+	subcommands: {},
+	aliases: {}
+}
+
+commands.admin.subcommands.prune.subcommands.safe = {
+	help: ()=> "Prunes messages in a channel, unless pinned.",
+	usage: ()=> [" <number> - deletes [num] messages, or 100 if not specified"],
+	execute: async (msg,args)=>{
+		if(!msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
+		if(!msg.member.permission.has("manageMessages") || !msg.member.permission.has("administrator")) return  msg.channel.createMessage("You do not have permission to use this command.");
+		var del = (args[0] ? args[0] : 100);
+		await msg.channel.purge(del,(m)=>!m.pinned).then((n)=>{
 			msg.channel.createMessage(n + " messages deleted.").then(ms=>{
 				setTimeout(()=>{
 					ms.delete();
@@ -573,6 +615,8 @@ commands.admin.subcommands.roles = {
 	help: ()=> "List all indexed roles for a server.",
 	usage: ()=> [" - lists all indexed roles for the server"],
 	execute: (msg,args)=> {
+		if(!msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
+		if(!msg.member.permission.has("manageRoles") || !msg.member.permission.has("administrator")) return  msg.channel.createMessage("You do not have permission to use this command.");
 		db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
 			if(rows.length>0){
 				msg.channel.createMessage({
@@ -580,10 +624,10 @@ commands.admin.subcommands.roles = {
 						title:"Roles",
 						fields:[{
 							name:"\\~\\~\\* Assignable Roles \\*\\~\\~",
-							value:rows.map(r => (msg.guild.roles.find(rl => rl.id == r.id) && r.sar==1 ? msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase() : null)).filter(x=>x!=null).sort().join("\n")
+							value: rows.map(r => (msg.guild.roles.find(rl => rl.id == r.id) && r.sar==1 ? msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase() : null)).filter(x=>x!=null).sort().join("\n") || "None"
 						},{
 							name:"\\~\\~\\* Mod-Only Roles \\*\\~\\~",
-							value:rows.map(r => (msg.guild.roles.find(rl => rl.id == r.id) && r.sar==0 ? msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase() : null)).filter(x=>x!=null).sort().join("\n")
+							value: rows.map(r => (msg.guild.roles.find(rl => rl.id == r.id) && r.sar==0 ? msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase() : null)).filter(x=>x!=null).sort().join("\n") || "None"
 						}]
 					}
 				});
@@ -619,6 +663,8 @@ adroles.subcommands.add = {
 	help: ()=> "Add roles to mentioned users.",
 	usage: ()=>[" [roles, to, add] [@user,@mentions] - adds roles to these users"],
 	execute: async (msg,args)=>{
+		if(!msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
+		if(!msg.member.permission.has("manageRoles") || !msg.member.permission.has("administrator")) return  msg.channel.createMessage("You do not have permission to use this command.");
 		if(msg.mentions.length > 0){
 			var l = msg.mentions.length;
 			var ments = args.slice(-l);
