@@ -36,7 +36,9 @@ try{
 	console.log(
 		["Error opening database with dblite.",
 		"You may need to set sqlite's location in config",
-		"and uncomment the dblite.bin line in bot.js (line 32)"
+		"and uncomment the dblite.bin line in bot.js (line 32).",
+		"This can be fixed by adding sqlite3.exe to your path,",
+		"iff applicable."
 		].join("\n") + "\nError:\n"+e);
 	process.exit(1);
 }
