@@ -20,13 +20,9 @@ const Util =		require("./utilities.js");
 
 var cur_logs =		"";
 
-const bot = new Eris.CommandClient(config.token,{restMode: true},{
-	name: "Herobrine",
-	description: "Temporary test rewrite of Steve",
-	owner: "The Grey Skies",
-	prefix: config.prefix,
-	defaultHelpCommand: false
-});
+const bot = new Eris(config.token,{restMode: true});
+
+const server_configs = {};
 
 //uncommenting the line below may cause "kill einvalid" errors on some computers;
 //make sure the config is set up if you're getting issues
@@ -64,17 +60,39 @@ const setup = async function(){
 		}
 	});
 
+	db.query(`CREATE TABLE IF NOT EXISTS configs (srv_id TEXT, welcome TEXT, autoroles TEXT, disabled TEXT, opped TEXT, feedback TEXT)`,(err,rows)=>{
+		if(err){
+			console.log(err)
+		}
+	});
+
+	db.query(`SELECT * FROM configs`,async (err,rows)=>{
+		if(err) return console.log(err);
+
+		await Promise.all(rows.map( s =>{
+			server_configs[s.srv_id] = s.welcome;
+			return new Promise((res,rej)=>{
+				setTimeout(res("config loaded"),100)
+			})
+		}))
+	});
+
 	commands.test = await require("./commands/test.js");
 	commands.trigs = await require("./commands/trigs.js");
 }
 
 const cmdHandle = async function(clist,cmd,msg,args,lastcmd,lastargs){
-	cmd = (clist.aliases && clist.aliases.find(c => c.alias == cmd.toLowerCase()) ? clist.aliases.find(c => c.alias == cmd.toLowerCase()).base : cmd.toLowerCase());
-	if(clist[cmd]){
-		if(args[0] == undefined || args[0]=="" || clist[cmd].subcommands == undefined || Object.keys(clist[cmd].subcommands).length == 0){
-			if(clist[cmd].guildOnly && !msg.guild ) return msg.channel.createMessage("This command can only be used in guilds.");
-			if(clist[cmd].permissions != undefined){
-				await Promise.all(clist[cmd].permissions.map(p=>{
+	cmd = (Object.values(clist).find(c => c.alias && c.alias.includes(cmd.toLowerCase())) ? Object.values(clist).find(c => c.alias && c.alias.includes(cmd.toLowerCase())) : (clist[cmd]) ? clist[cmd] : "notfound");
+	if(cmd == "notfound" && !lastcmd) {
+		return msg.channel.createMessage("Command not found.");
+	} else if(cmd == "notfound" && lastcmd) {
+		lastcmd.execute(msg,lastargs);
+	} else {
+		if(args[0] == undefined || args[0]=="" || cmd.subcommands == undefined || Object.keys(cmd.subcommands).length == 0){
+			// console.log(cmd);
+			if(cmd.guildOnly && !msg.guild ) return msg.channel.createMessage("This command can only be used in guilds.");
+			if(cmd.permissions != undefined){
+				await Promise.all(cmd.permissions.map(p=>{
 					if(msg.member.permission.has(p)){
 						return new Promise((res,rej)=>{
 							setTimeout(res("passed"),100)
@@ -85,22 +103,16 @@ const cmdHandle = async function(clist,cmd,msg,args,lastcmd,lastargs){
 						})
 					}
 				})).then(()=>{
-					clist[cmd].execute(msg,args);
+					cmd.execute(msg,args);
 				}).catch(e=>{
 					console.log(e);
 					msg.channel.createMessage("You do not have permission to use that command.");
 				})
 			} else {
-				clist[cmd].execute(msg,args);
+				cmd.execute(msg,args);
 			}
-		} else if(clist[cmd].subcommands){
-			cmdHandle(clist[cmd].subcommands,args.slice(0,1).toString(),msg,args.slice(1),clist[cmd],args);
-		}
-	} else {
-		if(lastcmd){
-			lastcmd.execute(msg,lastargs);
-		} else {
-			msg.channel.createMessage("That command does not exist.");
+		} else if(cmd.subcommands){
+			cmdHandle(cmd.subcommands,args.slice(0,1).toString(),msg,args.slice(1),cmd,args);
 		}
 	}
 }
@@ -137,7 +149,7 @@ commands.help = {
 				title: "Herobrine - Help: "+ (parentcmdname != undefined ? parentcmdname + " - " : "") + cmdname,
 				description: command.help() + 
 				"\n\n**Usage**\n" +
-				command.usage().map(l => (bot.guildPrefixes[msg.guild.id] ? bot.guildPrefixes[msg.guild.id] : config.prefix[0]) + (parentcmd != undefined ? parentcmdname + " " : "") + cmdname + l)
+				command.usage().map(l => config.prefix[0] + (parentcmd != undefined ? parentcmdname + " " : "") + cmdname + l)
 				.join("\n") +
 							// (command.subcommands ? "\n\n**Subcommands**\n" + Object.keys(command.subcommands).map(sc => "**" + sc + "**" + " - " + commands[command].subcommands[sc].help()).join("\n") : "") +
 							(command.desc!=undefined ? "\n\n"+command.desc() : "") +
@@ -154,11 +166,11 @@ commands.help = {
 				description: "I'm Herobrine! This bot is multi-purpose and intended for a wide range of functions.",
 				fields:[
 				{name:"**FUN**",
-				value: Object.keys(commands).filter(x => commands[x].module == "fun" && !commands[x].alias).map( c => "**"+(bot.guildPrefixes[msg.guild.id] ? bot.guildPrefixes[msg.guild.id] : config.prefix[0]) + c + "** - " + commands[c].help()).sort().join("\n")},
+				value: Object.keys(commands).filter(x => commands[x].module == "fun" && !commands[x].alias).map( c => "**"+config.prefix[0] + c + "** - " + commands[c].help()).sort().join("\n")},
 				{name:"**UTILITY**",
-				value: Object.keys(commands).filter(x => commands[x].module == "utility" && !commands[x].alias).map( c => "**"+(bot.guildPrefixes[msg.guild.id] ? bot.guildPrefixes[msg.guild.id] : config.prefix[0]) + c + "** - " + commands[c].help()).sort().join("\n")},
+				value: Object.keys(commands).filter(x => commands[x].module == "utility" && !commands[x].alias).map( c => "**"+config.prefix[0] + c + "** - " + commands[c].help()).sort().join("\n")},
 				{name:"**ADMIN**",
-				value: Object.keys(commands).filter(x => commands[x].module == "admin").map( c => "**"+(bot.guildPrefixes[msg.guild.id] ? bot.guildPrefixes[msg.guild.id] : config.prefix[0]) + c + "** - " + commands[c].help()).join("\n")},
+				value: Object.keys(commands).filter(x => commands[x].module == "admin").map( c => "**"+config.prefix[0] + c + "** - " + commands[c].help()).join("\n")},
 
 				],
 				color: 16755455,
@@ -169,10 +181,11 @@ commands.help = {
 			}});
 		}
 	},
-	module: "utility"
+	module: "utility",
+	alias: ["h"]
 }
 
-commands.aliases.push({base: "help", alias: "h"});
+// commands.aliases.push({base: "help", alias: "h"});
 
 //- - - - - - - - - - Roles - - - - - - -  - -
 
@@ -362,7 +375,8 @@ commands.ping = {
 		msg.channel.createMessage(pongs[Math.floor(Math.random()*pongs.length)]);
 	},
 	module: "fun",
-	subcommands: {}
+	subcommands: {},
+	alias: ["ping!"]
 }
 
 commands.ping.subcommands.test = {
@@ -375,7 +389,7 @@ commands.ping.subcommands.test = {
 	module: "fun"
 }
 
-commands.aliases.push({base:"ping",alias:"ping!"});
+// commands.aliases.push({base:"ping",alias:"ping!"});
 
 //- - - - - - - - - - Random - - - - - - - - - - - -
 
@@ -548,10 +562,9 @@ commands.whats={
 			msg.channel.createMessage(Util.randomText(Texts.wass));
 		}
 	},
-	module: "fun"
+	module: "fun",
+	alias: ["what's"]
 }
-
-commands["what's"] = Object.assign({alias:true},commands.whats);
 
 //--------------------------------------------- Admin --------------------------------------------------
 //======================================================================================================
@@ -569,13 +582,14 @@ commands.admin = {
 	},
 	module: "admin",
 	subcommands: {},
-	guildOnly: true
+	guildOnly: true,
+	alias: ["ad","*"]
 }
 
 commands.admin.subcommands.aliases = []
 
-commands.aliases.push({base:"admin",alias:"ad"});
-commands.aliases.push({base:"admin",alias:"*"});
+// commands.aliases.push({base:"admin",alias:"ad"});
+// commands.aliases.push({base:"admin",alias:"*"});
 
 commands.admin.subcommands.ban = {
 	help: ()=> "[Hack]bans members.",
@@ -649,10 +663,11 @@ commands.admin.subcommands.prune = {
 	},
 	subcommands: {},
 	permissions: ["manageMessages"],
-	guildOnly: true
+	guildOnly: true,
+	alias: ["delete"]
 }
 
-commands.admin.subcommands.aliases.push({base:"prune",alias:"delete"});
+// commands.admin.subcommands.aliases.push({base:"prune",alias:"delete"});
 
 commands.admin.subcommands.prune.subcommands.safe = {
 	help: ()=> "Prunes messages in a channel, unless pinned.",
@@ -992,7 +1007,7 @@ bot.on("ready",()=>{
 })
 
 //- - - - - - - - - - MessageCreate - - - - - - - - - -
-bot.on("messageCreate",(msg)=>{
+bot.on("messageCreate",async (msg)=>{
 	if(msg.content.toLowerCase()=="hey herobrine"){
 		msg.channel.createMessage("That's me!");
 		return;
@@ -1000,7 +1015,7 @@ bot.on("messageCreate",(msg)=>{
 
 	//if(new RegExp("good\s").test(msg.content.toLowerCase()))
 
-	if(new RegExp("^"+config.prefix.join("|")).test(msg.content.toLowerCase()) || (msg.guild!=undefined && bot.guildPrefixes[msg.guild.id] && msg.content.toLowerCase().startsWith(bot.guildPrefixes[msg.guild.id][0]))){
+	if(new RegExp("^"+config.prefix.join("|")).test(msg.content.toLowerCase()) /*|| (msg.guild!=undefined && bot.guildPrefixes[msg.guild.id] && msg.content.toLowerCase().startsWith(bot.guildPrefixes[msg.guild.id][0]))*/){
 		let now = new Date();
 		let ndt = `${(now.getMonth() + 1).toString().length < 2 ? "0"+ (now.getMonth() + 1) : now.getMonth()+1}.${now.getDate().toString().length < 2 ? "0"+ now.getDate() : now.getDate()}.${now.getFullYear()}`;
 		if(!fs.existsSync(`./logs/${ndt}.log`)){
@@ -1016,7 +1031,7 @@ bot.on("messageCreate",(msg)=>{
 			if(err) console.log(`Error while attempting to write log ${ndt}\n`+err);
 		});
 
-		let args = msg.content.replace(new RegExp("^"+config.prefix.join("|")+((msg.guild != undefined && bot.guildPrefixes[msg.guild.id]) ? "|"+bot.guildPrefixes[msg.guild.id] : ""),"i"), "").split(" ");
+		let args = msg.content.replace(new RegExp("^"+config.prefix.join("|")/*+((msg.guild != undefined && bot.guildPrefixes[msg.guild.id]) ? "|"+bot.guildPrefixes[msg.guild.id] : "")*/,"i"), "").split(" ");
 		let cmd = args.shift();
 		console.log("Command: "+cmd+"\nArgs: "+args.join(", "));
 		cmdHandle(commands,cmd,msg,args);
