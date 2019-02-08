@@ -12,6 +12,7 @@ const fs =			require("fs"); //file stuff
 const {Client} =	require("pg"); //postgres, for data things
 const dblite =		require('dblite').withSQLite('3.8.6+'); //dblite, also for data things
 const pimg =		require('pngjs-image'); //for image manipulation
+const jimp =		require('jimp'); //also for image manipulation
 const helptext =	require("./help.js"); //help text
 const config =		require('./config.json'); //configs
 const Texts =		require('./strings.json'); //json full of text for different things
@@ -68,7 +69,7 @@ const setup = async function(){
 }
 
 const cmdHandle = async function(clist,cmd,msg,args,lastcmd,lastargs){
-	cmd = (clist.aliases && clist.aliases.filter(c => c.alias == cmd.toLowerCase()).length > 0 ? clist.aliases.filter(c => c.alias == cmd.toLowerCase())[0].base : cmd.toLowerCase());
+	cmd = (clist.aliases && clist.aliases.find(c => c.alias == cmd.toLowerCase()) ? clist.aliases.find(c => c.alias == cmd.toLowerCase()).base : cmd.toLowerCase());
 	if(clist[cmd]){
 		if(args[0] == undefined || args[0]=="" || clist[cmd].subcommands == undefined || Object.keys(clist[cmd].subcommands).length == 0){
 			if(clist[cmd].guildOnly && !msg.guild ) return msg.channel.createMessage("This command can only be used in guilds.");
@@ -121,8 +122,8 @@ commands.help = {
 		let parentcmd;
 		let parentcmdname;
 		if(args[0] && (commands[cmdname] || commands.aliases.filter(x => x.alias == cmdname).length > 0)){
-			if(commands.aliases.filter(x => x.alias == cmdname).length > 0){
-				command = commands[commands.aliases.filter(x => x.alias == cmdname)[0].base];
+			if(commands.aliases.find(x => x.alias == cmdname)){
+				command = commands[commands.aliases.find(x => x.alias == cmdname).base];
 			} else {
 				command = commands[cmdname];
 			}
@@ -409,6 +410,38 @@ commands.lovebomb = {
 		});
 	},
 	module: "fun"
+}
+
+//- - - - - - - - - - Color - - - - - - - -  - - - -
+
+commands.color = {
+	help: ()=> "Display a color.",
+	usage: ()=> [" [hex code] - sends an image of that color"],
+	execute: async (msg,args)=>{
+		var c = Util.hex2rgb(args[0]);
+		var img;
+		new jimp(256,256,args[0],(err,image)=>{
+			if(err){
+				console.log(err);
+				msg.channel.createMessage("Something went wrong.");
+			} else {
+				var font = (c.r * 0.299) + (c.g * 0.587) + (c.b * 0.114) < 186 ? jimp.FONT_SANS_32_WHITE : jimp.FONT_SANS_32_BLACK;
+				jimp.loadFont(font).then(fnt=>{
+					image.print(fnt,0,0,{
+						text:(args[0].startsWith("#") ? args[0].toUpperCase() : "#" + args[0].toUpperCase()),
+						alignmentX: jimp.HORIZONTAL_ALIGN_CENTER,
+						alignmentY: jimp.VERTICAL_ALIGN_MIDDLE
+					}, 256, 256, (err,img,{x,y})=>{
+						img.getBuffer(jimp.MIME_PNG,(err,data)=>{
+							msg.channel.createMessage({content: "Your color:"},{file:data,name:"color.png"})
+						})
+					})
+
+				})
+
+			}
+		})
+	} 
 }
 
 //- - - - - - - - - - - Prefix - - - - - - - - - -
