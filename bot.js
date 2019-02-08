@@ -142,6 +142,7 @@ commands.help = {
 		let command = (commands[cmdname] ? commands[cmdname] : (Object.values(commands).find(c => c.alias && c.alias.includes(cmdname)) ? Object.values(commands).find(c => c.alias && c.alias.includes(cmdname)) : "notfound"));
 		let parentcmd;
 		let parentcmdname;
+		let prefix = (msg.guild!=undefined && server_configs[msg.guild.id] && (server_configs[msg.guild.id].prefix!= undefined && server_configs[msg.guild.id].prefix!="") ? server_configs[msg.guild.id].prefix : config.prefix[0]);
 		if(command!="notfound"){
 			if(args[1]!=undefined && command.subcommands != undefined && (command.subcommands[args[1].toLowerCase()] != undefined || Object.values(command.subcommands).find(c => c.alias && c.alias.includes(args[1].toLowerCase())))){
 				parentcmd = command;
@@ -153,9 +154,8 @@ commands.help = {
 				title: "Herobrine - Help: "+ (parentcmdname != undefined ? parentcmdname + " - " : "") + cmdname,
 				description: command.help() + 
 				"\n\n**Usage**\n" +
-				command.usage().map(l => config.prefix[0] + (parentcmd != undefined ? parentcmdname + " " : "") + cmdname + l)
+				command.usage().map(l => prefix + (parentcmd != undefined ? parentcmdname + " " : "") + cmdname + l)
 				.join("\n") +
-							// (command.subcommands ? "\n\n**Subcommands**\n" + Object.keys(command.subcommands).map(sc => "**" + sc + "**" + " - " + commands[command].subcommands[sc].help()).join("\n") : "") +
 							(command.desc!=undefined ? "\n\n"+command.desc() : "") +
 							(command.subcommands ? "\n\n**Subcommands**: "+Object.keys(command.subcommands).join(", ") : "") +
 							(command.alias!=undefined ? "\n\n**Aliases:** "+command.alias.join(", ") : "") +
@@ -172,11 +172,11 @@ commands.help = {
 				description: "I'm Herobrine! This bot is multi-purpose and intended for a wide range of functions.",
 				fields:[
 				{name:"**FUN**",
-				value: Object.keys(commands).filter(x => commands[x].module == "fun" && !commands[x].alias).map( c => "**"+config.prefix[0] + c + "** - " + commands[c].help()).sort().join("\n")},
+				value: Object.keys(commands).filter(x => commands[x].module == "fun" && !commands[x].alias).map( c => "**"+prefix + c + "** - " + commands[c].help()).sort().join("\n")},
 				{name:"**UTILITY**",
-				value: Object.keys(commands).filter(x => commands[x].module == "utility" && !commands[x].alias).map( c => "**"+config.prefix[0] + c + "** - " + commands[c].help()).sort().join("\n")},
+				value: Object.keys(commands).filter(x => commands[x].module == "utility" && !commands[x].alias).map( c => "**"+prefix + c + "** - " + commands[c].help()).sort().join("\n")},
 				{name:"**ADMIN**",
-				value: Object.keys(commands).filter(x => commands[x].module == "admin").map( c => "**"+config.prefix[0] + c + "** - " + commands[c].help()).join("\n")},
+				value: Object.keys(commands).filter(x => commands[x].module == "admin").map( c => "**"+prefix + c + "** - " + commands[c].help()).join("\n")},
 
 				],
 				color: 16755455,
@@ -598,20 +598,6 @@ commands.admin.subcommands.prefix = {
 		})
 	}
 }
-// commands.prefix=bot.registerCommand("prefix",(msg,args)=>{
-
-// 	if(args[0]!=undefined && m){
-// 		bot.registerGuildPrefix(msg.guild.id,[args[0]].concat(config.prefix));
-// 		msg.channel.createMessage("Guild prefix updated.")
-// 	} else {
-// 		bot.registerGuildPrefix(msg.guild.id,"hh!")
-// 		msg.channel.createMessage("Guild prefix reset.")
-// 	}
-
-// },{
-// 	description: "Sets guild prefix",
-// 	fullDescription: "Sets prefix for the guild you're in. The defaults still work, of course."
-// })
 
 // - - - - - - - - - - - Ban - - - - - - - - - - -
 
@@ -1035,7 +1021,7 @@ bot.on("ready",()=>{
 //- - - - - - - - - - MessageCreate - - - - - - - - - -
 bot.on("messageCreate",async (msg)=>{
 	if(msg.author.bot) return;
-	
+
 	if(msg.content.toLowerCase()=="hey herobrine"){
 		msg.channel.createMessage("That's me!");
 		return;
