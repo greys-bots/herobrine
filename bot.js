@@ -22,16 +22,14 @@ var cur_logs =		"";
 
 const bot = new Eris(config.token,{restMode: true});
 
-const server_configs = {};
+bot.server_configs = {};
 
 //uncommenting the line below may cause "kill einvalid" errors on some computers;
 //make sure the config is set up if you're getting issues
 // dblite.bin = config.sqlite;
 
-var db;
-
 try{
-	db = dblite("./data.sqlite","-header");
+	bot.db = dblite("./data.sqlite","-header");
 } catch(e){
 	console.log(
 		["Error opening database with dblite.",
@@ -50,37 +48,44 @@ SETUP
 
 const setup = async function(){
 
-	db.query(".databases");
-	db.query(`CREATE TABLE IF NOT EXISTS triggers (user_id TEXT, code TEXT, list TEXT, alias TEXT)`,(err,rows)=>{
+	bot.db.query(".databases");
+	bot.db.query(`CREATE TABLE IF NOT EXISTS triggers (user_id TEXT, code TEXT, list TEXT, alias TEXT)`,(err,rows)=>{
 		if(err){
 			console.log("There was an error creating the triggers table.")
 		}
 	});
-	db.query(`CREATE TABLE IF NOT EXISTS roles (srv_id TEXT, id TEXT, sar TEXT, bundle TEXT)`,(err,rows)=>{
+	bot.db.query(`CREATE TABLE IF NOT EXISTS roles (srv_id TEXT, id TEXT, sar TEXT, bundle TEXT)`,(err,rows)=>{
 		if(err){
 			console.log("There was an error creating the roles table.")
 		}
 	});
 
-	db.query(`CREATE TABLE IF NOT EXISTS configs (srv_id TEXT, prefix TEXT, welcome TEXT, autoroles TEXT, disabled TEXT, opped TEXT, feedback TEXT)`,(err,rows)=>{
+	bot.db.query(`CREATE TABLE IF NOT EXISTS configs (srv_id TEXT, prefix TEXT, welcome TEXT, autoroles TEXT, disabled TEXT, opped TEXT, feedback TEXT)`,(err,rows)=>{
 		if(err){
 			console.log(err)
 		}
 	});
 
-	db.query(`SELECT * FROM configs`,async (err,rows)=>{
+	bot.db.query(`SELECT * FROM configs`,async (err,rows)=>{
 		if(err) return console.log(err);
 
 		await Promise.all(rows.map( s =>{
-			server_configs[s.srv_id] = s;
+			bot.server_configs[s.srv_id] = s;
 			return new Promise((res,rej)=>{
 				setTimeout(res("config loaded"),100)
 			})
 		}))
 	});
 
-	commands.test = await require("./commands/test.js");
-	commands.trigs = await require("./commands/trigs.js");
+	bot.db.query(`CREATE TABLE IF NOT EXISTS profiles (usr_id TEXT, info TEXT, badges TEXT, lvl TEXT, exp TEXT, cash TEXT, daily TEXT, disabled TEXT)`,(err,rows)=>{
+		if(err) {
+			console.log("There was an error creating the profiles table");
+		}
+	});
+
+	bot.commands.test = await require("./commands/test.js");
+	bot.commands.trigs = await require("./commands/trigs.js");
+	bot.commands.admin = await require("./commands/admin.js");
 }
 
 const cmdHandle = async function(clist,cmd,msg,args,lastcmd,lastargs){
@@ -88,7 +93,7 @@ const cmdHandle = async function(clist,cmd,msg,args,lastcmd,lastargs){
 	if(cmd == "notfound" && !lastcmd) {
 		return msg.channel.createMessage("Command not found.");
 	} else if(cmd == "notfound" && lastcmd) {
-		lastcmd.execute(msg,lastargs);
+		lastcmd.execute(bot,msg,lastargs,bot.server_configs[msg.guild.id] || []);
 	} else {
 		if(args[0] == undefined || args[0]=="" || cmd.subcommands == undefined || Object.keys(cmd.subcommands).length == 0){
 			// console.log(cmd);
@@ -105,13 +110,13 @@ const cmdHandle = async function(clist,cmd,msg,args,lastcmd,lastargs){
 						})
 					}
 				})).then(()=>{
-					cmd.execute(msg,args);
+					cmd.execute(bot,msg,args,bot.server_configs[msg.guild.id] | []);
 				}).catch(e=>{
 					console.log(e);
 					msg.channel.createMessage("You do not have permission to use that command.");
 				})
 			} else {
-				cmd.execute(msg,args);
+				cmd.execute(bot,msg,args,bot.server_configs[msg.guild.id] || []);
 			}
 		} else if(cmd.subcommands){
 			cmdHandle(cmd.subcommands,args.slice(0,1).toString(),msg,args.slice(1),cmd,args);
@@ -119,32 +124,21 @@ const cmdHandle = async function(clist,cmd,msg,args,lastcmd,lastargs){
 	}
 }
 
-const reloadConfig = async function(srv){
-	db.query(`SELECT * FROM configs WHERE srv_id='${srv}'`,(err,rows)=>{
-		if(err){
-			console.log(err)
-		} else {
-			server_configs[srv] = rows[0] || {srv_id: srv, prefix: undefined, welcome: undefined, autoroles: undefined, disabled: undefined, opped: undefined, fedback: undefined};
-		}
-	})
-}
-
-
 /***********************************
 COMMANDS
 ***********************************/
 
-const commands={};
+bot.commands = {};
 
-commands.help = {
+bot.commands.help = {
 	help: () => "Use this to list commands or get help with a specific command",
 	usage: () => ["- List commands and basic help functions."," [command] - Get help with that command"],
-	execute: (msg,args)=>{
+	execute: (bot, msg, args)=>{
 		let cmdname = (args[0] ? args[0].toLowerCase() : "");
-		let command = (commands[cmdname] ? commands[cmdname] : (Object.values(commands).find(c => c.alias && c.alias.includes(cmdname)) ? Object.values(commands).find(c => c.alias && c.alias.includes(cmdname)) : "notfound"));
+		let command = (bot.commands[cmdname] ? bot.commands[cmdname] : (Object.values(bot.commands).find(c => c.alias && c.alias.includes(cmdname)) ? Object.values(bot.commands).find(c => c.alias && c.alias.includes(cmdname)) : "notfound"));
 		let parentcmd;
 		let parentcmdname;
-		let prefix = (msg.guild!=undefined && server_configs[msg.guild.id] && (server_configs[msg.guild.id].prefix!= undefined && server_configs[msg.guild.id].prefix!="") ? server_configs[msg.guild.id].prefix : config.prefix[0]);
+		let prefix = (msg.guild!=undefined && bot.server_configs[msg.guild.id] && (bot.server_configs[msg.guild.id].prefix!= undefined && bot.server_configs[msg.guild.id].prefix!="") ? bot.server_configs[msg.guild.id].prefix : config.prefix[0]);
 		if(command!="notfound"){
 			if(args[1]!=undefined && command.subcommands != undefined && (command.subcommands[args[1].toLowerCase()] != undefined || Object.values(command.subcommands).find(c => c.alias && c.alias.includes(args[1].toLowerCase())))){
 				parentcmd = command;
@@ -174,11 +168,11 @@ commands.help = {
 				description: "I'm Herobrine! This bot is multi-purpose and intended for a wide range of functions.",
 				fields:[
 				{name:"**FUN**",
-				value: Object.keys(commands).filter(x => commands[x].module == "fun" && !commands[x].alias).map( c => "**"+prefix + c + "** - " + commands[c].help()).sort().join("\n")},
+				value: Object.keys(bot.commands).filter(x => bot.commands[x].module == "fun" && !bot.commands[x].alias).map( c => "**"+prefix + c + "** - " + bot.commands[c].help()).sort().join("\n")},
 				{name:"**UTILITY**",
-				value: Object.keys(commands).filter(x => commands[x].module == "utility" && !commands[x].alias).map( c => "**"+prefix + c + "** - " + commands[c].help()).sort().join("\n")},
+				value: Object.keys(bot.commands).filter(x => bot.commands[x].module == "utility" && !bot.commands[x].alias).map( c => "**"+prefix + c + "** - " + bot.commands[c].help()).sort().join("\n")},
 				{name:"**ADMIN**",
-				value: Object.keys(commands).filter(x => commands[x].module == "admin").map( c => "**"+prefix + c + "** - " + commands[c].help()).join("\n")},
+				value: Object.keys(bot.commands).filter(x => bot.commands[x].module == "admin").map( c => "**"+prefix + c + "** - " + bot.commands[c].help()).join("\n")},
 
 				],
 				color: 16755455,
@@ -195,23 +189,23 @@ commands.help = {
 
 //- - - - - - - - - - Roles - - - - - - -  - -
 
-commands.role = {
+bot.commands.role = {
 	help: ()=> "Add and remove self roles.",
 	usage: ()=> [" - display this help text","s - list available roles"],
 	desc: () => "This command can only be used in guilds.",
-	execute: (msg,args)=>{
-		commands.help.execute(msg,["role"]);
+	execute: (bot, msg, args)=>{
+		bot.commands.help.execute(msg,["role"],cfg);
 	},
 	module: "utility",
 	subcommands: {},
 	guildOnly: true
 }
 
-commands.role.subcommands.list = {
+bot.commands.role.subcommands.list = {
 	help: ()=> "Lists available roles for a server.",
 	usage: ()=> [" - Lists all selfroles for the server"],
-	execute: (msg,args)=>{
-		db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
+	execute: (bot, msg, args)=>{
+		bot.db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
 			if(rows.length>0){
 				msg.channel.createMessage({
 					embed: {
@@ -227,28 +221,28 @@ commands.role.subcommands.list = {
 			} else {
 				msg.channel.createMessage("There are no roles indexed for this server.")
 			}
-			db.query("BEGIN TRANSACTION");
+			bot.db.query("BEGIN TRANSACTION");
 			rows.forEach(r =>{
 				if(!msg.guild.roles.find(rl => rl.id == r.id)){
-					db.query(`DELETE FROM roles WHERE id='${r.id}'`);
+					bot.db.query(`DELETE FROM roles WHERE id='${r.id}'`);
 				}
 			})
-			db.query("COMMIT");
+			bot.db.query("COMMIT");
 		});
 	}
 }
 
-commands.role.subcommands.remove = {
+bot.commands.role.subcommands.remove = {
 	help: ()=> "Removes a selfrole.",
 	usage: ()=> [" [comma, separated, role names] - Removes given roles, if applicable"],
-	execute: (msg,args)=>{
+	execute: (bot, msg, args)=>{
 		let rlstrmv = args.join(" ").split(/,\s*/g);
 		let nrem = [];
 		let rem = [];
 		let rmvRoles = async function (){
 			await Promise.all(rlstrmv.map((r)=>{
 				if(msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase())){
-					db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase()).id}'`,async (err,rows)=>{
+					bot.db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase()).id}'`,async (err,rows)=>{
 						if(err){
 							console.log(err);
 							msg.channel.createMessage("There was an error.");
@@ -287,17 +281,17 @@ commands.role.subcommands.remove = {
 	}
 }
 
-commands.role.subcommands.add = {
+bot.commands.role.subcommands.add = {
 	help: ()=> "Adds selfroles.",
 	usage: ()=> [" [comma, separated, role names] - Adds given roles, if available"],
-	execute: (msg,args)=>{
+	execute: (bot, msg, args)=>{
 		let rls = args.join(" ").split(/,\s*/g);
 		let nad = [];
 		let ad = [];
 		let addRoles = async function (){
 			await Promise.all(rls.map((r)=>{
 				if(msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase())){
-					db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase()).id}'`,async (err,rows)=>{
+					bot.db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase()).id}'`,async (err,rows)=>{
 						if(err){
 							console.log(err);
 							msg.channel.createMessage("There was an error.");
@@ -337,11 +331,11 @@ commands.role.subcommands.add = {
 	}
 }
 
-commands.roles = {
+bot.commands.roles = {
 	help: ()=> "List all available self roles for a guild.",
 	usage: ()=> [" - Lists available roles."],
-	execute: (msg,args)=>{
-		db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
+	execute: (bot, msg, args)=>{
+		bot.db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
 			if(rows.length>0){
 				msg.channel.createMessage({
 					embed: {
@@ -357,13 +351,13 @@ commands.roles = {
 			} else {
 				msg.channel.createMessage("There are no indexed roles for this server.");
 			}
-			db.query("BEGIN TRANSACTION");
+			bot.db.query("BEGIN TRANSACTION");
 			rows.forEach(r =>{
 				if(!msg.guild.roles.find(rl => rl.id == r.id)){
-					db.query(`DELETE FROM roles WHERE id='${r.id}'`);
+					bot.db.query(`DELETE FROM roles WHERE id='${r.id}'`);
 				}
 			})
-			db.query("COMMIT");
+			bot.db.query("COMMIT");
 		});
 	},
 	module: "utility",
@@ -373,10 +367,10 @@ commands.roles = {
 
 //- - - - - - - - - - Pings - - - - - - - - - -
 
-commands.ping = {
+bot.commands.ping = {
 	help: ()=> "Ping the Boy:tm:",
 	usage: ()=> [" - Returns a random pingy-pongy response."],
-	execute: (msg,args)=>{
+	execute: (bot, msg, args)=>{
 		var pongs = ["pong!","peng!","pung!","pang!"];
 		msg.channel.createMessage(pongs[Math.floor(Math.random()*pongs.length)]);
 	},
@@ -385,10 +379,10 @@ commands.ping = {
 	alias: ["ping!"]
 }
 
-commands.ping.subcommands.test = {
+bot.commands.ping.subcommands.test = {
 	help: ()=> "Test the Boy:tm:",
 	usage: ()=> [" - yeet"],
-	execute: (msg,args)=>{
+	execute: (bot, msg, args)=>{
 		var yeets = ["yeet!","yate!","yote!","yute!", "yite!"];
 		msg.channel.createMessage(yeets[Math.floor(Math.random()*yeets.length)]);
 	},
@@ -397,10 +391,10 @@ commands.ping.subcommands.test = {
 
 //- - - - - - - - - - Random - - - - - - - - - - - -
 
-commands.random = {
+bot.commands.random = {
 	help: ()=>"Gives a random number.",
 	usage: ()=> [" <number> - Gives a number between 1 and 10, or the number provided."],
-	execute: (msg,args)=>{
+	execute: (bot, msg, args)=>{
 		var max=(isNaN(args[0]) ? 10 : args[0]);
 		var num=Math.floor(Math.random() * max);
 		var nums=num.toString().split("");
@@ -410,12 +404,32 @@ commands.random = {
 	module: "utility"
 }
 
+//- - - - - - - - - - Flip - - - - - - - - - -
+bot.commands.flip = {
+	help: ()=> "Flips a coin.",
+	usage: ()=> [' - flips a virtual coin'],
+	execute: (bot, msg, args)=>{
+		msg.channel.createMessage("You flipped:\n"+(Math.floor(Math.random()*2) == 1 ? ":o:\nHeads!" : ":x:\nTails!"));
+	},
+	module: "utility"
+}
+
+//- - - - - - - - - - Press F - - - - - - - - - -
+bot.commands.pressf = {
+	help: ()=> "Presses F.",
+	usage: ()=> [" - sends a random F emoji"],
+	execute: (bot, msg, args)=>{
+		msg.channel.createMessage(Texts.pressf[Math.floor(Math.random()*Texts.pressf.length)]);
+	},
+	alias:["f"]
+}
+
 //- - - - - - - - - - Lovebomb - - - - - - - - - -
 
-commands.lovebomb = {
+bot.commands.lovebomb = {
 	help: () => "Get a little bit of love from Herobrine!",
 	usage: () => [" - sends about 5 messages in a row that are meant to be affirming"],
-	execute: (msg,args) =>{
+	execute: (bot, msg, args) =>{
 		var lb = -1000;
 		Texts.lovebombs.forEach(async t=>{
 			lb+=1000;
@@ -432,10 +446,10 @@ commands.lovebomb = {
 
 //- - - - - - - - - - Color - - - - - - - -  - - - -
 
-commands.color = {
+bot.commands.color = {
 	help: ()=> "Display a color.",
 	usage: ()=> [" [hex code] - sends an image of that color"],
-	execute: async (msg,args)=>{
+	execute: async (bot, msg, args)=>{
 		var c = Util.hex2rgb(args[0]);
 		var img;
 		new jimp(256,256,args[0],(err,image)=>{
@@ -463,21 +477,24 @@ commands.color = {
 	subcommands: {}
 }
 
-commands.color.subcommands.change = {
+bot.commands.color.subcommands.change = {
 	help: ()=> "Changes your current color",
 	usage: ()=>[" [hex color/name/etc] - changes current color to provided color"],
-	execute: (msg,args)=>{
+	execute: (bot, msg, args)=>{
 		var c = args.join(" ");
 		if(c.startsWith("#")) c = c.replace("#","");
 		if(Texts.colors[c.toLowerCase()]) c = Texts.colors[c.toLowerCase()];
 		if(msg.guild.roles.find(r=>r.name == msg.author.id)){
 			var role = msg.guild.roles.find(r=>r.name == msg.author.id);
 			role.edit({color:parseInt(c,16)}).then(()=>{
+				if(!msg.member.roles.includes(msg.author.id)){
+					msg.member.addRole(role.id)
+				}
 				msg.channel.createMessage("Changed "+msg.author.username+"'s color to #"+c);
 			})
 		} else {
-			msg.guild.createRole({name: msg.author.id,color:parseInt(c,16)}).then(()=>{
-				msg.member.addRole(msg.guild.roles.find(r=>r.name == msg.author.id));
+			msg.guild.createRole({name: msg.author.id,color:parseInt(c,16)}).then((role)=>{
+				msg.member.addRole(role.id);
 				msg.channel.createMessage("Changed "+msg.author.username+"'s color to #"+c);
 			}).catch(e=>{
 				console.log(e);
@@ -490,11 +507,11 @@ commands.color.subcommands.change = {
 }
 
 //- - - - - - - - - - Eval - - - - - - - - - -
-commands.eval = {
+bot.commands.eval = {
 	help: ()=>"Evaluate javascript code.",
 	usage: ()=>[" [code] - Evaluates given code."," prm [code] - Evaluates given code, and any returned promises."],
 	desc: ()=>"Only the bot owner can use this command.",
-	execute: (msg, args)=>{
+	execute: (bot, msg, args)=>{
 		if(!config.accepted_ids.includes(msg.author.id)){ return msg.channel.createMessage("Only the bot owner can use this command."); }
 		if(args[0] == "prm"){
 			async function f(){
@@ -540,10 +557,10 @@ commands.eval = {
 //------------------------------------------------------------------------------------------------------
 
 //- - - - - - - - - - What's up - - - - - - - - - -
-commands.whats={
+bot.commands.whats={
 	help: ()=> "Return a random phrase about what's up.",
 	usage: ()=>[" - Return random tidbit."],
-	execute: (msg,args)=>{
+	execute: (bot, msg, args)=>{
 		if(!args[0]){ return }
 		if(args[0].match(/up\?*/)){
 			msg.channel.createMessage(Util.randomText(Texts.wass));
@@ -553,448 +570,252 @@ commands.whats={
 	alias: ["what's"]
 }
 
-//--------------------------------------------- Admin --------------------------------------------------
-//======================================================================================================
-//------------------------------------------------------------------------------------------------------
-
-commands.admin = {
-	help: ()=> "For admin commands. Use `hh!admin help` or `hh!help admin` for more info.",
-	usage: ()=>[" - displays this help",
-	" ban [userID] - [hack]bans user from the server",
-	" index [role name] [1/0] - indexes self and mod-only roles",
-	" roles - lists all indexed roles (selfroleable and mod-only) for the server",
-	" role [add/remove] [roles, to, handle] [@user @member] - adds/removes roles from users",
-	" prune <num> - prunes [num] messages from the channel (100 default)"],
-	execute: (msg,args)=>{
-		commands.help.execute(msg,["admin"])
-	},
-	module: "admin",
-	subcommands: {},
-	guildOnly: true,
-	alias: ["ad","*"]
-}
-
-//- - - - - - - - - - - Prefix - - - - - - - - - -
-
-commands.admin.subcommands.prefix = {
-	help: ()=> "Sets guild-specific prefix.",
-	usage: ()=> [ "[prefix] - Sets prefix for the guild"],
-	execute: (msg, args) =>{
-		db.query(`SELECT * FROM configs WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
+// - - - - - - - - - - Profiles - - - - - - - - - -
+bot.commands.profile = {
+	help: ()=> "Shows your profile.",
+	usage: ()=> [" - views your profile",
+				" [discord ID] - views another user's profile",
+				"edit - opens a menu for profile editing",
+				"enable/disable - enables/disables level-up messages"],
+	execute: (bot, msg, args)=>{
+		var id = (args[0] ? args[0] : msg.author.id);
+		bot.db.query(`SELECT * FROM profiles WHERE usr_id='${id}'`,(err,rows)=>{
 			if(err){
 				console.log(err);
-			} else {
-				var scfg = rows[0];
-				if(scfg){
-					db.query(`UPDATE configs SET prefix=? WHERE srv_id='${msg.guild.id}'`,[args[0]],(err,rows)=>{
-						if(err) console.log(err)
-					})
+				return msg.channel.createMessage("User profile not found or not indexed yet.");
+			}
+			msg.channel.createMessage({embed:{
+				author: {
+					name: msg.guild.members.find(m => m.id == id).username,
+					icon_url: msg.guild.members.find(m => m.id == id).avatarURL
+				},
+				thumbnail: {
+					url: msg.guild.members.find(m => m.id == id).avatarURL
+				},
+				color: (JSON.parse(rows[0].info).color ? JSON.parse(rows[0].info).color : 0),
+				title: JSON.parse(rows[0].info).title,
+				description: JSON.parse(rows[0].info).bio +
+				"\n**LEVEL:** "+rows[0].lvl +
+				"\n**EXP:** "+rows[0].exp +
+				"\n**CASH:** "+rows[0].cash +
+				(rows[0].disabled == "1" ? "\n\n*Level up messages are disabled for this user.*" : "")
+			}})
+		})
+	},
+	alias: ["p","prof"],
+	subcommands: {},
+	guildOnly: true
+}
+
+bot.commands.profile.subcommands.disable = {
+	help: ()=> "Disables level up messages.",
+	usage: ()=> [" - disables level up messages"],
+	execute: (bot, msg, args)=>{
+		bot.db.query(`SELECT * FROM profiles WHERE usr_id='${msg.author.id}'`,(err,rows)=>{
+			if(err) return console.log(err);
+			if(rows[0]){
+				if(rows[0].disabled == "1"){
+					msg.channel.createMessage("Already disabled.");
 				} else {
-					db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?)`,[msg.guild.id,args[0],"{}","","[]","","{}"],(err,rows)=>{
-						if(err) console.log(err);
+					bot.db.query(`UPDATE profiles SET disabled='${"1"}' WHERE usr_id='${msg.author.id}'`,(err,rows)=>{
+						if(err){
+							console.log(err);
+							return msg.channel.createMessage("Something went wrong.");
+						}
+						msg.channel.createMessage("Level-up messages disabled.")
 					})
 				}
-				console.log(server_configs);
-				reloadConfig(msg.guild.id);
+			} else {
+				msg.channel.createMessage("Something went wrong.");
 			}
 		})
 	}
 }
 
-// - - - - - - - - - - - Ban - - - - - - - - - - -
-
-commands.admin.subcommands.ban = {
-	help: ()=> "[Hack]bans members.",
-	usage: ()=> [" [userID] - Bans member with that ID."],
-	execute: async (msg,args)=>{
-		var membs = args.join(" ").split(/,*\s+|\n+/);
-		var succ = [];
-		async function banMembers (){
-			return await Promise.all(membs.map(async (m) => {
-				console.log(succ);
-				await bot.getRESTUser(m).then(async (u)=>{
-					await msg.guild.getBans().then(b=>{
-						console.log(b);
-						if(b){
-							if(b.find(x => x.user.id == m)){
-								succ.push({id:m,pass:false,reason:"User already banned"});
-							} else {
-								bot.banGuildMember(msg.guild.id,m,0,"Banned through command.");
-								succ.push({id:m,pass:true})
-							}
-						} else {
-							bot.banGuildMember(msg.guild.id,m,0,"Banned through command.");
-							succ.push({id:m,pass:true})
+bot.commands.profile.subcommands.enable = {
+	help: ()=> "Enables level up messages.",
+	usage: ()=> [" - enables level up messages"],
+	execute: (bot, msg, args)=>{
+		bot.db.query(`SELECT * FROM profiles WHERE usr_id='${msg.author.id}'`,(err,rows)=>{
+			if(err) return console.log(err);
+			if(rows[0]){
+				if(rows[0].disabled == "0"){
+					msg.channel.createMessage("Already enabled.");
+				} else {
+					bot.db.query(`UPDATE profiles SET disabled='${"0"}' WHERE usr_id='${msg.author.id}'`,(err,rows)=>{
+						if(err){
+							console.log(err);
+							return msg.channel.createMessage("Something went wrong.");
 						}
+						msg.channel.createMessage("Level-up messages enabled.")
 					})
-				}).catch(e=>{
-					succ.push({id:m,pass:false,reason:"User does not exist."});
-				})
-
-				return new Promise((res,rej)=>{
-					setTimeout(()=>{
-						res({id:m});
-					},100)
-				})
-			})
-			)
-		}
-		banMembers().then(()=>{
-			console.log(succ)
-			msg.channel.createMessage({embed:{
-				title: "Ban Results",
-				fields: [
-				{
-					name: "Banned",
-					value: (succ.filter(m => m.pass).length > 0 ? succ.filter(x=> x.pass).map(m => m.id).join("\n") : "None")
-				},
-				{
-					name: "Not Banned",
-					value: (succ.filter(m => !m.pass).length > 0 ? succ.filter(x => !x.pass).map(m => m.id + " - " + m.reason).join("\n") : "None")
 				}
-				]
-			}})
-		});
-	},
-	permissions: ["banMembers"],
-	guildOnly: true
-}
-
-// - - - - - - - - - - - Prune  - - - - - - - - - - -
-commands.admin.subcommands.prune = {
-	help: ()=> "Prunes messages in a channel.",
-	usage: ()=> [" <number> - deletes [number] messages from the current channel, or 100 messages if not specified"],
-	execute: async (msg,args)=>{
-		var del = (args[0] != NaN ? Number(args[0]) : 100);
-		await msg.channel.purge(del).then((n)=>{
-			msg.channel.createMessage(n + " messages deleted.").then(ms=>{
-				setTimeout(()=>{
-					ms.delete();
-				},5000)
-			});
-		}).catch(e=>console.log(e))
-	},
-	subcommands: {},
-	permissions: ["manageMessages"],
-	guildOnly: true,
-	alias: ["delete"]
-}
-
-commands.admin.subcommands.prune.subcommands.safe = {
-	help: ()=> "Prunes messages in a channel, unless pinned.",
-	usage: ()=> [" <number> - deletes [num] messages, or 100 if not specified"],
-	execute: async (msg,args)=>{
-		var del = (args[0] ? args[0] : 100);
-		await msg.channel.purge(del,(m)=>!m.pinned).then((n)=>{
-			msg.channel.createMessage(n + " messages deleted.").then(ms=>{
-				setTimeout(()=>{
-					ms.delete();
-				},5000)
-			});
-		}).catch(e=>console.log(e))
-	},
-	permissions: ["manageMessages"],
-	guildOnly: true
-}
-
-
-// - - - - - - - - - - - Adroles - - - - - - - - - - -
-
-commands.admin.subcommands.roles = {
-	help: ()=> "List all indexed roles for a server.",
-	usage: ()=> [" - lists all indexed roles for the server"],
-	execute: (msg,args)=> {
-		db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
-			if(rows.length>0){
-				msg.channel.createMessage({
-					embed: {
-						title:"Roles",
-						fields:[{
-							name:"\\~\\~\\* Assignable Roles \\*\\~\\~",
-							value: rows.map(r => (msg.guild.roles.find(rl => rl.id == r.id) && r.sar==1 ? msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase() : null)).filter(x=>x!=null).sort().join("\n") || "None"
-						},{
-							name:"\\~\\~\\* Mod-Only Roles \\*\\~\\~",
-							value: rows.map(r => (msg.guild.roles.find(rl => rl.id == r.id) && r.sar==0 ? msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase() : null)).filter(x=>x!=null).sort().join("\n") || "None"
-						}]
-					}
-				});
+			} else {
+				msg.channel.createMessage("Something went wrong.");
 			}
-			db.query("BEGIN TRANSACTION");
-			rows.forEach(r =>{
-				if(!msg.guild.roles.find(rl => rl.id == r.id)){
-					db.query(`DELETE FROM roles WHERE id='${r.id}'`);
-				}
-			})
-			db.query("COMMIT");
 		})
-	},
-	permissions: ["manageRoles"],
-	guildOnly: true
+	}
 }
 
-commands.admin.subcommands.role = {
-	help: ()=> "Create, delete, edit, add, and remove roles.",
-	usage: ()=> [" - shows this help",
-				" create [role name] - creates new role",
-				" delete [role name] - deletes existing role",
-				" edit [role name] [color/name/etc] [new value] - edits existing role",
-				" add [comma, separated, role names] [@memberping] - adds roles to specified member",
-				" remove [comma, separated, role names] [@memberping] - removes roles from specified member"],
-	execute: (msg, args) =>{
-		commands.help.execute(msg,["admin","role"])
-	},
-	subcommands: {}
-}
-
-var adroles = commands.admin.subcommands.role;
-
-adroles.subcommands.add = {
-	help: ()=> "Add roles to mentioned users.",
-	usage: ()=>[" [roles, to, add] [@user,@mentions] - adds roles to these users"],
-	execute: async (msg,args)=>{
-		if(msg.mentions.length > 0){
-			var l = msg.mentions.length;
-			var ments = args.slice(-l);
-			var rta = args.slice(0,-l).join(" ").split(/,\s*/);
-			var members = {};
-			await Promise.all(ments.map(async m=>{
-				var member = await msg.guild.members.find(mb => mb.mention == m || mb.user.mention == m);
-				if(member){
-					members[m] = {
-						title: "**"+member.username+"**",
-						fields: [ 
-						{name: "Added",
-						value: ""},
-						{name: "Not Added",
-						value: ""}
-						]
-					}
-					await Promise.all(rta.map((r)=>{
-						if(msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase())){
-							db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase()).id}'`,async (err,rows)=>{
-								if(err){
-									console.log(err);
-									msg.channel.createMessage("There was an error.");
-								} else if(rows.length<1) {
-									members[m].fields[1].value += r + " - role has not been indexed.\n";
-								} else if(member.roles.includes(rows[0].id)){
-									members[m].fields[1].value += r + " - already has this role.\n";
-								} else {
-									members[m].fields[0].value += r + "\n";
-									member.addRole(rows[0].id);
-								}
-							})
-						} else {
-							members[m].fields[1].value += r + " - role does not exist.\n";
-						}
-						return new Promise((resolve,reject)=>{
-							setTimeout(()=>{
-								resolve("done");
-							},100);
-						});
-					}))
-					return new Promise((res,rej)=>{
-						setTimeout(()=>{
-							res("done");
-						},100);
-					})
-				} else {
-					members.push({
-						title: m,
-						description: "Couldn't find member."
-					});
-				}
-			})).then(()=>{
-				Object.keys(members).map(mb => {
-					msg.channel.createMessage({embed:{
-						title: members[mb].title,
-						fields: [
-							{name: "Added",
-							value: (members[mb].fields[0].value == "" ? "None" : members[mb].fields[0].value)
-							},
-							{name: "Not Added",
-							value: (members[mb].fields[1].value == "" ? "None" : members[mb].fields[1].value)
-							}
-						]
-					}
-					}).catch(e=> console.log(e));
-				})
-			})
-		} else {
-			msg.channel.createMessage("Please mention a user.");
-		}
-	},
-	permissions: ["manageRoles","manageMembers"],
-	guildOnly: true
-}
-
-adroles.subcommands.remove = {
-	help: ()=> "Remove roles from mentioned users.",
-	usage: ()=> [" [roles, to, remove] [@user @mention] - removes roles from users"],
-	execute: async (msg,args)=> {
-		if(msg.mentions.length > 0){
-			var l = msg.mentions.length;
-			var ments = args.slice(-l);
-			var rtr = args.slice(0,-l).join(" ").split(/,\s*/);
-			var members = {};
-			await Promise.all(ments.map(async m=>{
-				var member = await msg.guild.members.find(mb => mb.mention == m || mb.user.mention == m);
-				if(member){
-					members[m] = {
-						title: "**"+member.username+"**",
-						fields: [ 
-						{name: "Added",
-						value: ""},
-						{name: "Not Added",
-						value: ""}
-						]
-					}
-					await Promise.all(rtr.map((r)=>{
-						if(msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase())){
-							db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase()).id}'`,async (err,rows)=>{
-								if(err){
-									console.log(err);
-									msg.channel.createMessage("There was an error.");
-								} else if(rows.length<1) {
-									members[m].fields[1].value += r + " - role has not been indexed.\n";
-								} else if(!member.roles.includes(rows[0].id)){
-									members[m].fields[1].value += r + " - doesn't have this role.\n";
-								} else {
-									members[m].fields[0].value += r + "\n";
-									member.removeRole(rows[0].id);
-								}
-							})
-						} else {
-							members[m].fields[1].value += r + " - role does not exist.\n";
-						}
-						return new Promise((resolve,reject)=>{
-							setTimeout(()=>{
-								resolve("done");
-							},100);
-						});
-					}))
-					return new Promise((res,rej)=>{
-						setTimeout(()=>{
-							res("done");
-						},100);
-					})
-				} else {
-					members.push({
-						title: m,
-						description: "Couldn't find member."
-					});
-				}
-			})).then(()=>{
-				Object.keys(members).map(mb => {
-					msg.channel.createMessage({embed:{
-						title: members[mb].title,
-						fields: [
-							{name: "Added",
-							value: (members[mb].fields[0].value == "" ? "None" : members[mb].fields[0].value)
-							},
-							{name: "Not Added",
-							value: (members[mb].fields[1].value == "" ? "None" : members[mb].fields[1].value)
-							}
-						]
-					}
-					}).catch(e=> console.log(e));
-				})
-			})
-		} else {
-			msg.channel.createMessage("Please mention a user.");
-		}
-	},
-	permissions: ["manageRoles","manageMembers"],
-	guildOnly: true
-}
-
-
-commands.admin.subcommands.index = {
-	help: ()=> "Index new selfroles.",
-	usage: ()=> [" [role name] [1/0] - Indexes new role, either self-roleable (1) or mod-roleable (0)"],
-	execute: (msg,args)=>{
-		if(args.length>1){
-			var role_name = args.slice(0,-1).join(" ");
-			var sar = args[args.length-1];
-			console.log(role_name + ": " + sar);
-			if(msg.guild.roles.find(r => r.name.toLowerCase() == role_name.toLowerCase())){
-				var role_id = msg.guild.roles.find(r => r.name.toLowerCase() == role_name.toLowerCase()).id;
-				db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}' AND id='${role_id}'`,(err,rows)=>{
+bot.commands.profile.subcommands.edit = {
+	help: ()=> "Runs a menu for editing profiles.",
+	usage: ()=> [" - opens an edit menu",
+				" [bio/title/color] [new value] - quick edit method for your bio/title/color"],
+	execute: async (bot, msg, args)=>{
+		switch(args[0]){
+			case "bio":
+				var b = (args[1] ? args.slice(1).join(" ") : "Beep Boop!");
+				bot.db.query(`SELECT * FROM profiles WHERE usr_id='${msg.author.id}'`,(err,rows)=>{
 					if(err){
 						console.log(err);
-						msg.channel.createMessage("There was an error.");
+						return msg.channel.createMessage("There was an error.")
+					}
+					if(rows[0]){
+						var info = JSON.parse(rows[0].info);
+						info.bio = b;
+						bot.db.query(`UPDATE profiles SET info=? WHERE usr_id='${msg.author.id}'`,[info],(err,rows)=>{
+							if(err){
+								console.log(err)
+								return msg.channel.createMessage("There was an error.");
+							}
+							msg.channel.createMessage((t == "Beep Boop!" ? "Bio reset." : "Bio updated."));
+						})
 					} else {
-						if(rows.length>0){
-							setTimeout(function(){
-								switch(sar){
-									case "1":
-									db.query(`UPDATE roles SET sar='${"1"}' WHERE srv_id='${msg.guild.id}' AND id='${role_id}'`,(err,rows)=>{
-										if(err){
-											console.log(err);
-											msg.channel.createMessage("There was an error.");
-										} else {
-											msg.channel.createMessage("Self assignable role updated.")
-										}
-									})
-									break;
-									case "0":
-									db.query(`UPDATE roles SET sar='${"0"}' WHERE srv_id='${msg.guild.id}' AND id='${role_id}'`,(err,rows)=>{
-										if(err){
-											console.log(err);
-											msg.channel.createMessage("There was an error.");
-										} else {
-											msg.channel.createMessage("Self assignable role updated.")
-										}
-									})
-									break;
-									default:
-									msg.channel.createMessage("Please provide a 1 or a 0.\nUsage:\n`hh!admin roles add role name [1/0]`");
-									break;
-								}
-							},500);
-						} else {
-							setTimeout(function(){
-								switch(sar){
-									case "1":
-									db.query(`INSERT INTO roles VALUES (?,?,?,?)`,[msg.guild.id,role_id,1,0],(err,rows)=>{
-										if(err){
-											console.log(err);
-											msg.channel.createMessage("There was an error.");
-										} else {
-											msg.channel.createMessage("Self assignable role indexed.")
-										}
-									})
-									break;
-									case "0":
-									db.query(`INSERT INTO roles VALUES (?,?,?,?)`,[msg.guild.id,role_id,0,0],(err,rows)=>{
-										if(err){
-											console.log(err);
-											msg.channel.createMessage("There was an error.");
-										} else {
-											msg.channel.createMessage("Role indexed.")
-										}
-									})
-									break;
-									default:
-									msg.channel.createMessage("Please provide a 1 or a 0.\nUsage:\n`hh!admin roles add role name [1/0]`");
-									break;
-								}
-							},500);
-						}
+						msg.channel.createMessage("Something went wrong.");
 					}
 				})
-				
-			} else {
-				msg.channel.createMessage("Role does not exist.");
-			}
-		} else {
-			msg.channel.createMessage("Usage:\n`hh!admin index [role name] [1/0]`");
+				break;
+			case "title":
+				var t = (args[1] ? args.slice(1).join(" ") : "Title Here");
+					bot.db.query(`SELECT * FROM profiles WHERE usr_id='${msg.author.id}'`,(err,rows)=>{
+						if(err){
+							console.log(err);
+							return msg.channel.createMessage("There was an error.")
+						}
+						if(rows[0]){
+							var info = JSON.parse(rows[0].info);
+							info.title = t;
+							bot.db.query(`UPDATE profiles SET info=? WHERE usr_id='${msg.author.id}'`,[info],(err,rows)=>{
+								if(err){
+									console.log(err)
+									return msg.channel.createMessage("There was an error.");
+								}
+								msg.channel.createMessage((t == "Title Here" ? "Title reset." : "Title updated."));
+							})
+						} else {
+							msg.channel.createMessage("Something went wrong.");
+						}
+					})
+				break;
+			case "color":
+				var c = (args[1] ? parseInt(args[1].replace("#",""),16) : 0);
+					bot.db.query(`SELECT * FROM profiles WHERE usr_id='${msg.author.id}'`,(err,rows)=>{
+						if(err){
+							console.log(err);
+							return msg.channel.createMessage("There was an error.")
+						}
+						if(rows[0]){
+							var info = JSON.parse(rows[0].info);
+							info.color = c;
+							bot.db.query(`UPDATE profiles SET info=? WHERE usr_id='${msg.author.id}'`,[info],(err,rows)=>{
+								if(err){
+									console.log(err)
+									return msg.channel.createMessage("There was an error.");
+								}
+								msg.channel.createMessage((c == 0 ? "Color reset." : "Color updated."));
+							})
+						} else {
+							msg.channel.createMessage("Something went wrong.");
+						}
+					})
+				break;
+			default:
+				var info;
+				await bot.db.query(`SELECT * FROM profiles WHERE usr_id='${msg.author.id}'`,(err,rows)=>{
+					if(err){
+						console.log(err);
+						return msg.channel.createMessage("There was an error.");
+					}
+					if(rows[0]){
+						info = JSON.parse(rows[0].info);
+					} else {
+						msg.channel.createMessage("Something went wrong.")
+					}
+				})
+				msg.channel.createMessage("```\nWhat do you want to edit? (Choose a number)\n\n[1] Title\n[2] Bio\n[3] Color\n[4] Cancel\n```");
+				msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 10000, maxMatches: 1}).then(res=>{
+					if(res[0]){
+						switch(res[0].content){
+							case "1":
+								msg.channel.createMessage("Write what you want the new title to be.");
+								msg.channel.awaitMessages(m => m.author.id == msg.author.id,{time: 20000, maxMatches: 1}).then(res2=>{
+									if(res2[0]){
+										info.title = res2[0].content;
+										bot.db.query(`UPDATE profiles SET info=? WHERE usr_id='${msg.author.id}'`,[info],(err,rows)=>{
+											if(err){
+												console.log(err);
+												msg.channel.createMessage("There was an error.")
+											} else {
+												msg.channel.createMessage("Title updated.")
+											}
+										})
+									} else {
+										msg.channel.createMessage("Action cancelled.")
+									}
+								})
+								break;
+							case "2":
+								msg.channel.createMessage("Write what you want the new bio to be.");
+								msg.channel.awaitMessages(m => m.author.id == msg.author.id,{time: 20000, maxMatches: 1}).then(res2=>{
+									if(res2[0]){
+										info.bio = res2[0].content;
+										bot.db.query(`UPDATE profiles SET info=? WHERE usr_id='${msg.author.id}'`,[info],(err,rows)=>{
+											if(err){
+												console.log(err);
+												msg.channel.createMessage("There was an error.")
+											} else {
+												msg.channel.createMessage("Bio updated.")
+											}
+										})
+									} else {
+										msg.channel.createMessage("Action cancelled.")
+									}
+								})
+								break;
+							case "3":
+								msg.channel.createMessage("Write what you want the new color to be.");
+								msg.channel.awaitMessages(m => m.author.id == msg.author.id,{time: 20000, maxMatches: 1}).then(res2=>{
+									if(res2[0]){
+										info.color = parseInt(res2[0].content.replace("#",""),16);
+										bot.db.query(`UPDATE profiles SET info=? WHERE usr_id='${msg.author.id}'`,[info],(err,rows)=>{
+											if(err){
+												console.log(err);
+												msg.channel.createMessage("There was an error.")
+											} else {
+												msg.channel.createMessage("Color updated.")
+											}
+										})
+									} else {
+										msg.channel.createMessage("Action cancelled.")
+									}
+								})
+								break;
+							default:
+								msg.channel.createMessage("Action cancelled.")
+								break;
+						}
+					} else {
+						msg.channel.createMessage("Action cancelled.")
+					}
+				})
+				break;
 		}
-	},
-	permissions: ["manageRoles"],
-	guildOnly: true
+	}
 }
 
+//--------------------------------------------- Admin --------------------------------------------------
+//======================================================================================================
+//------------------------------------------------------------------------------------------------------
 
 
 
@@ -1031,7 +852,40 @@ bot.on("messageCreate",async (msg)=>{
 
 	//if(new RegExp("good\s").test(msg.content.toLowerCase()))
 
-	if(new RegExp("^"+config.prefix.join("|")).test(msg.content.toLowerCase()) || (msg.guild!=undefined && server_configs[msg.guild.id] && (server_configs[msg.guild.id].prefix!= undefined && server_configs[msg.guild.id].prefix!="") && msg.content.toLowerCase().startsWith(server_configs[msg.guild.id].prefix))){
+	bot.db.query(`SELECT * FROM profiles WHERE usr_id='${msg.author.id}'`,(err,rows)=>{
+		if(err){
+			console.log(err)
+		} else {
+			if(rows[0]){
+				var exp = eval(rows[0].exp);
+				var lve = eval(rows[0].lvl);
+				if(exp+5>=(Math.pow(lve,2)+100)){
+					lve=lve+1;
+					if(exp-(Math.pow(lve,2)+100)>=0){
+						exp=exp-(Math.pow(lve,2)+100);
+					} else {
+						exp=0;
+					}
+
+					if(rows[0].disabled != "1") msg.channel.createMessage(`Congratulations, ${(msg.member.nickname==null ? msg.author.username : msg.member.nickname)}! You are now level ${lve}!`);
+				} else {
+					exp=exp+5;
+				}
+				// console.log(`Exp: ${exp}\nLevel: ${lve}`);
+				bot.db.query(`UPDATE profiles SET exp='${exp}', lvl='${lve}', cash='${eval(rows[0].cash)+5}' WHERE usr_id='${msg.author.id}'`);
+			} else {
+				bot.db.query(`INSERT INTO profiles VALUES (?,?,?,?,?,?,?,?)`,[msg.author.id,{title:"Title Here",bio:"Beep boop!"},{},"1","5","5","0","0"],(err,rows)=>{
+					if(err){
+						console.log("Error creating profile: \n"+err);
+					} else {
+						console.log("profile created");
+					}
+				})
+			}
+		}
+	})
+
+	if(new RegExp("^"+config.prefix.join("|")).test(msg.content.toLowerCase()) || (msg.guild!=undefined && bot.server_configs[msg.guild.id] && (bot.server_configs[msg.guild.id].prefix!= undefined && bot.server_configs[msg.guild.id].prefix!="") && msg.content.toLowerCase().startsWith(bot.server_configs[msg.guild.id].prefix))){
 		let now = new Date();
 		let ndt = `${(now.getMonth() + 1).toString().length < 2 ? "0"+ (now.getMonth() + 1) : now.getMonth()+1}.${now.getDate().toString().length < 2 ? "0"+ now.getDate() : now.getDate()}.${now.getFullYear()}`;
 		if(!fs.existsSync(`./logs/${ndt}.log`)){
@@ -1047,12 +901,14 @@ bot.on("messageCreate",async (msg)=>{
 			if(err) console.log(`Error while attempting to write log ${ndt}\n`+err);
 		});
 
-		let args = msg.content.replace(new RegExp("^"+config.prefix.join("|")+((msg.guild != undefined && server_configs[msg.guild.id] && (server_configs[msg.guild.id].prefix!=undefined && server_configs[msg.guild.id].prefix!="")) ? "|"+server_configs[msg.guild.id].prefix : ""),"i"), "").split(" ");
+		let args = msg.content.replace(new RegExp("^"+config.prefix.join("|")+((msg.guild != undefined && bot.server_configs[msg.guild.id] && (bot.server_configs[msg.guild.id].prefix!=undefined && bot.server_configs[msg.guild.id].prefix!="")) ? "|"+bot.server_configs[msg.guild.id].prefix : ""),"i"), "").split(" ");
 		let cmd = args.shift();
 		console.log("Command: "+cmd+"\nArgs: "+args.join(", "));
-		cmdHandle(commands,cmd,msg,args);
+		cmdHandle(bot.commands,cmd,msg,args);
 
 	}
+
+
 })
 
 

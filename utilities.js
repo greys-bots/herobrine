@@ -45,5 +45,14 @@ module.exports = {
 		for (let index = 0; index < array.length; index++) {
 			await callback(array[index], index, array);
 		}
+	},
+	reloadConfig: async function(bot, srv){
+		bot.db.query(`SELECT * FROM configs WHERE srv_id='${srv}'`,(err,rows)=>{
+			if(err){
+				console.log(err)
+			} else {
+				bot.server_configs[srv] = rows[0] ? rows[0] : {srv_id: srv, prefix: undefined, welcome: undefined, autoroles: undefined, disabled: undefined, opped: undefined, fedback: undefined};
+			}
+		})
 	}
 };
