@@ -122,6 +122,7 @@ const cmdHandle = async function(clist,cmd,msg,args,lastcmd,lastargs){
 			cmdHandle(cmd.subcommands,args.slice(0,1).toString(),msg,args.slice(1),cmd,args);
 		}
 	}
+
 }
 
 /***********************************
@@ -133,36 +134,38 @@ bot.commands = {};
 bot.commands.help = {
 	help: () => "Use this to list commands or get help with a specific command",
 	usage: () => ["- List commands and basic help functions."," [command] - Get help with that command"],
-	execute: (bot, msg, args)=>{
-		let cmdname = (args[0] ? args[0].toLowerCase() : "");
-		let command = (bot.commands[cmdname] ? bot.commands[cmdname] : (Object.values(bot.commands).find(c => c.alias && c.alias.includes(cmdname)) ? Object.values(bot.commands).find(c => c.alias && c.alias.includes(cmdname)) : "notfound"));
-		let parentcmd;
-		let parentcmdname;
-		let prefix = (msg.guild!=undefined && bot.server_configs[msg.guild.id] && (bot.server_configs[msg.guild.id].prefix!= undefined && bot.server_configs[msg.guild.id].prefix!="") ? bot.server_configs[msg.guild.id].prefix : config.prefix[0]);
-		if(command!="notfound"){
-			if(args[1]!=undefined && command.subcommands != undefined && (command.subcommands[args[1].toLowerCase()] != undefined || Object.values(command.subcommands).find(c => c.alias && c.alias.includes(args[1].toLowerCase())))){
-				parentcmd = command;
-				parentcmdname = cmdname;
-				cmdname = (Object.keys(command.subcommands).find(c => command.subcommands[c].alias && command.subcommands[c].alias.includes(args[1].toLowerCase())) ? Object.keys(command.subcommands).find(c => command.subcommands[c].alias && command.subcommands[c].alias.includes(args[1].toLowerCase())) : args[1].toLowerCase());
-				command = (command.subcommands[args[1].toLowerCase()] || Object.values(command.subcommands).find(c => c.alias && c.alias.includes(args[1].toLowerCase())))
+	execute: async (bot, msg, args)=>{
+		var clist = bot.commands;
+		var cmdname;
+		var command;
+		var parents = [];
+		var prefix = (msg.guild!=undefined && bot.server_configs[msg.guild.id] && (bot.server_configs[msg.guild.id].prefix!= undefined && bot.server_configs[msg.guild.id].prefix!="") ? bot.server_configs[msg.guild.id].prefix : config.prefix[0]);
+		await Promise.all(args.map((c,cv)=>{
+			if(clist[c.toLowerCase()] || Object.values(clist).find(cm => cm.alias && cm.alias.includes(c.toLowerCase()))){
+				console.log("fetching cname...");
+				var cname = (clist[c.toLowerCase()] ? c.toLowerCase() : Object.keys(clist).find(cm => clist[cm].alias && clist[cm].alias.includes(c.toLowerCase())));
+				if(args.length-1 == cv){
+
+					console.log("no more args, returning command");
+					command = clist[cname];
+					cmdname = cname;
+				} else if(clist[cname].subcommands){
+					console.log("tier 2")
+					parents.push({name:cname, cmd:clist[cname]});
+					clist = clist[cname].subcommands;
+				} else if(args.length-1 != cv) {
+					command = clist[cname];
+					cmdname = cname;
+				}
+			} else {
+				if(!command)
+				command = "notfound";
 			}
-			msg.channel.createMessage({embed:{
-				title: "Herobrine - Help: "+ (parentcmdname != undefined ? parentcmdname + " - " : "") + cmdname,
-				description: command.help() + 
-				"\n\n**Usage**\n" +
-				command.usage().map(l => prefix + (parentcmd != undefined ? parentcmdname + " " : "") + cmdname + l)
-				.join("\n") +
-							(command.desc!=undefined ? "\n\n"+command.desc() : "") +
-							(command.subcommands ? "\n\n**Subcommands**: "+Object.keys(command.subcommands).join(", ") : "") +
-							(command.alias!=undefined ? "\n\n**Aliases:** "+command.alias.join(", ") : "") +
-							(command.module!=undefined || (parentcmd && parentcmd.module!=undefined) ? "\n\nThis command is part of the **" + (command.module || parentcmd.module) + "** module." : ""),
-							color: 16755455,
-							footer:{
-								icon_url: bot.user.avatarURL,
-								text: "Arguments like [this] are required, arguments like <this> are optional."
-							}
-						}})
-		} else {
+			return new Promise((res,rej)=>{
+				setTimeout(res("beep"),100);
+			})
+		}))
+		if((command=="notfound" || command==undefined) && !parents[0]){
 			msg.channel.createMessage({embed: {
 				title: "Herobrine - Help",
 				description: "I'm Herobrine! This bot is multi-purpose and intended for a wide range of functions.",
@@ -181,6 +184,59 @@ bot.commands.help = {
 					text: "Arguments like [this] are required, arguments like <this> are optional."
 				}
 			}});
+		} else if(parents[0] && command == "notfound"){
+			command = parents[parents.length-1].cmd;
+			msg.channel.createMessage({embed:{
+				title: "Herobrine - Help: "+ parents.map(p => p.name).join(" - "),
+				description: command.help() + 
+				"\n\n**Usage**\n" +
+				command.usage().map(l => prefix + parents.map(p => p.name).join(" ") + l)
+				.join("\n") +
+							(command.desc!=undefined ? "\n\n"+command.desc() : "") +
+							(command.subcommands ? "\n\n**Subcommands**: "+Object.keys(command.subcommands).join(", ") : "") +
+							(command.alias!=undefined ? "\n\n**Aliases:** "+command.alias.join(", ") : "") +
+							(command.module!=undefined ? "\n\nThis command is part of the **" + (command.module || parents[0].module) + "** module." : ""),
+							color: 16755455,
+							footer:{
+								icon_url: bot.user.avatarURL,
+								text: "Arguments like [this] are required, arguments like <this> are optional."
+							}
+						}})
+		} else if(parents[0] && command != "notfound"){
+			console.log("parents and last command found")
+			msg.channel.createMessage({embed:{
+				title: "Herobrine - Help: "+ parents.map(p => p.name).join(" - ") + " - " + cmdname,
+				description: command.help() + 
+				"\n\n**Usage**\n" +
+				command.usage().map(l => prefix + parents.map(p => p.name).join(" ") + " " + cmdname + l)
+				.join("\n") +
+							(command.desc!=undefined ? "\n\n"+command.desc() : "") +
+							(command.subcommands ? "\n\n**Subcommands**: "+Object.keys(command.subcommands).join(", ") : "") +
+							(command.alias!=undefined ? "\n\n**Aliases:** "+command.alias.join(", ") : "") +
+							(command.module!=undefined ? "\n\nThis command is part of the **" + (command.module || parents[0].module) + "** module." : ""),
+							color: 16755455,
+							footer:{
+								icon_url: bot.user.avatarURL,
+								text: "Arguments like [this] are required, arguments like <this> are optional."
+							}
+						}})
+		} else {
+			msg.channel.createMessage({embed:{
+				title: "Herobrine - Help: "+ cmdname,
+				description: command.help() + 
+				"\n\n**Usage**\n" +
+				command.usage().map(l => prefix + cmdname + l)
+				.join("\n") +
+							(command.desc!=undefined ? "\n\n"+command.desc() : "") +
+							(command.subcommands ? "\n\n**Subcommands**: "+Object.keys(command.subcommands).join(", ") : "") +
+							(command.alias!=undefined ? "\n\n**Aliases:** "+command.alias.join(", ") : "") +
+							(command.module!=undefined ? "\n\nThis command is part of the **" + (command.module) + "** module." : ""),
+							color: 16755455,
+							footer:{
+								icon_url: bot.user.avatarURL,
+								text: "Arguments like [this] are required, arguments like <this> are optional."
+							}
+						}})
 		}
 	},
 	module: "utility",
@@ -205,30 +261,7 @@ bot.commands.role.subcommands.list = {
 	help: ()=> "Lists available roles for a server.",
 	usage: ()=> [" - Lists all selfroles for the server"],
 	execute: (bot, msg, args)=>{
-		bot.db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
-			if(rows.length>0){
-				msg.channel.createMessage({
-					embed: {
-						fields:[{
-							name:"\\~\\~\\* Available Roles \\*\\~\\~",
-							value:(rows.map(r => {if(msg.guild.roles.find(rl => rl.id == r.id) && r.sar == "1") return msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase();})
-								.filter(x => x!=null)
-								.sort()
-								.join("\n") || "None")
-						}]
-					}
-				});
-			} else {
-				msg.channel.createMessage("There are no roles indexed for this server.")
-			}
-			bot.db.query("BEGIN TRANSACTION");
-			rows.forEach(r =>{
-				if(!msg.guild.roles.find(rl => rl.id == r.id)){
-					bot.db.query(`DELETE FROM roles WHERE id='${r.id}'`);
-				}
-			})
-			bot.db.query("COMMIT");
-		});
+		bot.commands.roles.execute(bot,msg,args);
 	}
 }
 
@@ -909,6 +942,22 @@ bot.on("messageCreate",async (msg)=>{
 	}
 
 
+})
+
+bot.on("guildMemberAdd",async (guild, member)=>{
+	if(bot.server_configs[guild.id]){
+		var scfg = bot.server_configs[guild.id];
+		if(scfg.welcome.enabled){
+			bot.createMessage(scfg.welcome.channel,scfg.welcome.message);
+		}
+		if(scfg.autoroles != ""){
+			await Promise.all(scfg.autoroles.split(",").map(r=>{
+				member.addRole(r);
+			})).then(()=>{
+				console.log(`Successfully added autoroles in guild ${guild.name} ${guild.id}`);
+			}).catch(e=> console.log(e));
+		}
+	}
 })
 
 

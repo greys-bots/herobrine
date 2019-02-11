@@ -35,7 +35,7 @@ module.exports.subcommands.prefix = {
 						if(err) console.log(err)
 					})
 				} else {
-					bot.db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?)`,[msg.guild.id,args[0],"{}","","[]","","{}"],(err,rows)=>{
+					bot.db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?)`,[msg.guild.id,args[0],{},"",[],"",{}],(err,rows)=>{
 						if(err) console.log(err);
 					})
 				}
@@ -272,7 +272,7 @@ module.exports.subcommands.role.subcommands.add = {
 	guildOnly: true
 }
 
-module.exports.subcommands.role.remove = {
+module.exports.subcommands.role.subcommands.remove = {
 	help: ()=> "Remove roles from mentioned users.",
 	usage: ()=> [" [roles, to, remove] [@user @mention] - removes roles from users"],
 	execute: async (bot, msg, args)=> {
@@ -353,7 +353,7 @@ module.exports.subcommands.role.remove = {
 }
 
 
-module.exports.subcommands.role.index = {
+module.exports.subcommands.role.subcommands.index = {
 	help: ()=> "Index new selfroles.",
 	usage: ()=> [" [role name] [1/0] - Indexes new role, either self-roleable (1) or mod-roleable (0)"],
 	execute: (bot, msg, args)=>{
@@ -437,4 +437,16 @@ module.exports.subcommands.role.index = {
 	},
 	permissions: ["manageRoles"],
 	guildOnly: true
+}
+
+// - - - - - - - - - - Welcome - - - - - - - - - -
+
+module.exports.subcommands.welcome = {
+	help: ()=> "Used to edit server welcoming protocol",
+	usage: ()=> [" channel [channel] - sets welcome channel",
+				" autoroles [comma, separated, role names] - default roles to add to members",
+				" message [message goes here] - sets welcome message (use `hh!help admin welcome message` for more info"],
+	execute: async (bot, msg, args)=>{
+		msg.channel.createMessage("WIP");
+	}
 }
