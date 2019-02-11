@@ -142,20 +142,22 @@ bot.commands.help = {
 		var prefix = (msg.guild!=undefined && bot.server_configs[msg.guild.id] && (bot.server_configs[msg.guild.id].prefix!= undefined && bot.server_configs[msg.guild.id].prefix!="") ? bot.server_configs[msg.guild.id].prefix : config.prefix[0]);
 		await Promise.all(args.map((c,cv)=>{
 			if(clist[c.toLowerCase()] || Object.values(clist).find(cm => cm.alias && cm.alias.includes(c.toLowerCase()))){
-				console.log("fetching cname...");
 				var cname = (clist[c.toLowerCase()] ? c.toLowerCase() : Object.keys(clist).find(cm => clist[cm].alias && clist[cm].alias.includes(c.toLowerCase())));
 				if(args.length-1 == cv){
 
-					console.log("no more args, returning command");
 					command = clist[cname];
 					cmdname = cname;
+
 				} else if(clist[cname].subcommands){
-					console.log("tier 2")
+
 					parents.push({name:cname, cmd:clist[cname]});
 					clist = clist[cname].subcommands;
+
 				} else if(args.length-1 != cv) {
+
 					command = clist[cname];
 					cmdname = cname;
+
 				}
 			} else {
 				if(!command)
@@ -203,7 +205,6 @@ bot.commands.help = {
 							}
 						}})
 		} else if(parents[0] && command != "notfound"){
-			console.log("parents and last command found")
 			msg.channel.createMessage({embed:{
 				title: "Herobrine - Help: "+ parents.map(p => p.name).join(" - ") + " - " + cmdname,
 				description: command.help() + 
