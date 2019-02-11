@@ -268,7 +268,7 @@ module.exports.subcommands.role.subcommands.add = {
 			msg.channel.createMessage("Please mention a user.");
 		}
 	},
-	permissions: ["manageRoles","manageMembers"],
+	permissions: ["manageRoles"],
 	guildOnly: true
 }
 
@@ -348,7 +348,7 @@ module.exports.subcommands.role.subcommands.remove = {
 			msg.channel.createMessage("Please mention a user.");
 		}
 	},
-	permissions: ["manageRoles","manageMembers"],
+	permissions: ["manageRoles"],
 	guildOnly: true
 }
 
