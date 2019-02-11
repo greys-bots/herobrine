@@ -39,9 +39,9 @@ module.exports.subcommands.prefix = {
 						if(err) console.log(err);
 					})
 				}
-				console.log(bot.server_configs[msg.guild.id]);
+				// console.log(bot.server_configs[msg.guild.id]);
 				Util.reloadConfig(bot, msg.guild.id);
-				msg.channel.createMessage("Prefix changed.");
+				msg.channel.createMessage(("Prefix changed."));
 			}
 		})
 	}

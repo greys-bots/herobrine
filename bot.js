@@ -90,21 +90,25 @@ const setup = async function(){
 
 const cmdHandle = async function(bot, msg, args){
 	var clist = bot.commands;
-	var cmdname;
-	var command;
+	var cmdname, command, lastindex;
 	var parents = [];
-	var lastindex;
-	var prefix = (msg.guild!=undefined && bot.server_configs[msg.guild.id] && (bot.server_configs[msg.guild.id].prefix!= undefined && bot.server_configs[msg.guild.id].prefix!="") ? config.prefix.join("|")+"|"+bot.server_configs[msg.guild.id].prefix : config.prefix.join("|"));
+	var prefix = (msg.guild!=undefined &&
+		bot.server_configs[msg.guild.id] &&
+		(bot.server_configs[msg.guild.id].prefix!= undefined && bot.server_configs[msg.guild.id].prefix!="") ?
+		config.prefix.join("|")+"|"+bot.server_configs[msg.guild.id].prefix : config.prefix.join("|"));
 	var cx = msg.content.split(" ")[0].replace(new RegExp(prefix,"i"),"");
-	if(!clist[cx.toLowerCase()] && !Object.values(clist).find(cm => cm.alias && cm.alias.includes(cx.toLowerCase()))) return msg.channel.createMessage("Command not found.");
+	if(!clist[cx.toLowerCase()] && !Object.values(clist).find(cm => cm.alias && cm.alias.includes(cx.toLowerCase())))
+		return msg.channel.createMessage("Command not found.");
 	args.splice(0,0,cx);
 	await Promise.all(args.map((c,cv)=>{
 		if(clist[c.toLowerCase()] || Object.values(clist).find(cm => cm.alias && cm.alias.includes(c.toLowerCase()))){
-			var cname = (clist[c.toLowerCase()] ? c.toLowerCase() : Object.keys(clist).find(cm => clist[cm].alias && clist[cm].alias.includes(c.toLowerCase())));
+			var cname = (clist[c.toLowerCase()] ? 
+				c.toLowerCase() : 
+				Object.keys(clist).find(cm => clist[cm].alias && clist[cm].alias.includes(c.toLowerCase())));
 			if(args.length-1 == cv){
 				command = clist[cname];
 				cmdname = cname;
-				args.shift();
+				args = [];
 
 			} else if(clist[cname].subcommands){
 				parents.push({name:cname, cmd:clist[cname]});
@@ -129,11 +133,49 @@ const cmdHandle = async function(bot, msg, args){
 	if((command=="notfound" || command==undefined) && !parents[0]){
 		msg.channel.createMessage("Command not found.");
 	} else if(parents[0] && (command == "notfound" || command == undefined)){
-		parents[parents.length-1].cmd.execute(bot,msg,args);
-	} else if(parents[0] && command != "notfound"){
-		command.execute(bot,msg,args);
+		if(command.guilOnly && !msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
+		if(parents[parents.length-1].permissions!=undefined){ //check perms
+			await Promise.all(parents[parents.length-1].permissions.map(p=>{
+				if(msg.member.permission.has(p)){
+					return new Promise((res,rej)=>{
+						setTimeout(res("passed"),100)
+					})
+				} else {
+					return new Promise((res,rej)=>{
+						setTimeout(rej("failed"),100)
+					})
+				}
+			})).then(()=>{
+				parents[parents.length-1].cmd.execute(bot,msg,args);
+			}).catch(()=>{
+				msg.channel.createMessage("You do not have permission to use that command.");
+			})
+		} else {
+			parents[parents.length-1].cmd.execute(bot,msg,args);
+		}
+		
 	} else {
-		command.execute(bot,msg,args);
+		if(command.guilOnly && !msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
+		if(command.permissions){ //check perms
+			await Promise.all(command.permissions.map(p=>{
+				if(msg.member.permission.has(p)){
+					return new Promise((res,rej)=>{
+						setTimeout(res("passed"),100)
+					})
+				} else {
+					return new Promise((res,rej)=>{
+						setTimeout(rej("failed"),100)
+					})
+				}
+			})).then(()=>{
+				command.execute(bot,msg,args);
+			}).catch(()=>{
+				msg.channel.createMessage("You do not have permission to use that command.");
+			})
+		} else {
+			command.execute(bot,msg,args);
+		}
+		
 	}
 
 }
@@ -317,8 +359,8 @@ bot.commands.role.subcommands.remove = {
 				msg.channel.createMessage({
 					embed: {
 						fields:[
-						{name:"Added",value: (rem.length>0 ? rem.join("\n") : "None")},
-						{name:"Not added: Reason",value: (nrem.length>0 ? nrem.map(nar=>nar.name+": "+nar.reason).join("\n") : "None")}
+						{name:"REmoved",value: (rem.length>0 ? rem.join("\n") : "None")},
+						{name:"Not removed: Reason",value: (nrem.length>0 ? nrem.map(nar=>nar.name+": "+nar.reason).join("\n") : "None")}
 						]
 					}
 				});
