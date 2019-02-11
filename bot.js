@@ -88,39 +88,52 @@ const setup = async function(){
 	bot.commands.admin = await require("./commands/admin.js");
 }
 
-const cmdHandle = async function(clist,cmd,msg,args,lastcmd,lastargs){
-	cmd = (Object.values(clist).find(c => c.alias && c.alias.includes(cmd.toLowerCase())) ? Object.values(clist).find(c => c.alias && c.alias.includes(cmd.toLowerCase())) : (clist[cmd]) ? clist[cmd] : "notfound");
-	if(cmd == "notfound" && !lastcmd) {
-		return msg.channel.createMessage("Command not found.");
-	} else if(cmd == "notfound" && lastcmd) {
-		lastcmd.execute(bot,msg,lastargs,bot.server_configs[msg.guild.id] || []);
-	} else {
-		if(args[0] == undefined || args[0]=="" || cmd.subcommands == undefined || Object.keys(cmd.subcommands).length == 0){
-			// console.log(cmd);
-			if(cmd.guildOnly && !msg.guild ) return msg.channel.createMessage("This command can only be used in guilds.");
-			if(cmd.permissions != undefined){
-				await Promise.all(cmd.permissions.map(p=>{
-					if(msg.member.permission.has(p)){
-						return new Promise((res,rej)=>{
-							setTimeout(res("passed"),100)
-						})
-					} else {
-						return new Promise((res,rej)=>{
-							setTimeout(rej("failed"),100)
-						})
-					}
-				})).then(()=>{
-					cmd.execute(bot,msg,args,bot.server_configs[msg.guild.id] | []);
-				}).catch(e=>{
-					console.log(e);
-					msg.channel.createMessage("You do not have permission to use that command.");
-				})
-			} else {
-				cmd.execute(bot,msg,args,bot.server_configs[msg.guild.id] || []);
+const cmdHandle = async function(bot, msg, args){
+	var clist = bot.commands;
+	var cmdname;
+	var command;
+	var parents = [];
+	var lastindex;
+	var prefix = (msg.guild!=undefined && bot.server_configs[msg.guild.id] && (bot.server_configs[msg.guild.id].prefix!= undefined && bot.server_configs[msg.guild.id].prefix!="") ? config.prefix.join("|")+"|"+bot.server_configs[msg.guild.id].prefix : config.prefix.join("|"));
+	var cx = msg.content.split(" ")[0].replace(new RegExp(prefix,"i"),"");
+	if(!clist[cx.toLowerCase()] && !Object.values(clist).find(cm => cm.alias && cm.alias.includes(cx.toLowerCase()))) return msg.channel.createMessage("Command not found.");
+	args.splice(0,0,cx);
+	await Promise.all(args.map((c,cv)=>{
+		if(clist[c.toLowerCase()] || Object.values(clist).find(cm => cm.alias && cm.alias.includes(c.toLowerCase()))){
+			var cname = (clist[c.toLowerCase()] ? c.toLowerCase() : Object.keys(clist).find(cm => clist[cm].alias && clist[cm].alias.includes(c.toLowerCase())));
+			if(args.length-1 == cv){
+				command = clist[cname];
+				cmdname = cname;
+				args.shift();
+
+			} else if(clist[cname].subcommands){
+				parents.push({name:cname, cmd:clist[cname]});
+				clist = clist[cname].subcommands;
+				lastindex = cv;
+
+			} else if(args.length-1 != cv) {
+				command = clist[cname];
+				cmdname = cname;
+				lastindex = cv;
+
 			}
-		} else if(cmd.subcommands){
-			cmdHandle(cmd.subcommands,args.slice(0,1).toString(),msg,args.slice(1),cmd,args);
+		} else {
+			if(command==undefined)
+			command = "notfound";
 		}
+		return new Promise((res,rej)=>{
+			setTimeout(res("beep"),100);
+		})
+	}))
+	if(lastindex != undefined) args = args.slice(-(args.length-(lastindex+1)));
+	if((command=="notfound" || command==undefined) && !parents[0]){
+		msg.channel.createMessage("Command not found.");
+	} else if(parents[0] && (command == "notfound" || command == undefined)){
+		parents[parents.length-1].cmd.execute(bot,msg,args);
+	} else if(parents[0] && command != "notfound"){
+		command.execute(bot,msg,args);
+	} else {
+		command.execute(bot,msg,args);
 	}
 
 }
@@ -133,7 +146,7 @@ bot.commands = {};
 
 bot.commands.help = {
 	help: () => "Use this to list commands or get help with a specific command",
-	usage: () => ["- List commands and basic help functions."," [command] - Get help with that command"],
+	usage: () => [" - List commands and basic help functions."," [command] - Get help with that command"],
 	execute: async (bot, msg, args)=>{
 		var clist = bot.commands;
 		var cmdname;
@@ -186,7 +199,7 @@ bot.commands.help = {
 					text: "Arguments like [this] are required, arguments like <this> are optional."
 				}
 			}});
-		} else if(parents[0] && command == "notfound"){
+		} else if(parents[0] && (command == "notfound" || command == undefined)){
 			command = parents[parents.length-1].cmd;
 			msg.channel.createMessage({embed:{
 				title: "Herobrine - Help: "+ parents.map(p => p.name).join(" - "),
@@ -251,7 +264,7 @@ bot.commands.role = {
 	usage: ()=> [" - display this help text","s - list available roles"],
 	desc: () => "This command can only be used in guilds.",
 	execute: (bot, msg, args)=>{
-		bot.commands.help.execute(msg,["role"],cfg);
+		bot.commands.help.execute(bot,msg,["role"]);
 	},
 	module: "utility",
 	subcommands: {},
@@ -293,7 +306,7 @@ bot.commands.role.subcommands.remove = {
 						}
 					})
 				} else {
-					nad.push({name:r,reason:"Role does not exist."});
+					nrem.push({name:r,reason:"Role does not exist."});
 				}
 				return new Promise((resolve,reject)=>{
 					setTimeout(()=>{
@@ -938,7 +951,7 @@ bot.on("messageCreate",async (msg)=>{
 		let args = msg.content.replace(new RegExp("^"+config.prefix.join("|")+((msg.guild != undefined && bot.server_configs[msg.guild.id] && (bot.server_configs[msg.guild.id].prefix!=undefined && bot.server_configs[msg.guild.id].prefix!="")) ? "|"+bot.server_configs[msg.guild.id].prefix : ""),"i"), "").split(" ");
 		let cmd = args.shift();
 		console.log("Command: "+cmd+"\nArgs: "+args.join(", "));
-		cmdHandle(bot.commands,cmd,msg,args);
+		cmdHandle(bot, msg, args);
 
 	}
 
