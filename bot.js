@@ -359,7 +359,7 @@ bot.commands.role.subcommands.remove = {
 				msg.channel.createMessage({
 					embed: {
 						fields:[
-						{name:"REmoved",value: (rem.length>0 ? rem.join("\n") : "None")},
+						{name:"Removed",value: (rem.length>0 ? rem.join("\n") : "None")},
 						{name:"Not removed: Reason",value: (nrem.length>0 ? nrem.map(nar=>nar.name+": "+nar.reason).join("\n") : "None")}
 						]
 					}
