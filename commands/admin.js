@@ -187,7 +187,7 @@ module.exports.subcommands.role = {
 				" add [comma, separated, role names] [@memberping] - adds roles to specified member",
 				" remove [comma, separated, role names] [@memberping] - removes roles from specified member"],
 	execute: (bot, msg, args) =>{
-		commands.help.execute(msg,["admin","role"])
+		bot.commands.help.execute(msg,["admin","role"])
 	},
 	subcommands: {}
 }
