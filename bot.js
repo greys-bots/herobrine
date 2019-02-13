@@ -264,7 +264,8 @@ bot.commands.help = {
 					(command.desc!=undefined ? "\n\n"+command.desc() : "") +
 					(command.subcommands ? "\n\n**Subcommands**: "+Object.keys(command.subcommands).join(", ") : "") +
 					(command.alias!=undefined ? "\n\n**Aliases:** "+command.alias.join(", ") : "") +
-					(command.module!=undefined ? "\n\nThis command is part of the **" + (command.module || parents[0].module) + "** module." : ""),
+					(command.module!=undefined ? "\n\nThis command is part of the **" + (command.module || parents[0].module) + "** module." : "") +
+					(command.guildOnly ? "\n\nThis command can only be used in guilds." : ""),
 				color: 16755455,
 				footer:{
 					icon_url: bot.user.avatarURL,
@@ -280,7 +281,8 @@ bot.commands.help = {
 					(command.desc!=undefined ? "\n\n"+command.desc() : "") +
 					(command.subcommands ? "\n\n**Subcommands**: "+Object.keys(command.subcommands).join(", ") : "") +
 					(command.alias!=undefined ? "\n\n**Aliases:** "+command.alias.join(", ") : "") +
-					(command.module!=undefined ? "\n\nThis command is part of the **" + (command.module) + "** module." : ""),
+					(command.module!=undefined ? "\n\nThis command is part of the **" + (command.module) + "** module." : "") +
+					(command.guildOnly ? "\n\nThis command can only be used in guilds." : ""),
 				color: 16755455,
 				footer:{
 					icon_url: bot.user.avatarURL,

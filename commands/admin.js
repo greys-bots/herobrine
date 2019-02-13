@@ -189,7 +189,8 @@ module.exports.subcommands.role = {
 	execute: (bot, msg, args) =>{
 		bot.commands.help.execute(msg,["admin","role"])
 	},
-	subcommands: {}
+	subcommands: {},
+	guildOnly: true
 }
 
 module.exports.subcommands.role.subcommands.add = {
