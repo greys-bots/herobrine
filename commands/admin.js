@@ -41,7 +41,7 @@ module.exports.subcommands.prefix = {
 				}
 				// console.log(bot.server_configs[msg.guild.id]);
 				Util.reloadConfig(bot, msg.guild.id);
-				msg.channel.createMessage(("Prefix changed."));
+				msg.channel.createMessage((args[0] ? "Prefix changed." : "Prefix reset."));
 			}
 		})
 	}
@@ -146,10 +146,15 @@ module.exports.subcommands.prune.subcommands.safe = {
 
 // - - - - - - - - - - - Adroles - - - - - - - - - - -
 
-module.exports.subcommands.roles = {
-	help: ()=> "List all indexed roles for a server.",
-	usage: ()=> [" - lists all indexed roles for the server"],
-	execute: (bot, msg, args)=> {
+module.exports.subcommands.role = {
+	help: ()=> "Create, delete, edit, add, and remove roles.",
+	usage: ()=> [" - shows this help",
+				" create [role name] - creates new role",
+				" delete [role name] - deletes existing role",
+				" edit [role name] [color/name/etc] [new value] - edits existing role",
+				" add [comma, separated, role names] [@memberping] - adds roles to specified member",
+				" remove [comma, separated, role names] [@memberping] - removes roles from specified member"],
+	execute: (bot, msg, args) =>{
 		bot.db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
 			if(rows.length>0){
 				msg.channel.createMessage({
@@ -164,6 +169,8 @@ module.exports.subcommands.roles = {
 						}]
 					}
 				});
+			} else {
+				msg.channel.createMessage("There are no indexed roles for this server.");
 			}
 			bot.db.query("BEGIN TRANSACTION");
 			rows.forEach(r =>{
@@ -174,23 +181,10 @@ module.exports.subcommands.roles = {
 			bot.db.query("COMMIT");
 		})
 	},
-	permissions: ["manageRoles"],
-	guildOnly: true
-}
-
-module.exports.subcommands.role = {
-	help: ()=> "Create, delete, edit, add, and remove roles.",
-	usage: ()=> [" - shows this help",
-				" create [role name] - creates new role",
-				" delete [role name] - deletes existing role",
-				" edit [role name] [color/name/etc] [new value] - edits existing role",
-				" add [comma, separated, role names] [@memberping] - adds roles to specified member",
-				" remove [comma, separated, role names] [@memberping] - removes roles from specified member"],
-	execute: (bot, msg, args) =>{
-		bot.commands.help.execute(msg,["admin","role"])
-	},
 	subcommands: {},
-	guildOnly: true
+	alias: ["roles"],
+	guildOnly: true,
+	permissions: ["manageRoles"]
 }
 
 module.exports.subcommands.role.subcommands.add = {

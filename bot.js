@@ -83,10 +83,14 @@ const setup = async function(){
 		}
 	});
 
-	bot.commands.test = await require("./commands/test.js");
-	bot.commands.trigs = await require("./commands/trigs.js");
-	bot.commands.admin = await require("./commands/admin.js");
-	bot.commands.role = await require("./commands/role.js");
+	var files = fs.readdirSync("./commands");
+	await Promise.all(files.map(f => {
+		console.log(f.slice(0,-3));
+		bot.commands[f.slice(0,-3)] = require("./commands/"+f);
+		return new Promise((res,rej)=>{
+			setTimeout(res("a"),100)
+		})
+	})).then(()=> console.log("finished loading commands."));
 }
 
 const cmdHandle = async function(bot, msg, args){
@@ -186,12 +190,13 @@ bot.commands.help = {
 	help: () => "Use this to list commands or get help with a specific command",
 	usage: () => [" - List commands and basic help functions."," [command] - Get help with that command"],
 	execute: async (bot, msg, args)=>{
+		console.log(args);
 		var clist = bot.commands;
 		var cmdname;
 		var command;
 		var parents = [];
 		var embed;
-		var prefix = (msg.guild!=undefined && bot.server_configs[msg.guild.id] && (bot.server_configs[msg.guild.id].prefix!= undefined && bot.server_configs[msg.guild.id].prefix!="") ? bot.server_configs[msg.guild.id].prefix : config.prefix[0]);
+		var prefix = (msg.guild && bot.server_configs[msg.guild.id] && bot.server_configs[msg.guild.id].prefix ? bot.server_configs[msg.guild.id].prefix : config.prefix[0]);
 		await Promise.all(args.map((c,cv)=>{
 			if(clist[c.toLowerCase()] || Object.values(clist).find(cm => cm.alias && cm.alias.includes(c.toLowerCase()))){
 				var cname = (clist[c.toLowerCase()] ? c.toLowerCase() : Object.keys(clist).find(cm => clist[cm].alias && clist[cm].alias.includes(c.toLowerCase())));
@@ -291,48 +296,21 @@ bot.commands.help = {
 			}
 		}
 
-		if(embed){
+		if(embed && msg.guild && !msg.channel.permissionsOf(bot.user.id).has("sendMessages")){
+			msg.author.getDMChannel().then(m => {
+				m.createMessage("I don't have permission to send messages there. Here is your help: ").then(()=>{
+					m.createMessage({embed})
+				})
+			})
+		} else if(embed && msg.guild && !msg.channel.permissionsOf(bot.user.id).has("embedLinks")){
+			msg.channel.createMessage(`**${embed.title}**\n\n${embed.description}\n\n${(embed.fields ? embed.fields.map(f => `${f.name}\n`+f.value).join("\n\n") : "")}*${embed.footer.text}*`);
+		} else if(embed){
 			msg.channel.createMessage({embed});
 		}
 	},
 	module: "utility",
 	alias: ["h"]
 }
-
-//- - - - - - - - - - Roles - - - - - - - - - -
-bot.commands.roles = {
-	help: ()=> "List all available self roles for a guild.",
-	usage: ()=> [" - Lists available roles."],
-	execute: (bot, msg, args)=>{
-		bot.db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
-			if(rows.length>0){
-				msg.channel.createMessage({
-					embed: {
-						fields:[{
-							name:"\\~\\~\\* Available Roles \\*\\~\\~",
-							value:rows.map(r => {if(msg.guild.roles.find(rl => rl.id == r.id) && r.sar == "1") return msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase();})
-							.filter(x => x!=null)
-							.sort()
-							.join("\n")
-						}]
-					}
-				});
-			} else {
-				msg.channel.createMessage("There are no indexed roles for this server.");
-			}
-			bot.db.query("BEGIN TRANSACTION");
-			rows.forEach(r =>{
-				if(!msg.guild.roles.find(rl => rl.id == r.id)){
-					bot.db.query(`DELETE FROM roles WHERE id='${r.id}'`);
-				}
-			})
-			bot.db.query("COMMIT");
-		});
-	},
-	module: "utility",
-	guildOnly: true
-}
-
 
 //- - - - - - - - - - Pings - - - - - - - - - -
 
@@ -865,8 +843,12 @@ bot.on("messageCreate",async (msg)=>{
 		});
 
 		let args = msg.content.replace(new RegExp("^"+config.prefix.join("|")+((msg.guild != undefined && bot.server_configs[msg.guild.id] && (bot.server_configs[msg.guild.id].prefix!=undefined && bot.server_configs[msg.guild.id].prefix!="")) ? "|"+bot.server_configs[msg.guild.id].prefix : ""),"i"), "").split(" ");
-		cmdHandle(bot, msg, args);
-
+		if(args[args.length-1] == "help"){
+			bot.commands.help.execute(bot, msg, args.slice(0,args.length-1));
+		} else {
+			cmdHandle(bot, msg, args);
+		}
+		
 	}
 
 

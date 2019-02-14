@@ -4,11 +4,35 @@ module.exports = {
 	help: ()=> "Add and remove self roles.",
 	usage: ()=> [" - display this help text","s - list available roles"],
 	execute: (bot, msg, args)=>{
-		bot.commands.help.execute(bot,msg,["role"]);
+		bot.db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
+			if(rows.length>0){
+				msg.channel.createMessage({
+					embed: {
+						fields:[{
+							name:"\\~\\~\\* Available Roles \\*\\~\\~",
+							value:rows.map(r => {if(msg.guild.roles.find(rl => rl.id == r.id) && r.sar == "1") return msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase();})
+							.filter(x => x!=null)
+							.sort()
+							.join("\n")
+						}]
+					}
+				});
+			} else {
+				msg.channel.createMessage("There are no indexed roles for this server.");
+			}
+			bot.db.query("BEGIN TRANSACTION");
+			rows.forEach(r =>{
+				if(!msg.guild.roles.find(rl => rl.id == r.id)){
+					bot.db.query(`DELETE FROM roles WHERE id='${r.id}'`);
+				}
+			})
+			bot.db.query("COMMIT");
+		});
 	},
 	module: "utility",
 	subcommands: {},
-	guildOnly: true
+	guildOnly: true,
+	alias: ["roles"]
 }
 
 module.exports.subcommands.list = {
