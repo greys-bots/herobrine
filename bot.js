@@ -244,9 +244,9 @@ bot.commands.help = {
 				description: "I'm Herobrine! This bot is multi-purpose and intended for a wide range of functions.",
 				fields:[
 					{name:"**FUN**",
-					value: Object.keys(bot.commands).filter(x => bot.commands[x].module == "fun" && !bot.commands[x].alias).map( c => "**"+prefix + c + "** - " + bot.commands[c].help()).sort().join("\n")},
+					value: Object.keys(bot.commands).filter(x => bot.commands[x].module == "fun").map( c => "**"+prefix + c + "** - " + bot.commands[c].help()).sort().join("\n")},
 					{name:"**UTILITY**",
-					value: Object.keys(bot.commands).filter(x => bot.commands[x].module == "utility" && !bot.commands[x].alias).map( c => "**"+prefix + c + "** - " + bot.commands[c].help()).sort().join("\n")},
+					value: Object.keys(bot.commands).filter(x => bot.commands[x].module == "utility").map( c => "**"+prefix + c + "** - " + bot.commands[c].help()).sort().join("\n")},
 					{name:"**ADMIN**",
 					value: Object.keys(bot.commands).filter(x => bot.commands[x].module == "admin").map( c => "**"+prefix + c + "** - " + bot.commands[c].help()).join("\n")},
 				],

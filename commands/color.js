@@ -1,3 +1,6 @@
+var Util = require("../utilities");
+var Texts = require("../strings.json");
+
 //- - - - - - - - - - Color - - - - - - - -  - - - -
 
 module.exports = {
