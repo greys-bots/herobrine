@@ -7,5 +7,6 @@ module.exports = {
 	execute: (bot, msg, args)=>{
 		msg.channel.createMessage(Texts.pressf[Math.floor(Math.random()*Texts.pressf.length)]);
 	},
-	alias:["f"]
+	alias:["f"],
+	module: "fun"
 }

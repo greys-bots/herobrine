@@ -31,7 +31,9 @@ module.exports = {
 			}
 		})
 	},
-	subcommands: {}
+	subcommands: {},
+	module: "utility",
+	guildOnly: true
 }
 
 module.exports.subcommands.change = {

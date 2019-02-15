@@ -32,7 +32,8 @@ module.exports = {
 	},
 	alias: ["p","prof"],
 	subcommands: {},
-	guildOnly: true
+	guildOnly: true,
+	module: "utility"
 }
 
 module.exports.subcommands.disable = {
