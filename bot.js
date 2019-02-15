@@ -421,12 +421,20 @@ bot.on("messageCreate", async (msg)=>{
 bot.on("guildMemberAdd", async (guild, member)=>{
 	if(bot.server_configs[guild.id]){
 		var scfg = bot.server_configs[guild.id];
-		if(scfg.welcome.enabled){
-			bot.createMessage(scfg.welcome.channel,scfg.welcome.message);
+		console.log(scfg);
+		scfg.welcome = (typeof scfg.welcome == "string" ? JSON.parse(scfg.welcome) : scfg.welcome);
+		if(scfg.welcome.enabled && scfg.welcome.msg){
+			bot.createMessage(scfg.welcome.channel,scfg.welcome.msg);
 		}
-		if(scfg.autoroles != ""){
-			await Promise.all(scfg.autoroles.split(",").map(r=>{
-				member.addRole(r);
+		if(scfg.welcome.enabled && scfg.autoroles){
+			await Promise.all(scfg.autoroles.split(", ").map(r=>{
+				if(guild.roles.find(rl => rl.id == r)){
+					member.addRole(r);
+				} else {
+					guild.members.find(m => m.id == guild.ownerID).user.getDMChannel().then((c)=> c.createMessage("Autorole not found: "+r+"\nRemoving role from autoroles."));
+					scfg.autoroles = scfg.autoroles.replace(", "+r,"").replace(r+", ","");
+					bot.db.query(`UPDATE configs SET autoroles=? WHERE srv_id='${guild.id}'`,[scfg.autoroles]);
+				}
 			})).then(()=>{
 				console.log(`Successfully added autoroles in guild ${guild.name} ${guild.id}`);
 			}).catch(e=> console.log(e));
