@@ -26,8 +26,8 @@ bot.server_configs = {};
 
 bot.modules = {};
 
-//uncommenting the line below may cause "kill einvalid" errors on some computers;
-//make sure the config is set up if you're getting issues
+//uncommenting the line below may fix "kill einvalid" errors on some computers;
+//make sure the config is set up and then uncomment if you're getting issues
 // dblite.bin = config.sqlite;
 
 try{
@@ -74,7 +74,7 @@ const setup = async function(){
 		await Promise.all(rows.map( s =>{
 			bot.server_configs[s.srv_id] = s;
 			return new Promise((res,rej)=>{
-				setTimeout(res("config loaded"),100)
+				setTimeout(res("config for "+s.srv_id+" loaded"),100)
 			})
 		}))
 	});
@@ -106,18 +106,17 @@ const cmdHandle = async function(bot, msg, args){
 				c.toLowerCase() : 
 				Object.keys(clist).find(cm => clist[cm].alias && clist[cm].alias.includes(c.toLowerCase())));
 			if(args.length-1 == cv){
-				command = clist[cname];
-				cmdname = cname;
+				command = {name: cname, cmd: clist[cname]};
 				args = [];
 
 			} else if(clist[cname].subcommands){
+				console.log(cname);
 				parents.push({name:cname, cmd:clist[cname]});
 				clist = clist[cname].subcommands;
 				lastindex = cv;
 
 			} else if(args.length-1 != cv) {
-				command = clist[cname];
-				cmdname = cname;
+				command = {name: cname, cmd: clist[cname]};
 				lastindex = cv;
 				clist = "";
 
@@ -134,49 +133,44 @@ const cmdHandle = async function(bot, msg, args){
 	if((command=="notfound" || command==undefined) && !parents[0]){
 		msg.channel.createMessage("Command not found.");
 	} else if(parents[0] && (command == "notfound" || command == undefined)){
-		if(command.guilOnly && !msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
-		if(parents[parents.length-1].permissions!=undefined){ //check perms
-			await Promise.all(parents[parents.length-1].permissions.map(p=>{
-				if(msg.member.permission.has(p)){
-					return new Promise((res,rej)=>{
-						setTimeout(res("passed"),100)
-					})
-				} else {
-					return new Promise((res,rej)=>{
-						setTimeout(rej("failed"),100)
-					})
-				}
-			})).then(()=>{
-				parents[parents.length-1].cmd.execute(bot,msg,args);
-			}).catch(()=>{
-				msg.channel.createMessage("You do not have permission to use that command.");
+		if(parents[parents.length-1].cmd.guildOnly && !msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
+		if(!Util.checkDisabled(bot, msg.guild.id, [parents[parents.length-1]])){ //check perms & disable status
+			Util.checkPermissions(bot, msg, parents[parents.length-1]).then(()=>{
+				parents[parents.length-1].cmd.execute(bot, msg, args)
+			}).catch(e=>{
+				console.log(e);
+				msg.channel.createMessage("You dont have permission to use that command.")
 			})
 		} else {
-			parents[parents.length-1].cmd.execute(bot,msg,args);
+			msg.channel.createMessage("That command is disabled.");
 		}
 		
+	} else if(parents[0]){
+		console.log("command with parent");
+		if(command.guildOnly && !msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
+		if(!Util.checkDisabled(bot, msg.guild.id, [parents[0],command])){ //check perms & disable status
+			Util.checkPermissions(bot, msg, command).then(()=>{
+				command.cmd.execute(bot, msg, args)
+			}).catch(e=>{
+				console.log(e);
+				msg.channel.createMessage("You dont have permission to use that command.")
+			})
+		} else {
+			msg.channel.createMessage("That command is disabled.");
+		}	
 	} else {
-		if(command.guilOnly && !msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
-		if(command.permissions){ //check perms
-			await Promise.all(command.permissions.map(p=>{
-				if(msg.member.permission.has(p)){
-					return new Promise((res,rej)=>{
-						setTimeout(res("passed"),100)
-					})
-				} else {
-					return new Promise((res,rej)=>{
-						setTimeout(rej("failed"),100)
-					})
-				}
-			})).then(()=>{
-				command.execute(bot,msg,args);
-			}).catch(()=>{
-				msg.channel.createMessage("You do not have permission to use that command.");
+		console.log("base command");
+		if(command.guildOnly && !msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
+		if(!Util.checkDisabled(bot, msg.guild.id, [command])){ //check perms & disable status
+			Util.checkPermissions(bot, msg, command).then(()=>{
+				command.cmd.execute(bot, msg, args)
+			}).catch(e=>{
+				console.log(e);
+				msg.channel.createMessage("You dont have permission to use that command.")
 			})
 		} else {
-			command.execute(bot,msg,args);
-		}
-		
+			msg.channel.createMessage("That command is disabled.");
+		}	
 	}
 }
 
@@ -420,6 +414,14 @@ bot.on("messageCreate", async (msg)=>{
 			}
 		}
 	})
+
+	if(msg.guild && !bot.server_configs[msg.guild.id]){
+		bot.db.query(`INSERT INTO configs VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,[msg.guild.id,"",{},"",{},"",{},[]],(err,rows)=>{
+			if(err) return console.log(err);
+			console.log(`Config for ${msg.guild.name} (${msg.guild.id}) created.`);
+			Util.reloadConfig(bot,msg.guild.id)
+		})
+	}
 
 	if(new RegExp("^"+config.prefix.join("|")).test(msg.content.toLowerCase()) || (msg.guild!=undefined && bot.server_configs[msg.guild.id] && (bot.server_configs[msg.guild.id].prefix!= undefined && bot.server_configs[msg.guild.id].prefix!="") && msg.content.toLowerCase().startsWith(bot.server_configs[msg.guild.id].prefix))){
 		let now = new Date();

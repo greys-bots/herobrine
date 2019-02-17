@@ -84,7 +84,7 @@ module.exports.subcommands.channel = {
 					console.log(w)
 					if(msg.channelMentions > 0){
 						w.channel = msg.channelMentions[0];
-						console.log(msg.channelMentions[0]);
+						// console.log(msg.channelMentions[0]);
 						bot.db.query(`UPDATE configs SET welcome=? WHERE srv_id='${msg.guild.id}'`,[w],(err,rows)=>{
 							if(err) return console.log(err);
 							console.log(w);

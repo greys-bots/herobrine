@@ -54,5 +54,56 @@ module.exports = {
 				bot.server_configs[srv] = rows[0] ? rows[0] : {srv_id: srv, prefix: undefined, welcome: undefined, autoroles: undefined, disabled: undefined, opped: undefined, fedback: undefined};
 			}
 		})
+	},
+	checkDisabled: function(bot, srv, cmds){
+		if(bot.server_configs[srv] && bot.server_configs[srv].disabled){
+			console.log(cmds[1]);
+			console.log(cmds[0].cmd.module)
+			console.log(cmds[0].name)
+			var dislist = JSON.parse(bot.server_configs[srv].disabled) || bot.server_configs[srv].disabled;
+			if(dislist.modules && dislist.modules.includes(cmds[0].cmd.module)){
+				console.log("Module disabled.")
+				return true;
+			} else if(dislist.commands && dislist.commands[cmds[0].name]){
+				if(cmds[1]){
+					if(dislist.commands[cmds[0].name].includes(cmds[1].name)){
+						console.log("Subcommand disabled.")
+						return true;
+					} else {
+						console.log("Subcommand enabled.")
+						return false;
+					}
+				} else if(dislist.commands[cmds[0].name].includes("all")){
+					console.log("Complete command disabled.")
+					return true;
+				} else {
+					console.log("Complete command enabled.")
+					return false;
+				}
+			} else {
+				console.log("Command nor module found.");
+				return false;
+			}
+		} else {
+			console.log("Nothing disabled.")
+			return false;
+		}
+	},
+	checkPermissions: async function(bot, msg, cmd){
+		if(cmd.cmd.permissions){
+			await Promise.all(cmd.cmd.permissions.map(p=>{
+				if(msg.member.permission.has(p)){
+					return new Promise((res,rej)=>{
+						setTimeout(res("passed"),100)
+					})
+				} else {
+					return new Promise((res,rej)=>{
+						setTimeout(rej("failed"),100)
+					})
+				}
+			}))
+		} else {
+			return new Promise(res => res(true));
+		}
 	}
 };

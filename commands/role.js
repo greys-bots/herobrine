@@ -39,7 +39,30 @@ module.exports.subcommands.list = {
 	help: ()=> "Lists available roles for a server.",
 	usage: ()=> [" - Lists all selfroles for the server"],
 	execute: (bot, msg, args)=>{
-		bot.commands.roles.execute(bot,msg,args);
+		bot.db.query(`SELECT * FROM roles WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{	
+			if(rows.length>0){	
+				msg.channel.createMessage({	
+					embed: {	
+						fields:[{	
+							name:"\\~\\~\\* Available Roles \\*\\~\\~",	
+							value:rows.map(r => {if(msg.guild.roles.find(rl => rl.id == r.id) && r.sar == "1") return msg.guild.roles.find(rl => rl.id == r.id).name.toLowerCase();})	
+							.filter(x => x!=null)	
+							.sort()	
+							.join("\n")
+						}]
+					}
+				});
+			} else {
+				msg.channel.createMessage("There are no indexed roles for this server.");
+			}
+			bot.db.query("BEGIN TRANSACTION");
+			rows.forEach(r =>{
+				if(!msg.guild.roles.find(rl => rl.id == r.id)){
+					bot.db.query(`DELETE FROM roles WHERE id='${r.id}'`);
+				}
+			})
+			bot.db.query("COMMIT");
+		});
 	}
 }
 

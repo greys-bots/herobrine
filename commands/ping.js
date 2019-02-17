@@ -9,7 +9,8 @@ module.exports = {
 	},
 	module: "fun",
 	subcommands: {},
-	alias: ["ping!"]
+	alias: ["ping!"],
+	permissions: ["manageGuild"]
 }
 
 module.exports.subcommands.test = {
