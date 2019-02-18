@@ -65,7 +65,10 @@ module.exports = {
 				console.log("Module disabled.")
 				return true;
 			} else if(dislist.commands && dislist.commands[cmds[0].name]){
-				if(cmds[1]){
+				if(dislist.commands[cmds[0].name].includes("all")){
+					console.log("Complete command disabled.")
+					return true;
+				} else if(cmds[1]){
 					if(dislist.commands[cmds[0].name].includes(cmds[1].name)){
 						console.log("Subcommand disabled.")
 						return true;
@@ -73,11 +76,8 @@ module.exports = {
 						console.log("Subcommand enabled.")
 						return false;
 					}
-				} else if(dislist.commands[cmds[0].name].includes("all")){
-					console.log("Complete command disabled.")
-					return true;
 				} else {
-					console.log("Complete command enabled.")
+					console.log("Base command enabled.")
 					return false;
 				}
 			} else {

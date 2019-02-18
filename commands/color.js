@@ -1,5 +1,6 @@
 var Util = require("../utilities");
 var Texts = require("../strings.json");
+var jimp = require("jimp");
 
 //- - - - - - - - - - Color - - - - - - - -  - - - -
 

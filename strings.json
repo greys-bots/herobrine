@@ -49,5 +49,11 @@
 	"light grey": "BCC0C0",
 	"dark navy": "2C3E50"
 },
-"pressf": ["<:pressf:543851050864607242>","<a:fspin:543851155562954753>","<a:fspinfast:543851120511156224>"]
+"pressf": ["<:pressf:543851050864607242>","<a:fspin:543851155562954753>","<a:fspinfast:543851120511156224>"],
+"welc_strings": {
+	"$MEMBER.MENTION":"${member.mention}",
+	"$MEMBER.NAME":"${member.username + '#' + member.discriminator}",
+	"$MEMBER.ID":"${member.id}",
+	"$GUILD.NAME":"${guild.name}"
+}
 }

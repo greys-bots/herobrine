@@ -456,7 +456,8 @@ bot.on("guildMemberAdd", async (guild, member)=>{
 		console.log(scfg);
 		scfg.welcome = (typeof scfg.welcome == "string" ? JSON.parse(scfg.welcome) : scfg.welcome);
 		if(scfg.welcome.enabled && scfg.welcome.msg){
-			bot.createMessage(scfg.welcome.channel,scfg.welcome.msg);
+			var msg = eval("`"+scfg.welcome.msg.split(" ").map(s => { return Texts.welc_strings[s.replace(/[?,!\s]|\.\s+/,"")] + s.match(/[?,!\s]|\.\s+/) || s; }).join(" ")+"`");
+			bot.createMessage(scfg.welcome.channel, msg);
 		}
 		if(scfg.welcome.enabled && scfg.autoroles){
 			await Promise.all(scfg.autoroles.split(", ").map(r=>{

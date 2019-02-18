@@ -91,20 +91,16 @@ module.exports.subcommands.channel = {
 							msg.channel.createMessage("Channel updated.")
 						})
 					} else {
-						var chan;
-						msg.guild.getRESTChannels().then(ch=>{
-							chan = ch.find(c => c.name == args[0] || c.id == args[0]) || "notfound";
-							console.log(chan);
-							if(chan && chan!="notfound"){
-								w.channel = msg.guild.channels.find(c => c.name == args[0].toLowerCase() || c.id == args[0]).id;
-								bot.db.query(`UPDATE configs SET welcome=? WHERE srv_id='${msg.guild.id}'`,[w],(err,rows)=>{
-									if(err) return console.log(err);
-									msg.channel.createMessage("Channel updated.")
-								})
-							} else {
-								msg.channel.createMessage("Channel not found.")
-							}
-						})
+						if(msg.guild.channels.find(c => c.name == args[0].toLowerCase() || c.id == args[0]).id){
+							w.channel = msg.guild.channels.find(c => c.name == args[0].toLowerCase() || c.id == args[0]).id;
+							console.log(w.channel)
+							bot.db.query(`UPDATE configs SET welcome=? WHERE srv_id='${msg.guild.id}'`,[w],(err,rows)=>{
+								if(err) return console.log(err);
+								msg.channel.createMessage("Channel updated.")
+							})
+						} else {
+							msg.channel.createMessage("Channel not found.")
+						}
 					}
 				} else {
 					if(msg.channelMentions){
@@ -121,8 +117,8 @@ module.exports.subcommands.channel = {
 					}
 				}
 			})
-			Util.reloadConfig(bot, msg.guild.id);
 		}
+		Util.reloadConfig(bot, msg.guild.id);
 	},
 	guildOnly: true,
 	alias: ["chan"],
@@ -132,6 +128,12 @@ module.exports.subcommands.channel = {
 module.exports.subcommands.message = {
 	help: ()=> "Sets (or resets) welcome message.",
 	usage: ()=> [" <new message> - sets welcome message to this, or resets if nothing's given"],
+	desc: ()=> ["**Defined Vars**",
+				"$MEMBER.MENTION = mentions the member who joined",
+				"$MEMBER.NAME = gives the member's name and discriminator",
+				"$MEMBER.ID = gives the member's ID",
+				"$GUILD.NAME = gives the guild's name",
+				"*Vars should be in all caps*"].join("\n"),
 	execute: (bot, msg, args)=>{
 		if(!args[0]) {
 			bot.db.query(`SELECT * FROM configs WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
@@ -167,8 +169,8 @@ module.exports.subcommands.message = {
 					})
 				}
 			})
-			Util.reloadConfig(bot, msg.guild.id);
 		}
+		Util.reloadConfig(bot, msg.guild.id);
 	},
 	guildOnly: true,
 	alias: ["msg"],
