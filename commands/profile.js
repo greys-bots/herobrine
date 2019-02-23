@@ -3,8 +3,8 @@ module.exports = {
 	help: ()=> "Shows your profile.",
 	usage: ()=> [" - views your profile",
 				" [discord ID] - views another user's profile",
-				"edit - opens a menu for profile editing",
-				"enable/disable - enables/disables level-up messages"],
+				" edit - opens a menu for profile editing",
+				" enable/disable - enables/disables level-up messages"],
 	execute: (bot, msg, args)=>{
 		var id = (args[0] ? args[0] : msg.author.id);
 		bot.db.query(`SELECT * FROM profiles WHERE usr_id='${id}'`,(err,rows)=>{
