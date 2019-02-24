@@ -10,9 +10,10 @@ Official "birthday": 25 September 2017
 const Eris = 		require("eris-additions")(require("eris")); //da lib
 const fs =			require("fs"); //file stuff
 const {Client} =	require("pg"); //postgres, for data things
-const dblite =		require('dblite').withSQLite('3.8.6+'); //dblite, also for data things
-const pimg =		require('pngjs-image'); //for image manipulation
-const jimp =		require('jimp'); //also for image manipulation
+const dblite =		require("dblite").withSQLite('3.8.6+'); //dblite, also for data things
+const pimg =		require("pngjs-image"); //for image manipulation
+const jimp =		require("jimp"); //also for image manipulation
+const exec =		require("child_process").exec; //self-updating code! woo!
 const config =		require('./config.json'); //configs
 const Texts =		require('./strings.json'); //json full of text for different things
 const Util =		require("./utilities.js");
@@ -49,6 +50,31 @@ SETUP
 ***********************************/
 
 const setup = async function(){
+
+	var git = exec("git pull origin local",{cwd: __dirname}, (err, out, stderr)=>{
+		if(err){
+			console.error(err);
+			bot.users.find(u => u.id == config.accepted_ids[0]).getDMChannel().then((ch)=>{
+				ch.sendMessage("Error pulling files.")
+			})
+			return;
+		}
+		console.log(out);
+		if(out.toString().includes("up to date")){
+			return console.log("Everything up to date.");
+		}
+
+		var gp = exec("git fetch --all && git reset --hard origin/local", {cwd: __dirname}, (err2, out2, stderr2)=>{
+			if(err2){
+				console.error(err2);
+				bot.users.find(u => u.id == config.accepted_ids[0]).getDMChannel().then((ch)=>{
+					ch.sendMessage("Error overwriting files.")
+				})
+				return;
+			}
+			console.log("fetched and updated. output: "+out2)
+		})
+	})
 
 	bot.db.query(".databases");
 	bot.db.query(`CREATE TABLE IF NOT EXISTS triggers (user_id TEXT, code TEXT, list TEXT, alias TEXT)`,(err,rows)=>{
