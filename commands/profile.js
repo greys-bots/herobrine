@@ -2,7 +2,7 @@
 module.exports = {
 	help: ()=> "Shows your profile.",
 	usage: ()=> [" - views your profile",
-				" [discord ID] - views another user's profile",
+				" [member ID/mention] - views another user's profile",
 				" edit - opens a menu for profile editing",
 				" enable/disable - enables/disables level-up messages"],
 	execute: (bot, msg, args)=>{
@@ -12,7 +12,7 @@ module.exports = {
 				console.log(err);
 				return msg.channel.createMessage("There was an error.");
 			}
-			if(!rows[0]) return msg.channel.createMessage("User profile note found.");
+			if(!rows[0]) return msg.channel.createMessage("User profile not found.");
 			msg.channel.createMessage({embed:{
 				author: {
 					name: msg.guild.members.find(m => m.id == id).username,
