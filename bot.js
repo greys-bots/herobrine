@@ -50,32 +50,33 @@ SETUP
 ***********************************/
 
 const setup = async function(){
-
-	var git = exec("git pull origin test",{cwd: __dirname}, (err, out, stderr)=>{
-		if(err){
-			console.error(err);
-			console.log(config.accepted_ids);
-			bot.users.find(u => u.id == config.accepted_ids[0]).getDMChannel().then((ch)=>{
-				ch.sendMessage("Error pulling files.")
-			})
-			return;
-		}
-		console.log(out);
-		if(out.toString().includes("up to date")){
-			return console.log("Everything up to date.");
-		}
-
-		var gp = exec("git fetch --all && git reset --hard origin/test", {cwd: __dirname}, (err2, out2, stderr2)=>{
-			if(err2){
-				console.error(err2);
+	if(config.update && config.remote && config.branch){
+		var git = exec(`git pull ${config.remote} ${config.branch}`,{cwd: __dirname}, (err, out, stderr)=>{
+			if(err){
+				console.error(err);
+				console.log(config.accepted_ids);
 				bot.users.find(u => u.id == config.accepted_ids[0]).getDMChannel().then((ch)=>{
-					ch.sendMessage("Error overwriting files.")
+					ch.sendMessage("Error pulling files.")
 				})
 				return;
 			}
-			console.log("fetched and updated. output: "+out2)
+			console.log(out);
+			if(out.toString().includes("up to date")){
+				return console.log("Everything up to date.");
+			}
+
+			var gp = exec(`git fetch --all && git reset --hard ${config.remote}/${config.branch}`, {cwd: __dirname}, (err2, out2, stderr2)=>{
+				if(err2){
+					console.error(err2);
+					bot.users.find(u => u.id == config.accepted_ids[0]).getDMChannel().then((ch)=>{
+						ch.sendMessage("Error overwriting files.")
+					})
+					return;
+				}
+				console.log("fetched and updated. output: "+out2)
+			})
 		})
-	})
+	}
 
 	bot.db.query(".databases");
 	bot.db.query(`CREATE TABLE IF NOT EXISTS triggers (user_id TEXT, code TEXT, list TEXT, alias TEXT)`,(err,rows)=>{
