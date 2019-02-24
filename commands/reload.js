@@ -1,4 +1,5 @@
-const config =		require('../config.json');
+var config = require('../config.json');
+var exec = require("child_process").exec;
 
 module.exports = {
 	help: ()=> "Reloads entire enboy, in all of his botty enby goodness.",
