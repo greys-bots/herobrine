@@ -10,8 +10,9 @@ module.exports = {
 		bot.db.query(`SELECT * FROM profiles WHERE usr_id='${id}'`,(err,rows)=>{
 			if(err){
 				console.log(err);
-				return msg.channel.createMessage("User profile not found or not indexed yet.");
+				return msg.channel.createMessage("There was an error.");
 			}
+			if(!rows[0]) return msg.channel.createMessage("User profile note found.");
 			msg.channel.createMessage({embed:{
 				author: {
 					name: msg.guild.members.find(m => m.id == id).username,
