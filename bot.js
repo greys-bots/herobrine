@@ -54,6 +54,7 @@ const setup = async function(){
 	var git = exec("git pull origin test",{cwd: __dirname}, (err, out, stderr)=>{
 		if(err){
 			console.error(err);
+			console.log(config.accepted_ids);
 			bot.users.find(u => u.id == config.accepted_ids[0]).getDMChannel().then((ch)=>{
 				ch.sendMessage("Error pulling files.")
 			})
