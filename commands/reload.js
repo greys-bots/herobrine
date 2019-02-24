@@ -2,7 +2,7 @@ var config = require('../config.json');
 var exec = require("child_process").exec;
 
 module.exports = {
-	help: ()=> "Reloads entire enboy, in all of his botty enby goodness.",
+	help: ()=> "Reloads entire bot.",
 	usage: ()=> [" - reloads Herobrine"],
 	execute: (bot, msg, args)=>{
 		if(config.accepted_ids.includes(msg.author.id)){
