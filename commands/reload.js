@@ -2,7 +2,7 @@ const config =		require('../config.json');
 
 module.exports = {
 	help: ()=> "Reloads entire enboy, in all of his botty enby goodness.",
-	usage: ()=> " - reloads Herobrine",
+	usage: ()=> [" - reloads Herobrine"],
 	execute: (bot, msg, args)=>{
 		if(config.accepted_ids.includes(msg.author.id)){
 			var git = exec("git pull origin test",{cwd: __dirname}, (err, out, stderr)=>{
