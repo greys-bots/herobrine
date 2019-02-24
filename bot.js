@@ -51,7 +51,7 @@ SETUP
 
 const setup = async function(){
 
-	var git = exec("git pull origin local",{cwd: __dirname}, (err, out, stderr)=>{
+	var git = exec("git pull origin test",{cwd: __dirname}, (err, out, stderr)=>{
 		if(err){
 			console.error(err);
 			bot.users.find(u => u.id == config.accepted_ids[0]).getDMChannel().then((ch)=>{
@@ -64,7 +64,7 @@ const setup = async function(){
 			return console.log("Everything up to date.");
 		}
 
-		var gp = exec("git fetch --all && git reset --hard origin/local", {cwd: __dirname}, (err2, out2, stderr2)=>{
+		var gp = exec("git fetch --all && git reset --hard origin/test", {cwd: __dirname}, (err2, out2, stderr2)=>{
 			if(err2){
 				console.error(err2);
 				bot.users.find(u => u.id == config.accepted_ids[0]).getDMChannel().then((ch)=>{
