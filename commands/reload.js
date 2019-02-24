@@ -1,7 +1,7 @@
 const config =		require('../config.json');
 
 module.exports = {
-	help: ()=> "Reloads entire bot.",
+	help: ()=> "Reloads entire enboy, in all of his botty enby goodness.",
 	usage: ()=> " - reloads Herobrine",
 	execute: (bot, msg, args)=>{
 		if(config.accepted_ids.includes(msg.author.id)){
