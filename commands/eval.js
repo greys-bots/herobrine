@@ -1,5 +1,6 @@
 var config = require("../config.json");
 var Util = require("../utilities");
+var exec = require("child_process").exec;
 
 //- - - - - - - - - - Eval - - - - - - - - - -
 module.exports = {
