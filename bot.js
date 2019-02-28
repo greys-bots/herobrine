@@ -128,7 +128,7 @@ const cmdHandle = async function(bot, msg, args){
 	var clist = bot.commands;
 	var cmdname, command, lastindex;
 	var parents = [];
-	if(bot.paused &&  msg.args[0] != "unpause") return;
+	if(bot.paused &&  args[0] != "unpause") return;
 	if(!clist[args[0].toLowerCase()] && !Object.values(clist).find(cm => cm.alias && cm.alias.includes(args[0].toLowerCase())))
 		return msg.channel.createMessage("Command not found.");
 	await Promise.all(args.map((c,cv)=>{
