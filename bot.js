@@ -27,6 +27,8 @@ bot.server_configs = {};
 
 bot.modules = {};
 
+bot.paused = false;
+
 //uncommenting the line below may fix "kill einvalid" errors on some computers;
 //make sure the config is set up and then uncomment if you're getting issues
 // dblite.bin = config.sqlite;
@@ -406,6 +408,13 @@ bot.on("messageCreate", async (msg)=>{
 
 	if(msg.content.toLowerCase()=="hey herobrine"){
 		msg.channel.createMessage("That's me!");
+		return;
+	}
+
+	if(bot.pause && !(new RegExp("^"+config.prefix.join("|")).test(msg.content.toLowerCase()) && msg.content.includes("unpause"))) {
+		return;
+	} else if(bot.pause && !(new RegExp("^"+config.prefix.join("|"), "i").test(msg.content.toLowerCase()) && msg.content.toLowerCase().includes("unpause"))){
+		bot.commands.unpause.execute(bot, msg, msg.content.replace(new RegExp("^"+config.prefix.join("|"), "i")))
 		return;
 	}
 

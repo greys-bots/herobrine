@@ -6,7 +6,7 @@ module.exports = {
 				" edit - opens a menu for profile editing",
 				" enable/disable - enables/disables level-up messages"],
 	execute: (bot, msg, args)=>{
-		var id = msg.mentions[0].id || (args[0] ? msg.guild.members.find(m => m.mention == args[0] || m.id == args[0]).id : msg.author.id);
+		var id = msg.mentions[0].id || (args[0] ? msg.guild.members.find(m => m.id == args[0]).id : msg.author.id);
 		bot.db.query(`SELECT * FROM profiles WHERE usr_id='${id}'`,(err,rows)=>{
 			if(err){
 				console.log(err);
