@@ -7,7 +7,6 @@ module.exports = {
 				" enable/disable - enables/disables level-up messages"],
 	execute: (bot, msg, args)=>{
 		var id = msg.mentions[0].id || (args[0] ? msg.guild.members.find(m => m.mention == args[0] || m.id == args[0]).id : msg.author.id);
-		msg.channel.createMessage(id.toString())
 		bot.db.query(`SELECT * FROM profiles WHERE usr_id='${id}'`,(err,rows)=>{
 			if(err){
 				console.log(err);
