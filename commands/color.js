@@ -74,7 +74,7 @@ module.exports.subcommands.list = {
 	execute: (bot, msg, args)=> {
 		msg.channel.createMessage({embed: {
 			title: "Available Colors",
-			description: Object.keys(Texts.colors).map(k => k + ":" + Texts.colors[k]).join("\n");
+			description: Object.keys(Texts.colors).map(k => k + ":" + Texts.colors[k]).join("\n")
 		}})
 	},
 	guildOnly: false,
