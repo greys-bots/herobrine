@@ -34,7 +34,8 @@ module.exports = {
 	},
 	subcommands: {},
 	module: "utility",
-	guildOnly: true
+	guildOnly: true,
+	alias: ["colour"]
 }
 
 module.exports.subcommands.change = {
@@ -63,5 +64,19 @@ module.exports.subcommands.change = {
 		}
 		
 	},
-	guildOnly: true
+	guildOnly: true,
+	module: "utility"
+}
+
+module.exports.subcommands.list = {
+	help: ()=> "Lists all available color names.",
+	usage: ()=> [" - lists color names that Herobrine recognizes"],
+	execute: (bot, msg, args)=> {
+		msg.channel.createMessage({embed: {
+			title: "Available Colors",
+			description: Object.keys(Texts.colors).map(k => k + ":" + Texts.colors[k]).join("\n");
+		}})
+	},
+	guildOnly: false,
+	module: "utility"
 }
