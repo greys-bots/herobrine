@@ -115,6 +115,10 @@ const setup = async function(){
 		}
 	});
 
+	bot.db.query(`CREATE TABLE IF NOT EXISTS bundles (srv_id TEXT, name TEXT, roles TEXT, sa TEXT)`, (err, rows)=> {
+		if(err) console.log("Error creating bundles table.\n" + err);
+	});
+
 	var files = fs.readdirSync("./commands");
 	await Promise.all(files.map(f => {
 		bot.commands[f.slice(0,-3)] = require("./commands/"+f);
