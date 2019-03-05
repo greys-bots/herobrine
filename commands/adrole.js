@@ -306,7 +306,6 @@ module.exports.subcommands.edit = {
 		var ind;
 		var name;
 		if(args.indexOf("color") > -1) {
-			msg.channel.createMessage(args.join(" "));
 			ind = args.indexOf("color");
 			name = args.slice(0, ind).join(" ");
 			var col = args[args.length-1];
