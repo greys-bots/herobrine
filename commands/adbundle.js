@@ -30,7 +30,8 @@ module.exports = {
 	subcommands: {},
 	permissions: ["manageRoles"],
 	guildOnly: true,
-	module: "admin"
+	module: "admin",
+	alias: ["adbundles"]
 }
 
 module.exports.subcommands.info = {
