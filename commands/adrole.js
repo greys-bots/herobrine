@@ -311,7 +311,7 @@ module.exports.subcommands.edit = {
 			var col = args[args.length-1];
 
 			if(msg.guilds.roles.find(r => r.name == name)){
-				msg.guild.roles.find(r => r.name == name).edit({color: col}).then(()=>{
+				msg.guild.roles.find(r => r.name == name).edit({color: col.replace("#","")}).then(()=>{
 					msg.channel.createMessage("Role edited.")
 				}).catch(e => {
 					console.log(e);
