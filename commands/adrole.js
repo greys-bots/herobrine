@@ -202,7 +202,6 @@ module.exports.subcommands.remove = {
 	guildOnly: true
 }
 
-
 module.exports.subcommands.index = {
 	help: ()=> "Index new selfroles.",
 	usage: ()=> [" [role name] [1/0] - Indexes new role, either self-roleable (1) or mod-roleable (0)"],
@@ -287,4 +286,70 @@ module.exports.subcommands.index = {
 	},
 	permissions: ["manageRoles"],
 	guildOnly: true
+}
+
+module.exports.subcommands.create = {
+	help: ()=> "Creates a role.",
+	usage: ()=> [" [role name] - creates a new role with the given name, if one doesn't already exist"],
+	execute: (bot, msg, args)=> {
+		var name = args.join(" ");
+		msg.guild.createRole({name: name});
+		msg.channel.createMessage("Role created. Use the `hh!role edit` command to edit the role.");
+	}
+}
+
+module.exports.subcommands.edit = {
+	help: ()=> "Edits a role.",
+	usage: ()=> [" [role name] color [color] - edits role's color",
+				" [role name] name [new name] - edits role's name"],
+	execute: (bot, msg, args)=> {
+		var ind;
+		var name;
+		if(args.indexOf("color") > -1) {
+			ind = args.indexOf("color");
+			name = args.slice(0, ind).join(" ");
+			var col = args[args.length-1];
+
+			if(msg.guilds.roles.find(r => r.name == name)){
+				msg.guild.roles.find(r => r.name == name).edit({color: col}).then(()=>{
+					msg.channel.createMessage("Role edited.")
+				}).catch(e => {
+					console.log(e);
+					msg.channel.createMessage("Something went wrong.")
+				})
+			} else {
+				msg.channel.createMessage(`Couldn't find role ${name}.`)
+			}
+		} else if(args.indexOf("name") > -1) {
+			ind = args.indexOf("name");
+			name = args.slice(0, ind).join(" ");
+			var nnm = args.slice(ind+1, args.length);
+
+			if(msg.guilds.roles.find(r => r.name == name)){
+				msg.guild.roles.find(r => r.name == name).edit({name: nnm}).then(()=>{
+					msg.channel.createMessage("Role edited.")
+				}).catch(e => {
+					console.log(e);
+					msg.channel.createMessage("Something went wrong.")
+				})
+			} else {
+				msg.channel.createMessage(`Couldn't find role ${name}.`)
+			}
+		} else {
+			msg.channel.createMessage("Please specify what to change.");
+		}
+	}
+}
+
+module.exports.subcommands.id = {
+	help: ()=> "Fetches the ID of a role.",
+	usage: ()=> " [role name] - returns ID of the role, if it exists",
+	execute: (bot, msg, args)=> {
+		var name = args.join(" ");
+		if(msg.guild.roles.find(r => r.name == name)){
+			msg.channel.createMessage("ID: " + msg.guild.roles.find(r => r.name == name).id)
+		} else {
+			msg.channel.createMessage("Role not found.")
+		}
+	}
 }
