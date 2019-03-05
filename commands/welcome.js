@@ -4,7 +4,7 @@ var Util = require("../utilities");
 module.exports = {
 	help: ()=> "Used to edit server welcoming protocol",
 	usage: ()=> [" enable - enables welcome protocol",
-				"disable - disables welcome protocol",
+				" disable - disables welcome protocol",
 				" channel <channel> - [re]sets welcome channel",
 				" autoroles [comma, separated, role names] - default roles to add to members",
 				" message [message goes here] - sets welcome message (use `hh!help admin welcome message` for more info"],

@@ -295,7 +295,9 @@ module.exports.subcommands.create = {
 		var name = args.join(" ");
 		msg.guild.createRole({name: name});
 		msg.channel.createMessage("Role created. Use the `hh!role edit` command to edit the role.");
-	}
+	},
+	permissions: ["manageRoles"],
+	guildOnly: true
 }
 
 module.exports.subcommands.edit = {
@@ -338,7 +340,9 @@ module.exports.subcommands.edit = {
 		} else {
 			msg.channel.createMessage("Please specify what to change.");
 		}
-	}
+	},
+	permissions: ["manageRoles"],
+	guildOnly: true
 }
 
 module.exports.subcommands.id = {
@@ -351,7 +355,9 @@ module.exports.subcommands.id = {
 		} else {
 			msg.channel.createMessage("Role not found.")
 		}
-	}
+	},
+	permissions: ["manageRoles"],
+	guildOnly: true
 }
 
 module.exports.subcommands.delete = {
@@ -369,5 +375,7 @@ module.exports.subcommands.delete = {
 		} else {
 			msg.channel.createMessage("Role not found.");
 		}
-	}
+	},
+	permissions: ["manageRoles"],
+	guildOnly: true
 }
