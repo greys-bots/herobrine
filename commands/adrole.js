@@ -310,8 +310,8 @@ module.exports.subcommands.edit = {
 			name = args.slice(0, ind).join(" ");
 			var col = args[args.length-1];
 
-			if(msg.guilds.roles.find(r => r.name == name)){
-				msg.guild.roles.find(r => r.name == name).edit({color: col.replace("#","")}).then(()=>{
+			if(msg.guild.roles.find(r => r.name == name)){
+				msg.guild.roles.find(r => r.name == name).edit({color: parseInt(col.replace("#",""),16)}).then(()=>{
 					msg.channel.createMessage("Role edited.")
 				}).catch(e => {
 					console.log(e);
@@ -323,9 +323,9 @@ module.exports.subcommands.edit = {
 		} else if(args.indexOf("name") > -1) {
 			ind = args.indexOf("name");
 			name = args.slice(0, ind).join(" ");
-			var nnm = args.slice(ind+1, args.length);
+			var nnm = args.slice(ind+1, args.length).join(" ");
 
-			if(msg.guilds.roles.find(r => r.name == name)){
+			if(msg.guild.roles.find(r => r.name == name)){
 				msg.guild.roles.find(r => r.name == name).edit({name: nnm}).then(()=>{
 					msg.channel.createMessage("Role edited.")
 				}).catch(e => {
@@ -350,6 +350,24 @@ module.exports.subcommands.id = {
 			msg.channel.createMessage("ID: " + msg.guild.roles.find(r => r.name == name).id)
 		} else {
 			msg.channel.createMessage("Role not found.")
+		}
+	}
+}
+
+module.exports.subcommands.delete = {
+	help: ()=> "Deletes a role.",
+	usage: ()=> [" [role name] - deletes given role"],
+	execute: (bot, msg, args)=> {
+		var name = args.join(" ");
+		if(msg.guild.roles.find(r => r.name == name)){
+			msg.guild.roles.find(r => r.name == name).delete().then(()=> {
+				msg.channel.createMessage("Role deleted.");
+			}).catch(e => {
+				console.log(e);
+				msg.channel.createMessage("Something went wrong.")
+			})
+		} else {
+			msg.channel.createMessage("Role not found.");
 		}
 	}
 }
