@@ -29,7 +29,8 @@ module.exports = {
 	},
 	subcommands: {},
 	permissions: ["manageRoles"],
-	guildOnly: true
+	guildOnly: true,
+	module: "admin"
 }
 
 module.exports.subcommands.info = {
