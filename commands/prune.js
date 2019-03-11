@@ -15,7 +15,7 @@ module.exports = {
 	subcommands: {},
 	permissions: ["manageMessages"],
 	guildOnly: true,
-	alias: ["delete"],
+	alias: ["delete", "purge"],
 	module: "admin"
 }
 
@@ -34,5 +34,19 @@ module.exports.subcommands.safe = {
 	},
 	permissions: ["manageMessages"],
 	guildOnly: true,
-	alias: ["--s","s"]
+	alias: ["--s","s","s"]
+}
+
+module.exports.subcommands.archive = {
+	help: ()=> "Prunes messages in a channel and also archives them.",
+	usage: ()=> [" <number> - deletes [num] messages, or 100 if not specified"],
+	execute: (bot, msg, args)=> {
+		var del = (args[0] ? args[0] : 100);
+
+		bot.commands.archive.execute(bot, msg, [del]);
+		bot.commands.prune.execute(bot, msg, [del])
+	},
+	permissions: ["manageMessages"],
+	guildOnly: true,
+	alias: ["--a","-a","a"]
 }
