@@ -2,7 +2,7 @@ module.exports = {
 	help: ()=> "Archives messages in a given channel and DMs you a text file containing them.",
 	usage: ()=> [" <number> - archives [number] messages, or 100 by default"],
 	execute: (bot, msg, args)=> {
-		msg.channel.getMessages(args[0]).then(async (msgs)=>{
+		msg.channel.getMessages(args[0] || 100).then(async (msgs)=>{
 			var data = [];
 			await Promise.all(msgs.map(m => {
 				var date = new Date(m.timestamp);
@@ -10,6 +10,9 @@ module.exports = {
 							` | ${date.getMonth()+1}.${date.getDate()}.${date.getFullYear()}`,
 							` at ${date.getHours()}:${date.getMinutes()}`,
 							`\r\n${m.content}`].join(""));
+				return new Promise((res,rej)=>{
+					setTimeout(res(1),100)
+				})
 			})).then(()=> {
 				msg.author.getDMChannel().then(c => {
 					c.createMessage("Here is the archive: ",{file: Buffer.from(data.reverse().join("\r\n------\r\n")),name: "archive.txt"})
@@ -23,5 +26,6 @@ module.exports = {
 			msg.channel.createMessage("There was an error.");
 		})
 	},
-	permisions: ["manageMessages"]
+	permisions: ["manageMessages"],
+	module: "admin"
 }
