@@ -538,8 +538,16 @@ bot.on("guildMemberAdd", async (guild, member)=>{
 		console.log(scfg);
 		scfg.welcome = (typeof scfg.welcome == "string" ? JSON.parse(scfg.welcome) : scfg.welcome);
 		if(scfg.welcome.enabled && scfg.welcome.msg){
-			var msg = eval("`"+scfg.welcome.msg.split(" ").map(s => { return Texts.welc_strings[s.replace(/[?,!\s]|\.\s+/,"")] + s.match(/[?,!\s]|\.\s+/) || s; }).join(" ")+"`");
-			bot.createMessage(scfg.welcome.channel, msg);
+			var msg = scfg.welcome.msg;
+			await Promise.all(Object.keys(Texts.welc_strings).map(s => {
+				msg = msg.replace(s,Texts.welc_strings[s],"g");
+				console.log(msg);
+				return new Promise(res=> setTimeout(()=>res(1),100))
+			})).then(()=>{
+				console.log("Sending...\n"+msg)
+				bot.createMessage(scfg.welcome.channel, eval("`"+msg+"`"));
+			})
+			// var msg = eval("`"+scfg.welcome.msg.split(" ").map(s => { return Texts.welc_strings[s.replace(/[?,!\s]|\.\s+/,"")] + s.match(/[?,!\s]|\.\s+/) || s; }).join(" ")+"`");
 		}
 		if(scfg.welcome.enabled && scfg.autoroles){
 			await Promise.all(scfg.autoroles.split(", ").map(r=>{

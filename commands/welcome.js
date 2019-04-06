@@ -152,6 +152,7 @@ module.exports.subcommands.message = {
 				} else {
 					msg.channel.createMessage("Message reset.")
 				}
+				Util.reloadConfig(bot, msg.guild.id);
 			})
 		} else {
 			bot.db.query(`SELECT * FROM configs WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
@@ -168,9 +169,9 @@ module.exports.subcommands.message = {
 						msg.channel.createMessage("Message updated.")
 					})
 				}
+				Util.reloadConfig(bot, msg.guild.id);
 			})
 		}
-		Util.reloadConfig(bot, msg.guild.id);
 	},
 	guildOnly: true,
 	alias: ["msg"],
