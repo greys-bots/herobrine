@@ -14,6 +14,7 @@
     "eris": "^0.9.0",
     "eris-additions": "^1.2.5",
     "jimp": "^0.6.0",
+    "node-fetch": "^2.3.0",
     "pg": "^7.4.3",
     "pngjs-image": "^0.11.7",
     "supervisor": "^0.12.0",
