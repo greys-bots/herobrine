@@ -47,11 +47,22 @@ module.exports = {
 		}
 	},
 	reloadConfig: async function(bot, srv){
-		bot.db.query(`SELECT * FROM configs WHERE srv_id='${srv}'`,(err,rows)=>{
+		bot.db.query(`SELECT * FROM configs WHERE srv_id='${srv}'`,
+		{
+			srv_id: String,
+			prefix: String,
+			welcome: JSON.parse,
+			autoroles: String,
+			disabled: JSON.parse,
+			opped: String,
+			feedback: JSON.parse,
+			logged: JSON.parse,
+			autopin: JSON.parse
+		},(err,rows)=>{
 			if(err){
 				console.log(err)
 			} else {
-				bot.server_configs[srv] = rows[0] ? rows[0] : {srv_id: srv, prefix: undefined, welcome: undefined, autoroles: undefined, disabled: undefined, opped: undefined, fedback: undefined};
+				bot.server_configs[srv] = rows[0] ? rows[0] : {srv_id: srv, prefix: "", welcome: {}, autoroles: "", disabled: {}, opped: "", feedback: {}, logged: [], autopin: []};
 			}
 		})
 	},
@@ -60,7 +71,7 @@ module.exports = {
 			console.log(cmds[1]);
 			console.log(cmds[0].cmd.module)
 			console.log(cmds[0].name)
-			var dislist = JSON.parse(bot.server_configs[srv].disabled) || bot.server_configs[srv].disabled;
+			var dislist = bot.server_configs[srv].disabled;
 			if(dislist.modules && dislist.modules.includes(cmds[0].cmd.module)){
 				console.log("Module disabled.")
 				return true;

@@ -92,13 +92,24 @@ const setup = async function(){
 		}
 	});
 
-	bot.db.query(`CREATE TABLE IF NOT EXISTS configs (srv_id TEXT, prefix TEXT, welcome TEXT, autoroles TEXT, disabled TEXT, opped TEXT, feedback TEXT, logged TEXT)`,(err,rows)=>{
+	bot.db.query(`CREATE TABLE IF NOT EXISTS configs (srv_id TEXT, prefix TEXT, welcome TEXT, autoroles TEXT, disabled TEXT, opped TEXT, feedback TEXT, logged TEXT, autopin TEXT)`,(err,rows)=>{
 		if(err){
 			console.log(err)
 		}
 	});
 
-	bot.db.query(`SELECT * FROM configs`,async (err,rows)=>{
+	bot.db.query(`SELECT * FROM configs`,
+	{
+			srv_id: String,
+			prefix: String,
+			welcome: JSON.parse,
+			autoroles: String,
+			disabled: JSON.parse,
+			opped: String,
+			feedback: JSON.parse,
+			logged: JSON.parse,
+			autopin: JSON.parse
+		}, async (err,rows)=>{
 		if(err) return console.log(err);
 
 		await Promise.all(rows.map( s =>{
@@ -498,7 +509,7 @@ bot.on("messageCreate", async (msg)=>{
 	})
 
 	if(msg.guild && !bot.server_configs[msg.guild.id]){
-		bot.db.query(`INSERT INTO configs VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,[msg.guild.id,"",{},"",{},"",{},[]],(err,rows)=>{
+		bot.db.query(`INSERT INTO configs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,[msg.guild.id,"",{},"",{},"",{},[],[]],(err,rows)=>{
 			if(err) return console.log(err);
 			console.log(`Config for ${msg.guild.name} (${msg.guild.id}) created.`);
 			Util.reloadConfig(bot,msg.guild.id)
@@ -560,6 +571,34 @@ bot.on("guildMemberAdd", async (guild, member)=>{
 			})).then(()=>{
 				console.log(`Successfully added autoroles in guild ${guild.name} ${guild.id}`);
 			}).catch(e=> console.log(e));
+		}
+	}
+})
+
+bot.on("messageReactionAdd",async (msg, emoji, user) => {
+	if(bot.server_configs[msg.channel.guild.id] && bot.server_configs[msg.channel.guild.id].autopin) {
+		var cf = bot.server_configs[msg.channel.guild.id].autopin.find(c => c.emoji == emoji.name || c.emoji == `:${emoji.name}:${emoji.id}`);
+		if(cf) {
+			var chan = cf.channel;
+			var member = msg.channel.guild.members.find(m => m.id == user);
+			if(member.permission.has("manageMessages")) {
+				var message = await msg.channel.getMessage(msg.id);
+				if(message.content) {
+					var embed = {
+						fields: [
+							{name: "Message", value: message.content},
+							{name: "Author", value: message.member ? message.member.mention : message.author.username, inline: true},
+							{name: "Channel", value: message.channel.mention, inline: true}
+						],
+						footer: {
+							text: `Message ID: ${message.id}`
+						},
+						timestamp: new Date(message.timestamp)
+					}
+
+					bot.createMessage(chan, {embed: embed})
+				}
+			}
 		}
 	}
 })
