@@ -9,6 +9,7 @@ Official "birthday": 25 September 2017
 
 const Eris = 		require("eris-additions")(require("eris")); //da lib
 const fs =			require("fs"); //file stuff
+const fetch =		require("node-fetch"); //for attachments
 const {Client} =	require("pg"); //postgres, for data things
 const dblite =		require("dblite").withSQLite('3.8.6+'); //dblite, also for data things
 const pimg =		require("pngjs-image"); //for image manipulation
@@ -583,21 +584,29 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 			var member = msg.channel.guild.members.find(m => m.id == user);
 			if(member.permission.has("manageMessages")) {
 				var message = await msg.channel.getMessage(msg.id);
-				if(message.content) {
-					var embed = {
-						fields: [
-							{name: "Message", value: message.content},
-							{name: "Author", value: message.member ? message.member.mention : message.author.username, inline: true},
-							{name: "Channel", value: message.channel.mention, inline: true}
-						],
-						footer: {
-							text: `Message ID: ${message.id}`
-						},
-						timestamp: new Date(message.timestamp)
-					}
-
-					bot.createMessage(chan, {embed: embed})
+				var attach = [];
+				if(message.attachments[0]) {
+					await Promise.all(message.attachments.map(async (f,i) => {
+						var att = await fetch(f.url);
+						attach.push({file: Buffer.from(await att.buffer()), name: f.filename});
+						return new Promise(res => {
+							setTimeout(()=> res(1), 100);
+						})
+					}))
 				}
+				var embed = {
+					fields: [
+						{name: "Message", value: message.content || "*(image only)*"},
+						{name: "Author", value: message.member ? message.member.mention : message.author.username, inline: true},
+						{name: "Channel", value: message.channel.mention, inline: true}
+					],
+					footer: {
+						text: `Message ID: ${message.id}`
+					},
+					timestamp: new Date(message.timestamp)
+				}
+
+				bot.createMessage(chan, {embed: embed}, attach ? attach : null)
 			}
 		}
 	}
