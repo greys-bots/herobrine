@@ -1,6 +1,6 @@
 /*
 
-Steve Bot Version 2.0 Official [Herobrine] (REMOTE)
+Steve Bot Version 2.0 Official [Herobrine] (LOCAL)
 Begin work date: 07 September 2017
 Official "birthday": 25 September 2017
 
@@ -20,7 +20,7 @@ const Texts =		require('./strings.json'); //json full of text for different thin
 const Util =		require("./utilities.js");
 
 var cur_logs =		"";
-var status = 0;
+var status = 		0;
 
 const bot = new Eris(config.token,{restMode: true});
 

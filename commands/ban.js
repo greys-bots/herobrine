@@ -1,5 +1,3 @@
-// - - - - - - - - - - - Ban - - - - - - - - - - -
-
 module.exports = {
 	help: ()=> "[Hack]bans members.",
 	usage: ()=> [" [userID] - Bans member with that ID."],
