@@ -140,85 +140,53 @@ const setup = async function(){
 	})).then(()=> console.log("finished loading commands."));
 }
 
-const cmdHandle = async function(bot, msg, args){
-	var clist = bot.commands;
-	var cmdname, command, lastindex;
-	var parents = [];
-	if(bot.paused && args[0] != "unpause") return;
-	if(!clist[args[0].toLowerCase()] && !Object.values(clist).find(cm => cm.alias && cm.alias.includes(args[0].toLowerCase())))
-		return msg.channel.createMessage("Command not found.");
-	await Promise.all(args.map((c,cv)=>{
-		if(clist!= "" && clist[c.toLowerCase()] || Object.values(clist).find(cm => cm.alias && cm.alias.includes(c.toLowerCase()))){
-			var cname = (clist[c.toLowerCase()] ? 
-				c.toLowerCase() : 
-				Object.keys(clist).find(cm => clist[cm].alias && clist[cm].alias.includes(c.toLowerCase())));
-			if(args.length-1 == cv){
-				command = {name: cname, cmd: clist[cname]};
-				args = [];
+const cmdHandle = async function(bot, msg, args, command){
+	return new Promise(async (res,rej)=>{
+		var commands;
+		var cmd;
+		var name = "";
+		if(command) {
+			commands = command.subcommands || [];
+		} else {
+			commands = bot.commands;
+		}
 
-			} else if(clist[cname].subcommands){
-				console.log(cname);
-				parents.push({name:cname, cmd:clist[cname]});
-				clist = clist[cname].subcommands;
-				lastindex = cv;
+		if(args[0] && commands[args[0].toLowerCase()]) {
+			cmd = commands[args[0].toLowerCase()];
+			name = args[0].toLowerCase();
+			args = args.slice(1);
+		} else if(args[0] && Object.values(commands).find(cm => cm.alias && cm.alias.includes(args[0].toLowerCase()))) {
+			cmd = Object.values(commands).find(cm => cm.alias && cm.alias.includes(args[0].toLowerCase()));
+			name = args[0].toLowerCase();
+			args = args.slice(1);
+		} else if(!cmd) {
+			rej("Command not found.");
+			return;
+		}
 
-			} else if(args.length-1 != cv) {
-				command = {name: cname, cmd: clist[cname]};
-				lastindex = cv;
-				clist = "";
-
+		if(cmd && cmd.subcommands && args[0]) {
+			let data = await bot.parseCommand(bot, msg, args, cmd);
+			if(data) {
+				cmd = data[0]; args = data[1];
+				name += " "+data[2];
 			}
-		} else {
-			if(command==undefined)
-			command = "notfound";
 		}
-		return new Promise((res,rej)=>{
-			setTimeout(res("beep"),100);
-		})
-	}))
-	if(lastindex != undefined) args = args.slice(-(args.length-(lastindex+1)));
-	if((command=="notfound" || command==undefined) && !parents[0]){
-		msg.channel.createMessage("Command not found.");
-	} else if(parents[0] && (command == "notfound" || command == undefined)){
-		if(parents[parents.length-1].cmd.guildOnly && !msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
-		if(!Util.checkDisabled(bot, msg.guild.id, [parents[parents.length-1]])){ //check perms & disable status
-			Util.checkPermissions(bot, msg, parents[parents.length-1]).then(()=>{
-				parents[parents.length-1].cmd.execute(bot, msg, args)
-			}).catch(e=>{
-				console.log(e);
-				msg.channel.createMessage("You dont have permission to use that command.")
-			})
-		} else {
-			msg.channel.createMessage("That command is disabled.");
+
+		if(cmd.guildOnly && !msg.guild) {
+			rej ("This command can only be used in guilds.");
+			return;
 		}
-		
-	} else if(parents[0]){
-		console.log("command with parent");
-		if(command.guildOnly && !msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
-		if(!Util.checkDisabled(bot, msg.guild.id, [parents[0],command])){ //check perms & disable status
-			Util.checkPermissions(bot, msg, command).then(()=>{
-				command.cmd.execute(bot, msg, args)
-			}).catch(e=>{
-				console.log(e);
-				msg.channel.createMessage("You dont have permission to use that command.")
-			})
-		} else {
-			msg.channel.createMessage("That command is disabled.");
-		}	
-	} else {
-		console.log("base command");
-		if(command.guildOnly && !msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
-		if(!Util.checkDisabled(bot, msg.guild.id, [command])){ //check perms & disable status
-			Util.checkPermissions(bot, msg, command).then(()=>{
-				command.cmd.execute(bot, msg, args)
-			}).catch(e=>{
-				console.log(e);
-				msg.channel.createMessage("You dont have permission to use that command.")
-			})
-		} else {
-			msg.channel.createMessage("That command is disabled.");
-		}	
-	}
+
+		if(cmd.permissions) {
+			console.log(cmd.permissions.filter(p => msg.member.permission.has(p)).length)
+			if(!cmd.permissions.filter(p => msg.member.permission.has(p)).length == cmd.permissions.length) {
+				rej("You do not have permission to use that command.");
+				return;
+			}
+		}
+
+		res([cmd, args, name]);
+	})
 }
 
 const updateStatus = function(){
@@ -538,7 +506,11 @@ bot.on("messageCreate", async (msg)=>{
 		if(args[args.length-1] == "help"){
 			bot.commands.help.execute(bot, msg, args.slice(0,args.length-1));
 		} else {
-			cmdHandle(bot, msg, args);
+			await cmdHandle(bot, msg, args).then(dat =>{
+				dat[0].execute(bot, msg, dat[1]);
+			}).catch(e=>{
+				msg.channel.createMessage(e);
+			});
 		}
 		
 	}

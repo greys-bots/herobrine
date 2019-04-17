@@ -6,10 +6,8 @@ module.exports = {
 		var succ = [];
 		async function banMembers (){
 			return await Promise.all(membs.map(async (m) => {
-				console.log(succ);
 				await bot.getRESTUser(m).then(async (u)=>{
 					await msg.guild.getBans().then(b=>{
-						console.log(b);
 						if(b){
 							if(b.find(x => x.user.id == m)){
 								succ.push({id:m,pass:false,reason:"User already banned"});
@@ -35,7 +33,6 @@ module.exports = {
 			)
 		}
 		banMembers().then(()=>{
-			console.log(succ)
 			msg.channel.createMessage({embed:{
 				title: "Ban Results",
 				fields: [
