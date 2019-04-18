@@ -230,133 +230,55 @@ bot.commands.help = {
 	help: () => "Use this to list commands or get help with a specific command",
 	usage: () => [" - List commands and basic help functions."," [command] - Get help with that command"],
 	execute: async (bot, msg, args)=>{
-		console.log(args);
-		var clist = bot.commands;
-		var cmdname;
-		var command;
-		var parents = [];
-		var embed;
-		var prefix = (msg.guild && bot.server_configs[msg.guild.id] && bot.server_configs[msg.guild.id].prefix ? bot.server_configs[msg.guild.id].prefix : config.prefix[0]);
-		if(args[0] && bot.modules[args[0].toLowerCase()]){
-			var mod = bot.modules[args[0].toLowerCase()];
-			embed = {
-				title: "Herobrine - help: " + args[0].toLowerCase() + " module",
-				description: mod.help() +
-				"\n\n**Commands:** \n" + Object.keys(bot.commands).filter(x => bot.commands[x].module == args[0].toLowerCase()).map( c => "**"+prefix + c + "** - " + bot.commands[c].help()).join("\n") +
-				(mod.desc ? "\n\n" + mod.desc() : ""),
-				color: parseInt(mod.color,16) || 16755455,
-				footer:{
-					icon_url: bot.user.avatarURL,
-					text: "I'm a bot. Beep boop!"
-				}
-			}
-		} else {
-			await Promise.all(args.map((c,cv)=>{
-				if(clist[c.toLowerCase()] || Object.values(clist).find(cm => cm.alias && cm.alias.includes(c.toLowerCase()))){
-					var cname = (clist[c.toLowerCase()] ? c.toLowerCase() : Object.keys(clist).find(cm => clist[cm].alias && clist[cm].alias.includes(c.toLowerCase())));
-					if(args.length-1 == cv){
-
-						command = clist[cname];
-						cmdname = cname;
-
-					} else if(clist[cname].subcommands){
-
-						parents.push({name:cname, cmd:clist[cname]});
-						clist = clist[cname].subcommands;
-
-					} else if(args.length-1 != cv) {
-
-						command = clist[cname];
-						cmdname = cname;
-
-					}
-				} else {
-					if(!command)
-					command = "notfound";
-				}
-				return new Promise((res,rej)=>{
-					setTimeout(res("beep"),100);
-				})
-			}))
-			if((command=="notfound" || command==undefined) && !parents[0]){
+		let cmd;
+		let names;
+		let embed;
+		if(args[0]) {
+			let dat = await bot.parseCommand(bot, msg, args);
+			if(dat) {
+				cmd = dat[0];
+				names = dat[2].split(" ");
 				embed = {
-					title: "Herobrine - Help",
-					description: "I'm Herobrine! This bot is multi-purpose and intended for a wide range of functions.",
-					fields:[],
-					color: 16755455,
-					footer:{
-						icon_url: bot.user.avatarURL,
-						text: "Arguments like [this] are required, arguments like <this> are optional."
-					}
-				}
-				embed.fields = Object.keys(bot.modules).map(k => {return {name: `**${k.toUpperCase()}**`,value: Object.keys(bot.commands).filter(x => bot.commands[x].module == k).map( c => "**"+prefix + c + "** - " + bot.commands[c].help()).join("\n")}});
-				embed.fields[embed.fields.length] = {name: "**UNSORTED**",value: Object.keys(bot.commands).filter(x => !bot.commands[x].module).map( c => "**"+prefix + c + "** - " + bot.commands[c].help()).join("\n") || "None"}
-			} else if(parents[0] && (command == "notfound" || command == undefined)){
-				command = parents[parents.length-1].cmd;
-				embed = {
-					title: "Herobrine - Help: "+ parents.map(p => p.name).join(" - "),
-					description: command.help() + 
-						"\n\n**Usage**\n" +
-						command.usage().map(l => prefix + parents.map(p => p.name).join(" ") + l).join("\n") +
-						(command.desc!=undefined ? "\n\n"+command.desc() : "") +
-						(command.subcommands ? "\n\n**Subcommands**: "+Object.keys(command.subcommands).join(", ") : "") +
-						(command.alias!=undefined ? "\n\n**Aliases:** "+command.alias.join(", ") : "") +
-						(command.module!=undefined ? "\n\nThis command is part of the **" + (command.module || parents[0].module) + "** module." : "") +
-						(command.guildOnly ? "\n\nThis command can only be used in guilds." : ""),
-					color: 16755455,
-					footer:{
-						icon_url: bot.user.avatarURL,
-						text: "Arguments like [this] are required, arguments like <this> are optional."
-					}
-				}
-			} else if(parents[0] && command != "notfound"){
-				embed = {
-					title: "Herobrine - Help: "+ parents.map(p => p.name).join(" - ") + " - " + cmdname,
-					description: command.help() + 
-						"\n\n**Usage**\n" +
-						command.usage().map(l => prefix + parents.map(p => p.name).join(" ") + " " + cmdname + l).join("\n") +
-						(command.desc!=undefined ? "\n\n"+command.desc() : "") +
-						(command.subcommands ? "\n\n**Subcommands**: "+Object.keys(command.subcommands).join(", ") : "") +
-						(command.alias!=undefined ? "\n\n**Aliases:** "+command.alias.join(", ") : "") +
-						(command.module!=undefined ? "\n\nThis command is part of the **" + (command.module || parents[0].module) + "** module." : "") +
-						(command.guildOnly ? "\n\nThis command can only be used in guilds." : ""),
-					color: 16755455,
-					footer:{
-						icon_url: bot.user.avatarURL,
-						text: "Arguments like [this] are required, arguments like <this> are optional."
+					title: `Help | ${names.join(" - ").toLowerCase()}`,
+					description: [
+						`${cmd.help()}\n\n`,
+						`**Usage**\n${cmd.usage().map(c => `**${config.prefix[0] + names.join(" ")}**${c}`).join("\n")}\n\n`,
+						`**Aliases:** ${cmd.alias ? cmd.alias.join(", ") : "(none)"}\n\n`,
+						`**Subcommands**\n${cmd.subcommands ?
+							Object.keys(cmd.subcommands).map(sc => `**${config.prefix[0]}${sc}** - ${cmd.subcommands[sc].help()}`).join("\n") : 
+							"(none)"}`
+					].join(""),
+					footer: {
+						text: "[required] <optional>"
 					}
 				}
 			} else {
-				embed = {
-					title: "Herobrine - Help: "+ cmdname,
-					description: command.help() + 
-						"\n\n**Usage**\n" +
-						command.usage().map(l => prefix + cmdname + l).join("\n") +
-						(command.desc!=undefined ? "\n\n"+command.desc() : "") +
-						(command.subcommands ? "\n\n**Subcommands**: "+Object.keys(command.subcommands).join(", ") : "") +
-						(command.alias!=undefined ? "\n\n**Aliases:** "+command.alias.join(", ") : "") +
-						(command.module!=undefined ? "\n\nThis command is part of the **" + (command.module) + "** module." : "") +
-						(command.guildOnly ? "\n\nThis command can only be used in guilds." : ""),
-					color: 16755455,
-					footer:{
-						icon_url: bot.user.avatarURL,
-						text: "Arguments like [this] are required, arguments like <this> are optional."
-					}
+				msg.channel.createMessage("Command not found.")
+			}
+		} else {
+			embed = {
+				title: `Herobrine - Help`,
+				description: "I'm Herobrine! This bot is multi-purpose and intended for a wide range of functions.",
+				fields: Object.keys(bot.modules).map(m => {
+					return {name: `**${m.toUpperCase()}**`,
+							value: Object.keys(bot.commands).map(c => {
+								return bot.commands[c].module == m ?
+								`**${config.prefix[0] + c}** - ${bot.commands[c].help()}\n` :
+								""
+							}).join("")}
+				}),
+				footer: {
+					text: "[required] <optional>"
 				}
 			}
+			embed.fields.push({name: "**UNSORTED**",value: Object.keys(bot.commands).map(c => {
+								return !bot.commands[c].module ?
+								`**${config.prefix[0] + c}** - ${bot.commands[c].help()}\n` :
+								""
+							}).join("") })
 		}
 
-		if(embed && msg.guild && !msg.channel.permissionsOf(bot.user.id).has("sendMessages")){
-			msg.author.getDMChannel().then(m => {
-				m.createMessage("I don't have permission to send messages there. Here is your help: ").then(()=>{
-					m.createMessage({embed})
-				})
-			})
-		} else if(embed && msg.guild && !msg.channel.permissionsOf(bot.user.id).has("embedLinks")){
-			msg.channel.createMessage(`**${embed.title}**\n\n${embed.description}\n\n${(embed.fields ? embed.fields.map(f => `${f.name}\n`+f.value).join("\n\n") : "")}*${embed.footer.text}*`);
-		} else if(embed){
-			msg.channel.createMessage({embed});
-		}
+		msg.channel.createMessage({embed: embed});
 	},
 	module: "utility",
 	alias: ["h"]
