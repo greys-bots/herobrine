@@ -159,16 +159,9 @@ bot.parseCommand = async function(bot, msg, args, command){
 			cmd = Object.values(commands).find(cm => cm.alias && cm.alias.includes(args[0].toLowerCase()));
 			name = Object.keys(commands).find(cm => commands[cm].alias && commands[cm].alias.includes(args[0].toLowerCase()));
 			args = args.slice(1);
-		} else if(!cmd) {
-			if(command) {
-				cmd = command;
-			} else {
-				rej("Command not found.");
-			}
-			return;
 		}
 
-		if(cmd.subcommands && args[0]) {
+		if(cmd && cmd.subcommands && args[0]) {
 			let data = await bot.parseCommand(bot, msg, args, cmd);
 			if(data) {
 				cmd = data[0]; args = data[1];
@@ -176,7 +169,20 @@ bot.parseCommand = async function(bot, msg, args, command){
 			}
 		}
 
-		res([cmd, args, name]);
+		if(!cmd) {
+			if(command) {
+				cmd = command;
+				console.log(args);
+				console.log(cmd);
+				res([cmd, args, name]);
+			} else {
+				console.log(command);
+				console.log("Command not found.")
+				rej("Command not found.");
+			}
+		} else {
+			res([cmd, args, name])
+		}
 	})
 }
 
@@ -512,7 +518,7 @@ bot.on("messageCreate", async (msg)=>{
 				if(check) {
 					return msg.channel.createMessage("That command is disabled.");
 				}
-				dat[0].execute(bot, msg, dat[1]);
+				cmd.execute(bot, msg, dat[1]);
 			}).catch(e =>{
 				msg.channel.createMessage("Error: "+ e);
 			});
