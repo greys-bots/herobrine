@@ -66,55 +66,37 @@ module.exports = {
 			}
 		})
 	},
-	checkDisabled: function(bot, srv, cmds){
-		if(bot.server_configs[srv] && bot.server_configs[srv].disabled){
-			console.log(cmds[1]);
-			console.log(cmds[0].cmd.module)
-			console.log(cmds[0].name)
-			var dislist = bot.server_configs[srv].disabled;
-			if(dislist.modules && dislist.modules.includes(cmds[0].cmd.module)){
-				console.log("Module disabled.")
-				return true;
-			} else if(dislist.commands && dislist.commands[cmds[0].name]){
-				if(dislist.commands[cmds[0].name].includes("all")){
-					console.log("Complete command disabled.")
-					return true;
-				} else if(cmds[1]){
-					if(dislist.commands[cmds[0].name].includes(cmds[1].name)){
-						console.log("Subcommand disabled.")
-						return true;
-					} else {
-						console.log("Subcommand enabled.")
-						return false;
-					}
+	checkDisabled: async function(bot, srv, cmd, name){
+		return new Promise(res=>{
+			if(bot.server_configs[srv] && bot.server_configs[srv].disabled) {
+				let dlist = bot.server_configs[srv].disabled;
+				name = name.split(" ");
+				console.log(dlist);
+				if(dlist.modules && dlist.modules.includes(cmd.module)) {
+					res(true);
+				} else if(dlist.commands && (dlist.commands.includes(name[0]) || dlist.commands.includes(name.join(" ")))) {
+					res(true);
 				} else {
-					console.log("Base command enabled.")
-					return false;
+					console.log(dlist);
+					res(false);
 				}
 			} else {
-				console.log("Command nor module found.");
-				return false;
+				res(false)
 			}
-		} else {
-			console.log("Nothing disabled.")
-			return false;
-		}
+		})
 	},
 	checkPermissions: async function(bot, msg, cmd){
-		if(cmd.cmd.permissions){
-			await Promise.all(cmd.cmd.permissions.map(p=>{
-				if(msg.member.permission.has(p)){
-					return new Promise((res,rej)=>{
-						setTimeout(res("passed"),100)
-					})
-				} else {
-					return new Promise((res,rej)=>{
-						setTimeout(rej("failed"),100)
-					})
+		return new Promise((res)=> {
+			if(cmd.permissions) {
+				console.log(cmd.permissions.filter(p => msg.member.permission.has(p)).length)
+				if(!cmd.permissions.filter(p => msg.member.permission.has(p)).length == cmd.permissions.length) {
+					res(false);
+					return;
 				}
-			}))
-		} else {
-			return new Promise(res => res(true));
-		}
+				res(true);
+			} else {
+				res(true);
+			}
+		})
 	}
 };

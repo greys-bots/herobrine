@@ -140,7 +140,7 @@ const setup = async function(){
 	})).then(()=> console.log("finished loading commands."));
 }
 
-const cmdHandle = async function(bot, msg, args, command){
+bot.parseCommand = async function(bot, msg, args, command){
 	return new Promise(async (res,rej)=>{
 		var commands;
 		var cmd;
@@ -157,31 +157,18 @@ const cmdHandle = async function(bot, msg, args, command){
 			args = args.slice(1);
 		} else if(args[0] && Object.values(commands).find(cm => cm.alias && cm.alias.includes(args[0].toLowerCase()))) {
 			cmd = Object.values(commands).find(cm => cm.alias && cm.alias.includes(args[0].toLowerCase()));
-			name = args[0].toLowerCase();
+			name = Object.keys(commands).find(cm => commands[cm].alias && commands[cm].alias.includes(args[0].toLowerCase()));
 			args = args.slice(1);
 		} else if(!cmd) {
 			rej("Command not found.");
 			return;
 		}
 
-		if(cmd && cmd.subcommands && args[0]) {
+		if(cmd.subcommands && args[0]) {
 			let data = await bot.parseCommand(bot, msg, args, cmd);
 			if(data) {
 				cmd = data[0]; args = data[1];
 				name += " "+data[2];
-			}
-		}
-
-		if(cmd.guildOnly && !msg.guild) {
-			rej ("This command can only be used in guilds.");
-			return;
-		}
-
-		if(cmd.permissions) {
-			console.log(cmd.permissions.filter(p => msg.member.permission.has(p)).length)
-			if(!cmd.permissions.filter(p => msg.member.permission.has(p)).length == cmd.permissions.length) {
-				rej("You do not have permission to use that command.");
-				return;
 			}
 		}
 
@@ -506,10 +493,24 @@ bot.on("messageCreate", async (msg)=>{
 		if(args[args.length-1] == "help"){
 			bot.commands.help.execute(bot, msg, args.slice(0,args.length-1));
 		} else {
-			await cmdHandle(bot, msg, args).then(dat =>{
+			await bot.parseCommand(bot, msg, args).then(async dat =>{
+				var cmd = dat[0];
+				console.log(dat[1])
+				var check;
+				if(cmd.guildOnly && !msg.guild) {
+					return msg.channel.createMessage("This command can only be used in guilds.");
+				}
+				check = await Util.checkPermissions(bot, msg, cmd);
+				if(!check) {
+					return msg.channel.createMessage("You do not have permission to use this command.");
+				}
+				check = await Util.checkDisabled(bot, msg.guild.id, cmd, dat[2]);
+				if(check) {
+					return msg.channel.createMessage("That command is disabled.");
+				}
 				dat[0].execute(bot, msg, dat[1]);
-			}).catch(e=>{
-				msg.channel.createMessage(e);
+			}).catch(e =>{
+				msg.channel.createMessage("Error: "+ e);
 			});
 		}
 		

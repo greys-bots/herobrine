@@ -7,7 +7,6 @@ module.exports = {
 		} else {
 			msg.channel.createMessage("Beep boop!");
 		}
-		
 	},
 	module: "fun"
 };
