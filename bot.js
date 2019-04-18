@@ -160,7 +160,11 @@ bot.parseCommand = async function(bot, msg, args, command){
 			name = Object.keys(commands).find(cm => commands[cm].alias && commands[cm].alias.includes(args[0].toLowerCase()));
 			args = args.slice(1);
 		} else if(!cmd) {
-			rej("Command not found.");
+			if(command) {
+				cmd = command;
+			} else {
+				rej("Command not found.");
+			}
 			return;
 		}
 
