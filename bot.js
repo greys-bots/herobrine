@@ -240,7 +240,7 @@ bot.commands.help = {
 				embed = {
 					title: "Herobrine - help: " + c + " module",
 					description: mod.help() +
-					"\n\n**Commands:** \n" + Object.keys(bot.commands).filter(x => bot.commands[x].module == c).map( cm => "**"+config.prefix + cm + "** - " + bot.commands[cm].help()).join("\n") +
+					"\n\n**Commands:** \n" + Object.keys(bot.commands).filter(x => bot.commands[x].module == c).map( cm => "**"+config.prefix[0] + cm + "** - " + bot.commands[cm].help()).join("\n") +
 					(mod.desc ? "\n\n" + mod.desc() : ""),
 					color: parseInt(mod.color,16) || 16755455,
 					footer:{
