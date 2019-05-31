@@ -234,8 +234,28 @@ bot.commands.help = {
 		let names;
 		let embed;
 		if(args[0]) {
-			let dat = await bot.parseCommand(bot, msg, args);
-			if(dat) {
+			var c = args[0].toLowerCase();
+			if(bot.modules[c]) {
+				var mod = bot.modules[c];
+				embed = {
+					title: "Herobrine - help: " + c + " module",
+					description: mod.help() +
+					"\n\n**Commands:** \n" + Object.keys(bot.commands).filter(x => bot.commands[x].module == c).map( cm => "**"+config.prefix + cm + "** - " + bot.commands[cm].help()).join("\n") +
+					(mod.desc ? "\n\n" + mod.desc() : ""),
+					color: parseInt(mod.color,16) || 16755455,
+					footer:{
+						icon_url: bot.user.avatarURL,
+						text: "I'm a bot. Beep boop!"
+					}
+				}
+			} else {
+				let dat;
+				try {
+					dat = await bot.parseCommand(bot, msg, args);
+				} catch(e) {
+					console.log(e);
+					return msg.channel.createMessage('Command not found.');
+				}
 				cmd = dat[0];
 				names = dat[2].split(" ");
 				embed = {
@@ -252,8 +272,6 @@ bot.commands.help = {
 						text: "[required] <optional>"
 					}
 				}
-			} else {
-				msg.channel.createMessage("Command not found.")
 			}
 		} else {
 			embed = {

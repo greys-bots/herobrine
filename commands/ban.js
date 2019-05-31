@@ -2,7 +2,9 @@ module.exports = {
 	help: ()=> "[Hack]bans members.",
 	usage: ()=> [" [userID] - Bans member with that ID."],
 	execute: async (bot, msg, args)=>{
-		var membs = args.join(" ").split(/,*\s+|\n+/);
+		var nargs = args.join(" ").split('\n');
+		var membs = nargs[0].split(/,*\s+/);
+		var reason = nargs.slice(1, nargs.length).join('\n')
 		var succ = [];
 		async function banMembers (){
 			return await Promise.all(membs.map(async (m) => {
@@ -12,11 +14,11 @@ module.exports = {
 							if(b.find(x => x.user.id == m)){
 								succ.push({id:m,pass:false,reason:"User already banned"});
 							} else {
-								bot.banGuildMember(msg.guild.id,m,0,"Banned through command.");
+								bot.banGuildMember(msg.guild.id,m,0,reason || "Banned through command.");
 								succ.push({id:m,pass:true})
 							}
 						} else {
-							bot.banGuildMember(msg.guild.id,m,0,"Banned through command.");
+							bot.banGuildMember(msg.guild.id,m,0,reason || "Banned through command.");
 							succ.push({id:m,pass:true})
 						}
 					})
