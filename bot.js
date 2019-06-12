@@ -262,10 +262,10 @@ bot.commands.help = {
 					title: `Help | ${names.join(" - ").toLowerCase()}`,
 					description: [
 						`${cmd.help()}\n\n`,
-						`**Usage**\n${cmd.usage().map(c => `**${config.prefix[0] + names.join(" ")}**${c}`).join("\n")}\n\n`,
+						`**Usage**\n${cmd.usage().map(c => `${config.prefix[0] + names.join(" ")}${c}`).join("\n")}\n\n`,
 						`**Aliases:** ${cmd.alias ? cmd.alias.join(", ") : "(none)"}\n\n`,
 						`**Subcommands**\n${cmd.subcommands ?
-							Object.keys(cmd.subcommands).map(sc => `**${config.prefix[0]}${sc}** - ${cmd.subcommands[sc].help()}`).join("\n") : 
+							Object.keys(cmd.subcommands).map(sc => `**${config.prefix[0]}${names.join(" ")} ${sc}** - ${cmd.subcommands[sc].help()}`).join("\n") : 
 							"(none)"}`
 					].join(""),
 					footer: {
@@ -373,10 +373,17 @@ bot.on("messageCreate", async (msg)=>{
 		return;
 	}
 
-	if(bot.paused && !(new RegExp("^"+config.prefix.join("|")).test(msg.content.toLowerCase()) && msg.content.includes("unpause"))) {
+	var prefix = (msg.guild && 
+				  bot.server_configs[msg.guild.id] && 
+				  (bot.server_configs[msg.guild.id].prefix!= undefined && 
+				  bot.server_configs[msg.guild.id].prefix!="")) ? 
+				  new RegExp(`^(${bot.server_configs[msg.guild.id].prefix}|${config.prefix.join("|")})`, "i") :
+				  new RegExp(`^(${config.prefix.join("|")})`, "i");
+
+	if(bot.paused && !prefix.test(msg.content.toLowerCase())) {
 		return;
-	} else if(bot.paused && !(new RegExp("^"+config.prefix.join("|"), "i").test(msg.content.toLowerCase()) && msg.content.toLowerCase().includes("unpause"))){
-		bot.commands.unpause.execute(bot, msg, msg.content.replace(new RegExp("^"+config.prefix.join("|"), "i")))
+	} else if(bot.paused && (new RegExp(`^(${config.prefix.join("|")})unpause`, "i").test(msg.content.toLowerCase()) && config.accepted_ids.includes(msg.author.id))){
+		bot.commands.unpause.execute(bot, msg, msg.content.replace(prefix, ""));
 		return;
 	}
 
@@ -422,7 +429,7 @@ bot.on("messageCreate", async (msg)=>{
 		})
 	}
 
-	if(new RegExp("^"+config.prefix.join("|")).test(msg.content.toLowerCase()) || (msg.guild!=undefined && bot.server_configs[msg.guild.id] && (bot.server_configs[msg.guild.id].prefix!= undefined && bot.server_configs[msg.guild.id].prefix!="") && msg.content.toLowerCase().startsWith(bot.server_configs[msg.guild.id].prefix))){
+	if(prefix.test(msg.content.toLowerCase())){
 		let now = new Date();
 		let ndt = `${(now.getMonth() + 1).toString().length < 2 ? "0"+ (now.getMonth() + 1) : now.getMonth()+1}.${now.getDate().toString().length < 2 ? "0"+ now.getDate() : now.getDate()}.${now.getFullYear()}`;
 		if(!fs.existsSync(`./logs/${ndt}.log`)){
@@ -439,7 +446,7 @@ bot.on("messageCreate", async (msg)=>{
 			if(err) console.log(`Error while attempting to write log ${ndt}\n`+err);
 		});
 
-		let args = msg.content.replace(new RegExp("^"+config.prefix.join("|")+((msg.guild != undefined && bot.server_configs[msg.guild.id] && (bot.server_configs[msg.guild.id].prefix!=undefined && bot.server_configs[msg.guild.id].prefix!="")) ? "|"+bot.server_configs[msg.guild.id].prefix : ""),"i"), "").split(" ");
+		let args = msg.content.replace(prefix, "").split(" ");
 		if(args[args.length-1] == "help"){
 			bot.commands.help.execute(bot, msg, args.slice(0,args.length-1));
 		} else {
