@@ -32,7 +32,7 @@ module.exports = {
 	module: "utility",
 	subcommands: {},
 	guildOnly: true,
-	alias: ["roles"]
+	alias: ["roles", "roll"]
 }
 
 module.exports.subcommands.list = {
