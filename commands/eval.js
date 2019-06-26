@@ -1,14 +1,9 @@
-var config = require("../config.json");
-var Util = require("../utilities");
-var exec = require("child_process").exec;
-
-//- - - - - - - - - - Eval - - - - - - - - - -
 module.exports = {
 	help: ()=>"Evaluate javascript code.",
 	usage: ()=>[" [code] - Evaluates given code."," prm [code] - Evaluates given code, and any returned promises."],
 	desc: ()=>"Only the bot owner can use this command.",
 	execute: (bot, msg, args)=>{
-		if(!config.accepted_ids.includes(msg.author.id)){ return msg.channel.createMessage("Only the bot owner can use this command."); }
+		if(!bot.cfg.accepted_ids.includes(msg.author.id)){ return msg.channel.createMessage("Only the bot owner can use this command."); }
 		try {
 			const toeval = args.join(" ");
 			let evld = eval(toeval);
@@ -17,7 +12,7 @@ module.exports = {
 				evld=require("util").inspect(evld);
 			}
 
-			msg.channel.createMessage(Util.cleanText(evld));
+			msg.channel.createMessage(bot.utils.cleanText(evld));
 		} catch (err) {
 			if(err){console.log(err)}
 		};
@@ -30,7 +25,7 @@ module.exports.subcommands.prm = {
 	help: ()=> "Evaluates something that returns a promise.",
 	usage: ()=> [" [code] - evaluate the code"],
 	execute: (bot, msg, args)=>{
-		if(!config.accepted_ids.includes(msg.author.id)){ return msg.channel.createMessage("Only the bot owner can use this command."); }
+		if(!bot.cfg.accepted_ids.includes(msg.author.id)){ return msg.channel.createMessage("Only the bot owner can use this command."); }
 		async function f(){
 
 			try {
@@ -41,7 +36,7 @@ module.exports.subcommands.prm = {
 					evlp=require("util").inspect(evlp);
 				}
 
-				msg.channel.createMessage(Util.cleanText(evlp));
+				msg.channel.createMessage(bot.utils.cleanText(evlp));
 			} catch (err) {
 				if(err){console.log(err)}
 			}

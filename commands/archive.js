@@ -1,5 +1,3 @@
-const fetch = require("node-fetch");
-
 module.exports = {
 	help: ()=> "Archives messages in a given channel and DMs you a text file containing them.",
 	usage: ()=> [" <number> - archives [number] messages, or 100 by default"],
@@ -29,7 +27,7 @@ module.exports = {
 				if (m.attachments[0]) {
 					attachments[m.id] = {content: `Attachments for Message ID ${m.id}`, files: []};
 					await Promise.all(m.attachments.map(async (f,i) => {
-						var att = await fetch(f.url);
+						var att = await bot.fetch(f.url);
 						attachments[m.id].files.push({file: Buffer.from(await att.buffer()), name: f.filename});
 						return new Promise(res => {
 							setTimeout(()=> res(1), 100);

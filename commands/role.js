@@ -1,5 +1,3 @@
-//- - - - - - - - - - Roles - - - - - - -  - -
-
 module.exports = {
 	help: ()=> "Add and remove self roles.",
 	usage: ()=> [" - display this help text","s - list available roles"],

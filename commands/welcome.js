@@ -1,6 +1,3 @@
-var Util = require("../utilities");
-// - - - - - - - - - - Welcome - - - - - - - - - -
-
 module.exports = {
 	help: ()=> "Used to edit server welcoming protocol",
 	usage: ()=> [" enable - enables welcome protocol",
@@ -35,7 +32,7 @@ module.exports = {
 						if(err) console.log(err);
 						msg.author.getDMChannel().then(ch => ch.createMessage("Welcome roles not found: "+na.join(", ")+"\nI've removed them from the welcroles list."));
 					})
-					Util.reloadConfig(bot, msg.guild.id)
+					bot.utils.reloadConfig(bot, msg.guild.id)
 				}
 				msg.mentions.forEach(mb => {
 					msg.guild.members.find(mm => mm.id == mb.id).user.getDMChannel().then(ch => {
@@ -118,7 +115,7 @@ module.exports.subcommands.channel = {
 				}
 			})
 		}
-		Util.reloadConfig(bot, msg.guild.id);
+		bot.utils.reloadConfig(bot, msg.guild.id);
 	},
 	guildOnly: true,
 	alias: ["chan"],
@@ -152,7 +149,7 @@ module.exports.subcommands.message = {
 				} else {
 					msg.channel.createMessage("Message reset.")
 				}
-				Util.reloadConfig(bot, msg.guild.id);
+				bot.utils.reloadConfig(bot, msg.guild.id);
 			})
 		} else {
 			bot.db.query(`SELECT * FROM configs WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
@@ -169,7 +166,7 @@ module.exports.subcommands.message = {
 						msg.channel.createMessage("Message updated.")
 					})
 				}
-				Util.reloadConfig(bot, msg.guild.id);
+				bot.utils.reloadConfig(bot, msg.guild.id);
 			})
 		}
 	},
@@ -195,7 +192,7 @@ module.exports.subcommands.enable = {
 				msg.channel.createMessage("Welcome not enabled; no configuration exists yet.");
 			}
 		})
-		Util.reloadConfig(bot, msg.guild.id);
+		bot.utils.reloadConfig(bot, msg.guild.id);
 	},
 	guildOnly: true,
 	alias: ["e","1"],
@@ -219,7 +216,7 @@ module.exports.subcommands.disable = {
 				msg.channel.createMessage("Welcome not disabled; no configuration exists yet.");
 			}
 		})
-		Util.reloadConfig(bot, msg.guild.id);
+		bot.utils.reloadConfig(bot, msg.guild.id);
 	},
 	guildOnly: true,
 	alias: ["d","0"],
@@ -260,7 +257,7 @@ module.exports.subcommands.preroles = {
 								msg.channel.createMessage("There was an error.")
 							} else {
 								msg.channel.createMessage({embed})
-								Util.reloadConfig(bot, msg.guild.id)
+								bot.utils.reloadConfig(bot, msg.guild.id)
 							}
 						})
 					})
@@ -271,7 +268,7 @@ module.exports.subcommands.preroles = {
 							msg.channel.createMessage("There was an error.")
 						} else {
 							msg.channel.createMessage("Autoroles reset.")
-							Util.reloadConfig(bot, msg.guild.id)
+							bot.utils.reloadConfig(bot, msg.guild.id)
 						}
 					})
 				}
@@ -300,7 +297,7 @@ module.exports.subcommands.preroles = {
 					})).then(()=>{
 						bot.db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?,?)`,[msg.guild.id,"",{},rs.join(", "),{},"",{},[]],(err,rows)=>{
 							msg.channel.createMessage("Autoroles updated.");
-							Util.reloadConfig(bot, msg.guild.id)
+							bot.utils.reloadConfig(bot, msg.guild.id)
 						})
 					})
 				} else {
@@ -349,7 +346,7 @@ module.exports.subcommands.postroles = {
 								msg.channel.createMessage("There was an error.")
 							} else {
 								msg.channel.createMessage({embed})
-								Util.reloadConfig(bot, msg.guild.id)
+								bot.utils.reloadConfig(bot, msg.guild.id)
 							}
 						})
 					})
@@ -360,7 +357,7 @@ module.exports.subcommands.postroles = {
 							msg.channel.createMessage("There was an error.")
 						} else {
 							msg.channel.createMessage("Postroles reset.")
-							Util.reloadConfig(bot, msg.guild.id)
+							bot.utils.reloadConfig(bot, msg.guild.id)
 						}
 					})
 				}
@@ -391,7 +388,7 @@ module.exports.subcommands.postroles = {
 						bot.db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?,?)`,[msg.guild.id,"",{welcroles:rs.join(", ")},"",{},"",{},[]],(err,rows)=>{
 							if(err) console.log(err);
 							msg.channel.createMessage("Postroles updated.")
-							Util.reloadConfig(bot, msg.guild.id)
+							bot.utils.reloadConfig(bot, msg.guild.id)
 						})
 					})
 				} else {

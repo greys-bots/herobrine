@@ -1,5 +1,3 @@
-var Util = require("../utilities");
-
 module.exports = {
 	help: ()=> "Disables a command/module or a command's subcommands.",
 	usage: ()=> [" [command/module] <subcommand> - disables given command or its subcommand",

@@ -1,4 +1,3 @@
-// - - - - - - - - - - - Prune  - - - - - - - - - - -
 module.exports = {
 	help: ()=> "Prunes messages in a channel.",
 	usage: ()=> [" <number> - deletes [number] messages from the current channel, or 100 messages if not specified"],

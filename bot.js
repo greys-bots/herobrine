@@ -9,20 +9,22 @@ Official "birthday": 25 September 2017
 
 const Eris = 		require("eris-additions")(require("eris")); //da lib
 const fs =			require("fs"); //file stuff
-const fetch =		require("node-fetch"); //for attachments
 const {Client} =	require("pg"); //postgres, for data things
 const dblite =		require("dblite").withSQLite('3.8.6+'); //dblite, also for data things
-const pimg =		require("pngjs-image"); //for image manipulation
-const jimp =		require("jimp"); //also for image manipulation
 const exec =		require("child_process").exec; //self-updating code! woo!
-const config =		require('./config.json'); //configs
-const Texts =		require('./strings.json'); //json full of text for different things
-const Util =		require("./utilities.js");
+const config = 		require ("./config.json");
 
 var cur_logs =		"";
 var status = 		0;
 
 const bot = new Eris(config.token,{restMode: true});
+
+bot.utils = require('./utilities');
+bot.cfg = config;
+bot.strings = require('./strings.json');
+bot.fetch = require('node-fetch');
+bot.tc = require('tinycolor2');
+
 
 bot.server_configs = {};
 
@@ -32,7 +34,7 @@ bot.paused = false;
 
 //uncommenting the line below may fix "kill einvalid" errors on some computers;
 //make sure the config is set up and then uncomment if you're getting issues
-// dblite.bin = config.sqlite;
+// dblite.bin = bot.cfg.sqlite;
 
 try{
 	bot.db = dblite("./data.sqlite","-header");
@@ -53,12 +55,12 @@ SETUP
 ***********************************/
 
 const setup = async function(){
-	if(config.update && config.remote && config.branch){
-		var git = exec(`git pull ${config.remote} ${config.branch}`,{cwd: __dirname}, (err, out, stderr)=>{
+	if(bot.cfg.update && bot.cfg.remote && bot.cfg.branch){
+		var git = exec(`git pull ${bot.cfg.remote} ${bot.cfg.branch}`,{cwd: __dirname}, (err, out, stderr)=>{
 			if(err){
 				console.error(err);
-				console.log(config.accepted_ids);
-				bot.users.find(u => u.id == config.accepted_ids[0]).getDMChannel().then((ch)=>{
+				console.log(bot.cfg.accepted_ids);
+				bot.users.find(u => u.id == bot.cfg.accepted_ids[0]).getDMChannel().then((ch)=>{
 					ch.sendMessage("Error pulling files.")
 				})
 				return;
@@ -68,10 +70,10 @@ const setup = async function(){
 				return console.log("Everything up to date.");
 			}
 
-			var gp = exec(`git fetch --all && git reset --hard ${config.remote}/${config.branch}`, {cwd: __dirname}, (err2, out2, stderr2)=>{
+			var gp = exec(`git fetch --all && git reset --hard ${bot.cfg.remote}/${bot.cfg.branch}`, {cwd: __dirname}, (err2, out2, stderr2)=>{
 				if(err2){
 					console.error(err2);
-					bot.users.find(u => u.id == config.accepted_ids[0]).getDMChannel().then((ch)=>{
+					bot.users.find(u => u.id == bot.cfg.accepted_ids[0]).getDMChannel().then((ch)=>{
 						ch.sendMessage("Error overwriting files.")
 					})
 					return;
@@ -240,7 +242,7 @@ bot.commands.help = {
 				embed = {
 					title: "Herobrine - help: " + c + " module",
 					description: mod.help() +
-					"\n\n**Commands:** \n" + Object.keys(bot.commands).filter(x => bot.commands[x].module == c).map( cm => "**"+config.prefix[0] + cm + "** - " + bot.commands[cm].help()).join("\n") +
+					"\n\n**Commands:** \n" + Object.keys(bot.commands).filter(x => bot.commands[x].module == c).map( cm => "**"+bot.cfg.prefix[0] + cm + "** - " + bot.commands[cm].help()).join("\n") +
 					(mod.desc ? "\n\n" + mod.desc() : ""),
 					color: parseInt(mod.color,16) || 16755455,
 					footer:{
@@ -262,10 +264,10 @@ bot.commands.help = {
 					title: `Help | ${names.join(" - ").toLowerCase()}`,
 					description: [
 						`${cmd.help()}\n\n`,
-						`**Usage**\n${cmd.usage().map(c => `${config.prefix[0] + names.join(" ")}${c}`).join("\n")}\n\n`,
+						`**Usage**\n${cmd.usage().map(c => `${bot.cfg.prefix[0] + names.join(" ")}${c}`).join("\n")}\n\n`,
 						`**Aliases:** ${cmd.alias ? cmd.alias.join(", ") : "(none)"}\n\n`,
 						`**Subcommands**\n${cmd.subcommands ?
-							Object.keys(cmd.subcommands).map(sc => `**${config.prefix[0]}${names.join(" ")} ${sc}** - ${cmd.subcommands[sc].help()}`).join("\n") : 
+							Object.keys(cmd.subcommands).map(sc => `**${bot.cfg.prefix[0]}${names.join(" ")} ${sc}** - ${cmd.subcommands[sc].help()}`).join("\n") : 
 							"(none)"}`
 					].join(""),
 					footer: {
@@ -281,7 +283,7 @@ bot.commands.help = {
 					return {name: `**${m.toUpperCase()}**`,
 							value: Object.keys(bot.commands).map(c => {
 								return bot.commands[c].module == m ?
-								`**${config.prefix[0] + c}** - ${bot.commands[c].help()}\n` :
+								`**${bot.cfg.prefix[0] + c}** - ${bot.commands[c].help()}\n` :
 								""
 							}).join("")}
 				}),
@@ -291,7 +293,7 @@ bot.commands.help = {
 			}
 			embed.fields.push({name: "**UNSORTED**",value: Object.keys(bot.commands).map(c => {
 								return !bot.commands[c].module ?
-								`**${config.prefix[0] + c}** - ${bot.commands[c].help()}\n` :
+								`**${bot.cfg.prefix[0] + c}** - ${bot.commands[c].help()}\n` :
 								""
 							}).join("") })
 		}
@@ -306,13 +308,13 @@ bot.commands.reload = {
 	help: ()=> "Reloads entire bot.",
 	usage: ()=> [" - reloads Herobrine"],
 	execute: (bot, msg, args)=>{
-		if(config.update){
-			if(config.accepted_ids.includes(msg.author.id) && config.branch && config.remote){
-				var git = exec(`git pull ${config.remote} ${config.branch}`,{cwd: __dirname}, (err, out, stderr)=>{
+		if(bot.cfg.update){
+			if(bot.cfg.accepted_ids.includes(msg.author.id) && bot.cfg.branch && bot.cfg.remote){
+				var git = exec(`git pull ${bot.cfg.remote} ${bot.cfg.branch}`,{cwd: __dirname}, (err, out, stderr)=>{
 					if(err){
 						console.error(err);
-						console.log(config.accepted_ids);
-						bot.users.find(u => u.id == config.accepted_ids[0]).getDMChannel().then((ch)=>{
+						console.log(bot.cfg.accepted_ids);
+						bot.users.find(u => u.id == bot.cfg.accepted_ids[0]).getDMChannel().then((ch)=>{
 							ch.sendMessage("Error pulling files.")
 						})
 						return;
@@ -322,10 +324,10 @@ bot.commands.reload = {
 						return console.log("Everything up to date.");
 					}
 
-					var gp = exec(`git fetch --all && git reset --hard ${config.remote}/${config.branch}`, {cwd: __dirname}, (err2, out2, stderr2)=>{
+					var gp = exec(`git fetch --all && git reset --hard ${bot.cfg.remote}/${bot.cfg.branch}`, {cwd: __dirname}, (err2, out2, stderr2)=>{
 						if(err2){
 							console.error(err2);
-							bot.users.find(u => u.id == config.accepted_ids[0]).getDMChannel().then((ch)=>{
+							bot.users.find(u => u.id == bot.cfg.accepted_ids[0]).getDMChannel().then((ch)=>{
 								ch.sendMessage("Error overwriting files.")
 							})
 							return;
@@ -377,12 +379,12 @@ bot.on("messageCreate", async (msg)=>{
 				  bot.server_configs[msg.guild.id] && 
 				  (bot.server_configs[msg.guild.id].prefix!= undefined && 
 				  bot.server_configs[msg.guild.id].prefix!="")) ? 
-				  new RegExp(`^(${bot.server_configs[msg.guild.id].prefix}|${config.prefix.join("|")})`, "i") :
-				  new RegExp(`^(${config.prefix.join("|")})`, "i");
+				  new RegExp(`^(${bot.server_configs[msg.guild.id].prefix}|${bot.cfg.prefix.join("|")})`, "i") :
+				  new RegExp(`^(${bot.cfg.prefix.join("|")})`, "i");
 
 	if(bot.paused && !prefix.test(msg.content.toLowerCase())) {
 		return;
-	} else if(bot.paused && (new RegExp(`^(${config.prefix.join("|")})unpause`, "i").test(msg.content.toLowerCase()) && config.accepted_ids.includes(msg.author.id))){
+	} else if(bot.paused && (new RegExp(`^(${bot.cfg.prefix.join("|")})unpause`, "i").test(msg.content.toLowerCase()) && bot.cfg.accepted_ids.includes(msg.author.id))){
 		bot.commands.unpause.execute(bot, msg, msg.content.replace(prefix, ""));
 		return;
 	}
@@ -425,7 +427,7 @@ bot.on("messageCreate", async (msg)=>{
 		bot.db.query(`INSERT INTO configs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,[msg.guild.id,"",{},"",{},"",{},[],[]],(err,rows)=>{
 			if(err) return console.log(err);
 			console.log(`Config for ${msg.guild.name} (${msg.guild.id}) created.`);
-			Util.reloadConfig(bot,msg.guild.id)
+			bot.utils.reloadConfig(bot,msg.guild.id)
 		})
 	}
 
@@ -457,11 +459,11 @@ bot.on("messageCreate", async (msg)=>{
 				if(cmd.guildOnly && !msg.guild) {
 					return msg.channel.createMessage("This command can only be used in guilds.");
 				}
-				check = await Util.checkPermissions(bot, msg, cmd);
+				check = await bot.utils.checkPermissions(bot, msg, cmd);
 				if(!check) {
 					return msg.channel.createMessage("You do not have permission to use this command.");
 				}
-				check = await Util.checkDisabled(bot, msg.guild.id, cmd, dat[2]);
+				check = await bot.utils.checkDisabled(bot, msg.guild.id, cmd, dat[2]);
 				if(check) {
 					return msg.channel.createMessage("That command is disabled.");
 				}
@@ -537,6 +539,26 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 				}
 
 				bot.createMessage(chan, {embed: embed}, attach ? attach : null)
+			}
+		}
+	}
+	if(bot.posts){
+		if(bot.user.id == user) return;
+		if(bot.posts && bot.posts[msg.id] && bot.posts[msg.id].user == user) {
+			if(emoji.name == "\u2705") {
+				var role;
+				var color = bot.posts[msg.id].data.toHex() == "000000" ? "000001" : bot.posts[msg.id].data.toHex();
+				role = msg.channel.guild.roles.find(r => r.name == user);
+				if(!role) role = await bot.createRole(msg.channel.guild.id, {name: user, color: parseInt(color,16)});
+				else role = await bot.editRole(msg.channel.guild.id, role.id, {color: parseInt(color, 16)});
+				await bot.addGuildMemberRole(msg.channel.guild.id, user, role.id);
+				await bot.editMessage(msg.channel.id, msg.id, {content: "Color successfully changed to #"+color+".", embed: {}});
+				await bot.removeMessageReactions(msg.channel.id, msg.id);
+				delete bot.posts[msg.id];
+			} else if(emoji.name == "\u274C") {
+				bot.editMessage(msg.channel.id, msg.id, {content: "Action cancelled.", embed: {}});
+				bot.removeMessageReactions(msg.channel.id, msg.id);
+				delete bot.posts[msg.id];
 			}
 		}
 	}

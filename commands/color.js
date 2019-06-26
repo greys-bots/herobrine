@@ -1,82 +1,38 @@
-var Util = require("../utilities");
-var Texts = require("../strings.json");
-var jimp = require("jimp");
-
-//- - - - - - - - - - Color - - - - - - - -  - - - -
-
 module.exports = {
-	help: ()=> "Display a color.",
-	usage: ()=> [" [hex code] - sends an image of that color"],
-	execute: async (bot, msg, args)=>{
-		var c = Util.hex2rgb(args[0]);
-		var img;
-		new jimp(256,256,args[0],(err,image)=>{
-			if(err){
-				console.log(err);
-				msg.channel.createMessage("Something went wrong.");
-			} else {
-				var font = (c.r * 0.299) + (c.g * 0.587) + (c.b * 0.114) < 186 ? jimp.FONT_SANS_32_WHITE : jimp.FONT_SANS_32_BLACK;
-				jimp.loadFont(font).then(fnt=>{
-					image.print(fnt,0,0,{
-						text:(args[0].startsWith("#") ? args[0].toUpperCase() : "#" + args[0].toUpperCase()),
-						alignmentX: jimp.HORIZONTAL_ALIGN_CENTER,
-						alignmentY: jimp.VERTICAL_ALIGN_MIDDLE
-					}, 256, 256, (err,img,{x,y})=>{
-						img.getBuffer(jimp.MIME_PNG,(err,data)=>{
-							msg.channel.createMessage({content: "Your color:"},{file:data,name:"color.png"})
-						})
-					})
-
-				})
-
-			}
-		})
+	help: ()=> "Change your color",
+	usage: ()=> [" [color] - Change your color to the one given"],
+	desc: ()=> "Colors can be hex codes or color names! Full list of names found [here](https://www.w3schools.com/colors/colors_names.asp)",
+	execute: async (bot, msg, args)=> {
+		if(!args[0]) return msg.channel.createMessage('Please provide a color.');
+		var color = bot.tc(args[0]);
+		if(!color.isValid()) return msg.channel.createMessage('That is not a valid color.');
+		var crgb = color.toRgb();
+		var text = (crgb.r * 0.299) + (crgb.g * 0.587) + (crgb.b * 0.114) > 186 ? '000000' : 'ffffff';
+		await msg.channel.createMessage({embed: {
+			title: "Color "+color.toHexString().toUpperCase(),
+			image: {
+				url: `https://sheep.greysdawn.tk/color/${color.toHex()}`
+			},
+			color: parseInt(color.toHex(), 16)
+		}}).then(message => {
+			if(!bot.posts) bot.posts = {};
+			bot.posts[message.id] = {
+				user: msg.author.id,
+				data: color
+			};
+			message.addReaction("\u2705");
+			message.addReaction("\u274C");
+			setTimeout(()=> {
+				if(!bot.posts[message.id]) return;
+				message.removeReactions()
+				delete bot.posts[message.id];
+			}, 900000)
+		}).catch(e => {
+			console.log(e);
+			msg.channel.createMessage('Baa! There was an error D:');
+		});
 	},
-	subcommands: {},
-	module: "utility",
-	guildOnly: true,
-	alias: ["colour"]
-}
-
-module.exports.subcommands.change = {
-	help: ()=> "Changes your current color",
-	usage: ()=>[" [hex color/name/etc] - changes current color to provided color"],
-	execute: (bot, msg, args)=>{
-		var c = args.join(" ");
-		if(c.startsWith("#")) c = c.replace("#","");
-		if(Texts.colors[c.toLowerCase()]) c = Texts.colors[c.toLowerCase()];
-		if(msg.guild.roles.find(r=>r.name == msg.author.id)){
-			var role = msg.guild.roles.find(r=>r.name == msg.author.id);
-			role.edit({color:parseInt(c,16)}).then(()=>{
-				if(!msg.member.roles.includes(msg.author.id)){
-					msg.member.addRole(role.id)
-				}
-				msg.channel.createMessage("Changed "+msg.author.username+"'s color to #"+c);
-			})
-		} else {
-			msg.guild.createRole({name: msg.author.id,color:parseInt(c,16)}).then((role)=>{
-				msg.member.addRole(role.id);
-				msg.channel.createMessage("Changed "+msg.author.username+"'s color to #"+c);
-			}).catch(e=>{
-				console.log(e);
-				msg.channel.createMessage("Something went wrong.")
-			})
-		}
-		
-	},
-	guildOnly: true,
-	module: "utility"
-}
-
-module.exports.subcommands.list = {
-	help: ()=> "Lists all available color names.",
-	usage: ()=> [" - lists color names that Herobrine recognizes"],
-	execute: (bot, msg, args)=> {
-		msg.channel.createMessage({embed: {
-			title: "Available Colors",
-			description: Object.keys(Texts.colors).map(k => k + ": " + Texts.colors[k]).join("\n")
-		}})
-	},
-	guildOnly: false,
-	module: "utility"
+	alias: ['c', 'cl', 'colour', 'ch'],
+	module: 'utility',
+	guildOnly: true
 }

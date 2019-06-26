@@ -1,6 +1,3 @@
-const Util = require("../utilities.js");
-const Texts = require("../strings.json");
-
 module.exports= {
 		help: () => "List, register, add, and remove triggers.",
 		usage: () => [" - List your trigger lists, if you have any.",
@@ -45,7 +42,7 @@ module.exports.subcommands.new = {
 	help: ()=> "Creates a new trigger list.",
 	usage: ()=> [" - Opens a menu for creating a new list"],
 	execute: (bot, msg, args)=>{
-		let cd=Util.genCode(4,Texts.codestab);
+		let cd=bot.utils.genCode(4,bot.strings.codestab);
 		let listname = "";
 
 		msg.channel.createMessage("Please enter a name/alias for the list");

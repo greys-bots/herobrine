@@ -1,5 +1,3 @@
-//- - - - - - - - - - Pings - - - - - - - - - -
-
 module.exports = {
 	help: ()=> "Ping the Boy:tm:",
 	usage: ()=> [" - Returns a random pingy-pongy response."],

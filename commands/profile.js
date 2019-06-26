@@ -1,4 +1,3 @@
-// - - - - - - - - - - Profiles - - - - - - - - - -
 module.exports = {
 	help: ()=> "Shows your profile.",
 	usage: ()=> [" - views your profile",

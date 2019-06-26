@@ -1,7 +1,3 @@
-var Texts = require("../strings.json");
-
-//- - - - - - - - - - Random - - - - - - - - - - - -
-
 module.exports = {
 	help: ()=>"Gives a random number.",
 	usage: ()=> [" <number> - Gives a number between 1 and 10, or the number provided."],
@@ -10,7 +6,7 @@ module.exports = {
 		var num=Math.floor(Math.random() * max);
 		var nums=num.toString().split("");
 
-		msg.channel.createMessage("Your number:\n"+nums.map(n => ":"+Texts.numbers[eval(n)] + ":").join(""));
+		msg.channel.createMessage("Your number:\n"+nums.map(n => ":"+bot.strings.numbers[eval(n)] + ":").join(""));
 	},
 	module: "utility",
 	alias: ["rand"]

@@ -1,6 +1,3 @@
-var Util = require("../utilities");
-//- - - - - - - - - - - Prefix - - - - - - - - - -
-
 module.exports = {
 	help: ()=> "Sets guild-specific prefix.",
 	usage: ()=> [ "[prefix] - Sets prefix for the guild"],
@@ -20,7 +17,7 @@ module.exports = {
 						if(err) console.log(err);
 					})
 				}
-				Util.reloadConfig(bot, msg.guild.id);
+				bot.utils.reloadConfig(bot, msg.guild.id);
 				msg.channel.createMessage((args[0] ? "Prefix changed." : "Prefix reset."));
 			}
 		})
