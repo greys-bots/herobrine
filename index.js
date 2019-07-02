@@ -81,6 +81,6 @@ app.use(async (req, res)=> {
 
 setup();
 console.log("Herobrine ready.");
-// module.exports = app;
+module.exports = app;
 bot.connect();
-app.listen(8080);
+// app.listen(process.env.PORT || 8080);
