@@ -494,7 +494,7 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 				var attach = [];
 				if(message.attachments[0]) {
 					await Promise.all(message.attachments.map(async (f,i) => {
-						var att = await fetch(f.url);
+						var att = await bot.fetch(f.url);
 						attach.push({file: Buffer.from(await att.buffer()), name: f.filename});
 						return new Promise(res => {
 							setTimeout(()=> res(1), 100);
