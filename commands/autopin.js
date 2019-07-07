@@ -17,7 +17,7 @@ module.exports.subcommands.add = {
 	help: ()=> "Adds a channel to the server's autopin config",
 	usage: ()=> [" [chanName | chanID | #channel] [:emoji:] - Adds channel and reaction config for the server."],
 	desc: ()=> "The emoji can be a custom one.",
-	execute: (bot, msg, args)=> {
+	execute: async (bot, msg, args)=> {
 		if(!args[0] || !args[1]) {
 			return msg.channel.createMessage("Please provide a channel and an emoji.");
 		}
@@ -31,15 +31,16 @@ module.exports.subcommands.add = {
 		} else {
 			chan = msg.channelMentions[0];
 		}
-		if(bot.server_configs[msg.guild.id] && bot.server_configs[msg.guild.id].autopin) {
-			console.log(bot.server_configs[msg.guild.id].autopin);
-			if(bot.server_configs[msg.guild.id].autopin.find(c => c.channel == (chan))) {
+		var cfg = await bot.utils.getConfig(bot, msg.guild.id);
+		if(cfg && cfg.autopin) {
+			console.log(cfg.autopin);
+			if(cfg.autopin.find(c => c.channel == (chan))) {
 				return msg.channel.createMessage("Channel already configured.");
-			} else if(bot.server_configs[msg.guild.id].autopin.find(c => c.emoji == emoji)) {
+			} else if(cfg.autopin.find(c => c.emoji == emoji)) {
 				return msg.channel.createMessage("Emoji already configured.");
 			} else {
-				bot.server_configs[msg.guild.id].autopin.push({channel: chan, emoji: emoji});
-				bot.db.query(`UPDATE configs SET autopin=? WHERE srv_id=?`,[bot.server_configs[msg.guild.id].autopin,msg.guild.id],(err,res)=>{
+				cfg.autopin.push({channel: chan, emoji: emoji});
+				bot.db.query(`UPDATE configs SET autopin=? WHERE srv_id=?`,[cfg.autopin,msg.guild.id],(err,res)=>{
 					if(err) {
 						console.log(err);
 						return msg.channel.createMessage("Something went wrong.");
@@ -48,16 +49,26 @@ module.exports.subcommands.add = {
 					msg.channel.createMessage("Config saved.");
 				})
 			}
-		} else {
-			if(!bot.server_configs[msg.guild.id]) bot.server_configs[msg.guild.id] = {srv_id: srv, prefix: "", welcome: {}, autoroles: "", disabled: {}, opped: "", fedback: {}, logged: [], autopin: []};
-			bot.server_configs.logged.push({channel: chan, emoji: emoji});
-			bot.db.query(`UPDATE configs SET autopin=? WHERE srv_id=?`,[bot.server_configs.logged,msg.guild.id],(err,res)=>{
+		} else if(cfg && !cfg.autopin) {
+			cfg.autopin = [];
+			cfg.autopin.push({channel: chan, emoji: emoji});
+			bot.db.query(`UPDATE configs SET autopin=? WHERE srv_id=?`,[cfg.autopin,msg.guild.id],(err,res)=>{
 				if(err) {
 					console.log(err);
 					return msg.channel.createMessage("Something went wrong.");
 				}
 
 				msg.channel.createMessage("Config saved.");
+			})
+		} else {
+			cfg = [srv, "", {}, "", {}, "", {}, [], [{channel: chan, emoji: emoji}]];
+			bot.db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?,?)`,[...cfg], (err, rows)=> {
+				if(err) {
+					console.log(err);
+					msg.channel.createMessage('Something went wrong');
+				} else {
+					msg.channel.createMessage('Config saved');
+				}
 			})
 		}
 	},
@@ -70,7 +81,7 @@ module.exports.subcommands.add = {
 module.exports.subcommands.remove = {
 	help: ()=> "Removes a channel from the server's autopin config",
 	usage: ()=> [" [chanName | chanID | #channel]- Removes the channel's pin config."],
-	execute: (bot, msg, args)=> {
+	execute: async (bot, msg, args)=> {
 		if(!args[0]) {
 			return msg.channel.createMessage("Please provide a channel to remove the configs from.");
 		}
@@ -82,11 +93,12 @@ module.exports.subcommands.remove = {
 		} else {
 			chan = msg.channelMentions[0];
 		}
-		if(bot.server_configs[msg.guild.id] && bot.server_configs[msg.guild.id].autopin) {
-			console.log(bot.server_configs[msg.guild.id].autopin);
-			if(bot.server_configs[msg.guild.id].autopin.find(c => c.channel == (chan))) {
-				bot.server_configs[msg.guild.id].autopin = bot.server_configs[msg.guild.id].autopin.filter(c => c.channel != chan);
-				bot.db.query(`UPDATE configs SET autopin=? WHERE srv_id=?`,[bot.server_configs[msg.guild.id].autopin, msg.guild.id], (err, res)=>{
+		var cfg = await bot.utils.getConfig(bot, msg.guild.id)
+		if(cfg && cfg.autopin) {
+			console.log(cfg.autopin);
+			if(cfg.autopin.find(c => c.channel == (chan))) {
+				cfg.autopin = cfg.autopin.filter(c => c.channel != chan);
+				bot.db.query(`UPDATE configs SET autopin=? WHERE srv_id=?`,[cfg.autopin, msg.guild.id], (err, res)=>{
 					if(err) {
 						console.log(err);
 						return msg.channel.createMessage("Something went wrong.");
@@ -111,7 +123,8 @@ module.exports.subcommands.pin = {
 	usage: ()=> [" [emoji] - Processes pins in the current channel."],
 	execute: async (bot, msg, args)=> {
 		if(!args[0]) return msg.channel.createMessage("Please provide a channel.");
-		if(bot.server_configs[msg.guild.id] && bot.server_configs[msg.guild.id].autopin) {
+		var cfg = await bot.utils.getConfig(bot, msg.guild.id)
+		if(cfg && cfg.autopin) {
 			var chan;
 			if(!msg.channelMentions[0]) {
 				chan = msg.guild.channels.find(ch => ch.name == args[0] || ch.id == args[0]) || null;
@@ -120,8 +133,8 @@ module.exports.subcommands.pin = {
 			} else {
 				chan = msg.channelMentions[0];
 			}
-			if(chan && bot.server_configs[msg.guild.id].autopin.find(c => c.channel == chan)) {
-				var cf = bot.server_configs[msg.guild.id].autopin.find(c => c.channel == chan);
+			if(chan && cfg.autopin.find(c => c.channel == chan)) {
+				var cf = cfg.autopin.find(c => c.channel == chan);
 				msg.channel.getPins().then(pins => {
 					pins.map(p => {
 						p.addReaction(cf.emoji.replace(/^:/,""));
@@ -150,8 +163,9 @@ module.exports.subcommands.view = {
 			fields: []
 		};
 		var remove = false;
-		if(bot.server_configs[msg.guild.id] && bot.server_configs[msg.guild.id].autopin) {
-			await Promise.all(bot.server_configs[msg.guild.id].autopin.map(c => {
+		var cfg = await bot.utils.getConfig(bot, msg.guild.id);
+		if(cfg && cfg.autopin[0]) {
+			await Promise.all(cfg.autopin.map(c => {
 				chan = msg.guild.channels.find(ch => ch.id == c.channel);
 				if(chan) {
 					embed.fields.push({name: "Name: "+chan.name,
@@ -171,9 +185,9 @@ module.exports.subcommands.view = {
 			})
 
 			if(remove) {
-				bot.server_configs[msg.guild.id].autopin = bot.server_configs[msg.guild.id].autopin.filter(c => msg.guild.channels.find(ch => ch.id == c.channel));
-				console.log(bot.server_configs[msg.guild.id].autopin)
-				bot.db.query(`UPDATE configs SET autopin=? WHERE srv_id=?`,[bot.server_configs[msg.guild.id].autopin, msg.guild.id], (err, res)=>{
+				cfg.autopin = cfg.autopin.filter(c => msg.guild.channels.find(ch => ch.id == c.channel));
+				console.log(cfg.autopin)
+				bot.db.query(`UPDATE configs SET autopin=? WHERE srv_id=?`,[cfg.autopin, msg.guild.id], (err, res)=>{
 					if(err) {
 						console.log(err);
 						return msg.channel.createMessage("Something went wrong while removing invalid channels from config.");

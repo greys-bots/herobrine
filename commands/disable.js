@@ -3,7 +3,8 @@ module.exports = {
 	usage: ()=> [" [command/module] <subcommand> - disables given command or its subcommand",
 				" list - lists disabled commands"],
 	execute: async (bot, msg, args) => {
-		var disabled = bot.server_configs[msg.guild.id] ? bot.server_configs[msg.guild.id].disabled : {modules: [], commands: []};
+		var cfg = await bot.utils.getConfig(bot, msg.guild.id);
+		var disabled = cfg ? cfg.disabled : {modules: [], commands: []};
 		if(!args[0]) return msg.channel.createMessage("Please provide a command or module to disable.");
 		if(args[0] == "disable") return msg.channel.createMessage("You can't disable this command.");
 		var name = args.join(" ");
@@ -13,7 +14,6 @@ module.exports = {
 				msg.channel.createMessage("Module already disabled.")
 			} else {
 				disabled.modules.push(name);
-				bot.server_configs[msg.guild.id].disabled = disabled;
 				bot.db.query(`UPDATE configs SET disabled=? WHERE srv_id=?`,[disabled,msg.guild.id],(err,res)=>{
 					if(err) {
 						console.log(err);
@@ -31,7 +31,6 @@ module.exports = {
 					msg.channel.createMessage("Command already disabled.");
 				} else {
 					disabled.commands.push(name.join(" "));
-					bot.server_configs[msg.guild.id].disabled = disabled;
 					bot.db.query(`UPDATE configs SET disabled=? WHERE srv_id=?`,[disabled,msg.guild.id],(err,res)=>{
 						if(err) {
 							console.log(err);

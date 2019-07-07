@@ -46,32 +46,36 @@ module.exports = {
 			await callback(array[index], index, array);
 		}
 	},
-	reloadConfig: async function(bot, srv){
-		bot.db.query(`SELECT * FROM configs WHERE srv_id='${srv}'`,
-		{
-			srv_id: String,
-			prefix: String,
-			welcome: JSON.parse,
-			autoroles: String,
-			disabled: JSON.parse,
-			opped: String,
-			feedback: JSON.parse,
-			logged: JSON.parse,
-			autopin: JSON.parse
-		},(err,rows)=>{
-			if(err){
-				console.log(err)
-			} else {
-				bot.server_configs[srv] = rows[0] ? rows[0] : {srv_id: srv, prefix: "", welcome: {}, autoroles: "", disabled: {}, opped: "", feedback: {}, logged: [], autopin: []};
-			}
+	getConfig: async function(bot, srv){
+		return new Promise((res)=> {
+			bot.db.query(`SELECT * FROM configs WHERE srv_id='${srv}'`,
+			{
+				srv_id: String,
+				prefix: String,
+				welcome: JSON.parse,
+				autoroles: String,
+				disabled: JSON.parse,
+				opped: String,
+				feedback: JSON.parse,
+				logged: JSON.parse,
+				autopin: JSON.parse
+			},(err,rows)=>{
+				if(err){
+					console.log(err)
+					res(undefined);
+				} else {
+					res(rows[0])
+				}
+			})
 		})
 	},
 	checkDisabled: async function(bot, srv, cmd, name){
-		return new Promise(res=>{
-			if(bot.server_configs[srv] && bot.server_configs[srv].disabled) {
-				let dlist = bot.server_configs[srv].disabled;
+		return new Promise(async res=>{
+			var cfg = await this.getConfig(bot, srv);
+			console.log(cfg);
+			if(cfg && cfg.disabled) {
+				let dlist = cfg.disabled;
 				name = name.split(" ");
-				console.log(dlist);
 				if(dlist.modules && dlist.modules.includes(cmd.module)) {
 					res(true);
 				} else if(dlist.commands && (dlist.commands.includes(name[0]) || dlist.commands.includes(name.join(" ")))) {

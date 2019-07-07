@@ -25,9 +25,6 @@ bot.strings = require('./strings.json');
 bot.fetch = require('node-fetch');
 bot.tc = require('tinycolor2');
 
-
-bot.server_configs = {};
-
 bot.modules = {};
 
 bot.paused = false;
@@ -99,28 +96,6 @@ const setup = async function(){
 		if(err){
 			console.log(err)
 		}
-	});
-
-	bot.db.query(`SELECT * FROM configs`,
-	{
-			srv_id: String,
-			prefix: String,
-			welcome: JSON.parse,
-			autoroles: String,
-			disabled: JSON.parse,
-			opped: String,
-			feedback: JSON.parse,
-			logged: JSON.parse,
-			autopin: JSON.parse
-		}, async (err,rows)=>{
-		if(err) return console.log(err);
-
-		await Promise.all(rows.map( s =>{
-			bot.server_configs[s.srv_id] = s;
-			return new Promise((res,rej)=>{
-				setTimeout(res("config for "+s.srv_id+" loaded"),100)
-			})
-		}))
 	});
 
 	bot.db.query(`CREATE TABLE IF NOT EXISTS profiles (usr_id TEXT, info TEXT, badges TEXT, lvl TEXT, exp TEXT, cash TEXT, daily TEXT, disabled TEXT)`,(err,rows)=>{
@@ -375,11 +350,13 @@ bot.on("messageCreate", async (msg)=>{
 		return;
 	}
 
+	var cfg = await bot.utils.getConfig(bot, msg.guild.id)
+
 	var prefix = (msg.guild && 
-				  bot.server_configs[msg.guild.id] && 
-				  (bot.server_configs[msg.guild.id].prefix!= undefined && 
-				  bot.server_configs[msg.guild.id].prefix!="")) ? 
-				  new RegExp(`^(${bot.server_configs[msg.guild.id].prefix}|${bot.cfg.prefix.join("|")})`, "i") :
+				  cfg && 
+				  (cfg.prefix!= undefined && 
+				  cfg.prefix!="")) ? 
+				  new RegExp(`^(${cfg.prefix}|${bot.cfg.prefix.join("|")})`, "i") :
 				  new RegExp(`^(${bot.cfg.prefix.join("|")})`, "i");
 
 	if(bot.paused && !prefix.test(msg.content.toLowerCase())) {
@@ -423,11 +400,10 @@ bot.on("messageCreate", async (msg)=>{
 		}
 	})
 
-	if(msg.guild && !bot.server_configs[msg.guild.id]){
+	if(msg.guild && !cfg){
 		bot.db.query(`INSERT INTO configs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,[msg.guild.id,"",{},"",{},"",{},[],[]],(err,rows)=>{
 			if(err) return console.log(err);
 			console.log(`Config for ${msg.guild.name} (${msg.guild.id}) created.`);
-			bot.utils.reloadConfig(bot,msg.guild.id)
 		})
 	}
 
@@ -477,29 +453,27 @@ bot.on("messageCreate", async (msg)=>{
 })
 
 bot.on("guildMemberAdd", async (guild, member)=>{
-	if(bot.server_configs[guild.id]){
-		var scfg = bot.server_configs[guild.id];
-		console.log(scfg);
-		scfg.welcome = (typeof scfg.welcome == "string" ? JSON.parse(scfg.welcome) : scfg.welcome);
-		if(scfg.welcome.enabled && scfg.welcome.msg){
-			var msg = scfg.welcome.msg;
-			await Promise.all(Object.keys(Texts.welc_strings).map(s => {
-				msg = msg.replace(s,eval("`"+Texts.welc_strings[s]+"`"),"g");
+	if(member.user.bot) return;
+	var cfg = await bot.utils.getConfig(bot, guild.id);
+	if(cfg){
+		if(cfg.welcome.enabled && cfg.welcome.msg){
+			var msg = cfg.welcome.msg;
+			await Promise.all(Object.keys(bot.strings.welc_strings).map(s => {
+				msg = msg.replace(s,eval("`"+bot.strings.welc_strings[s]+"`"),"g");
 				console.log(msg);
 				return new Promise(res=> setTimeout(()=>res(1),100))
 			})).then(()=>{
-				console.log("Sending...\n"+msg)
-				bot.createMessage(scfg.welcome.channel, msg);
+				bot.createMessage(cfg.welcome.channel, msg);
 			})
 		}
-		if(scfg.welcome.enabled && scfg.autoroles){
-			await Promise.all(scfg.autoroles.split(", ").map(r=>{
+		if(cfg.welcome.enabled && cfg.autoroles){
+			await Promise.all(cfg.autoroles.split(", ").map(r=>{
 				if(guild.roles.find(rl => rl.id == r)){
 					member.addRole(r);
 				} else {
 					guild.members.find(m => m.id == guild.ownerID).user.getDMChannel().then((c)=> c.createMessage("Autorole not found: "+r+"\nRemoving role from autoroles."));
-					scfg.autoroles = scfg.autoroles.replace(", "+r,"").replace(r+", ","");
-					bot.db.query(`UPDATE configs SET autoroles=? WHERE srv_id='${guild.id}'`,[scfg.autoroles]);
+					cfg.autoroles = cfg.autoroles.replace(", "+r,"").replace(r+", ","");
+					bot.db.query(`UPDATE configs SET autoroles=? WHERE srv_id='${guild.id}'`,[cfg.autoroles]);
 				}
 			})).then(()=>{
 				console.log(`Successfully added autoroles in guild ${guild.name} ${guild.id}`);
@@ -509,8 +483,9 @@ bot.on("guildMemberAdd", async (guild, member)=>{
 })
 
 bot.on("messageReactionAdd",async (msg, emoji, user) => {
-	if(bot.server_configs[msg.channel.guild.id] && bot.server_configs[msg.channel.guild.id].autopin) {
-		var cf = bot.server_configs[msg.channel.guild.id].autopin.find(c => c.emoji == emoji.name || c.emoji == `:${emoji.name}:${emoji.id}`);
+	var cfg = await bot.utils.getConfig(bot, msg.channel.guild.id);
+	if(cfg && cfg.autopin) {
+		var cf = cfg.autopin.find(c => c.emoji == emoji.name || c.emoji == `:${emoji.name}:${emoji.id}`);
 		if(cf) {
 			var chan = cf.channel;
 			var member = msg.channel.guild.members.find(m => m.id == user);
@@ -542,6 +517,7 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 			}
 		}
 	}
+
 	if(bot.posts){
 		if(bot.user.id == user) return;
 		if(bot.posts && bot.posts[msg.id] && bot.posts[msg.id].user == user) {
