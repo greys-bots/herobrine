@@ -436,7 +436,7 @@ bot.on("messageCreate", async (msg)=>{
 					return msg.channel.createMessage("This command can only be used in guilds.");
 				}
 				check = await bot.utils.checkPermissions(bot, msg, cmd);
-				if(!check) {
+				if(!check && !bot.cfg.accepted_ids.includes(msg.author.id)) {
 					return msg.channel.createMessage("You do not have permission to use this command.");
 				}
 				check = await bot.utils.checkDisabled(bot, msg.guild.id, cmd, dat[2]);
@@ -521,20 +521,43 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 	if(bot.posts){
 		if(bot.user.id == user) return;
 		if(bot.posts && bot.posts[msg.id] && bot.posts[msg.id].user == user) {
-			if(emoji.name == "\u2705") {
-				var role;
-				var color = bot.posts[msg.id].data.toHex() == "000000" ? "000001" : bot.posts[msg.id].data.toHex();
-				role = msg.channel.guild.roles.find(r => r.name == user);
-				if(!role) role = await bot.createRole(msg.channel.guild.id, {name: user, color: parseInt(color,16)});
-				else role = await bot.editRole(msg.channel.guild.id, role.id, {color: parseInt(color, 16)});
-				await bot.addGuildMemberRole(msg.channel.guild.id, user, role.id);
-				await bot.editMessage(msg.channel.id, msg.id, {content: "Color successfully changed to #"+color+".", embed: {}});
-				await bot.removeMessageReactions(msg.channel.id, msg.id);
-				delete bot.posts[msg.id];
-			} else if(emoji.name == "\u274C") {
-				bot.editMessage(msg.channel.id, msg.id, {content: "Action cancelled.", embed: {}});
-				bot.removeMessageReactions(msg.channel.id, msg.id);
-				delete bot.posts[msg.id];
+			switch(emoji.name) {
+				case '\u2705':
+					var role;
+					var color = bot.posts[msg.id].data.toHex() == "000000" ? "000001" : bot.posts[msg.id].data.toHex();
+					role = msg.channel.guild.roles.find(r => r.name == user);
+					if(!role) role = await bot.createRole(msg.channel.guild.id, {name: user, color: parseInt(color,16)});
+					else role = await bot.editRole(msg.channel.guild.id, role.id, {color: parseInt(color, 16)});
+					await bot.addGuildMemberRole(msg.channel.guild.id, user, role.id);
+					await bot.editMessage(msg.channel.id, msg.id, {content: "Color successfully changed to #"+color+".", embed: {}});
+					await bot.removeMessageReactions(msg.channel.id, msg.id);
+					delete bot.posts[msg.id];
+					break;
+				case '\u274C':
+					bot.editMessage(msg.channel.id, msg.id, {content: "Action cancelled.", embed: {}});
+					bot.removeMessageReactions(msg.channel.id, msg.id);
+					delete bot.posts[msg.id];
+					break
+				case '🔀':
+					var color = bot.tc(Math.floor(Math.random()*16777215).toString(16));
+					bot.editMessage(msg.channel.id, msg.id, {embed: {
+						title: "Color "+color.toHexString().toUpperCase(),
+						image: {
+							url: `https://sheep.greysdawn.tk/color/${color.toHex()}`
+						},
+						color: parseInt(color.toHex(), 16)
+					}})
+					clearTimeout(bot.posts[msg.id].timeout)
+					bot.posts[msg.id] = {
+						user: bot.posts[msg.id].user,
+						data: color,
+						timeout: setTimeout(()=> {
+							if(!bot.posts[msg.id]) return;
+							message.removeReactions()
+							delete bot.posts[message.id];
+						}, 900000)
+					};
+					break;
 			}
 		}
 	}
