@@ -6,7 +6,7 @@ module.exports = {
 		var cfg = await bot.utils.getConfig(bot, msg.guild.id);
 		var disabled = cfg ? cfg.disabled : {modules: [], commands: []};
 		if(!args[0]) return msg.channel.createMessage("Please provide a command or module to disable.");
-		if(args[0] == "disable") return msg.channel.createMessage("You can't disable or enable this command.");
+		if(args[0] == "disable" || args[0] == "enable") return msg.channel.createMessage("You can't disable or enable this command.");
 		var name = args.join(" ");
 		if(bot.modules[name]) {
 			if(disabled.modules == undefined) {
@@ -38,14 +38,26 @@ module.exports = {
 							console.log(err);
 							msg.channel.createMessage("There was an error.");
 						} else {
-							msg.channel.createMessage("Command disabled.")
+							msg.channel.createMessage("Command enabled.")
 						}
 					});
 				} else {
 					msg.channel.createMessage("Command already enabled.");
 				}
 			}).catch(e => {
-				msg.channel.createMessage("Could not disable: "+e);
+				if(["levels", "levelup", "levelups"].includes(args[0])) {
+					disabled.levels = false
+					bot.db.query(`UPDATE configs SET disabled=? WHERE srv_id=?`,[disabled,msg.guild.id],(err,res)=>{
+						if(err) {
+							console.log(err);
+							msg.channel.createMessage("There was an error.");
+						} else {
+							msg.channel.createMessage("Levels enabled.")
+						}
+					});
+				} else {
+					msg.channel.createMessage("Could not enable: "+e);
+				}
 			});
 		}
 	},

@@ -367,7 +367,6 @@ bot.on("messageCreate", async (msg)=>{
 	}
 
 	//if(new RegExp("good\s").test(msg.content.toLowerCase()))
-
 	bot.db.query(`SELECT * FROM profiles WHERE usr_id='${msg.author.id}'`,(err,rows)=>{
 		if(err){
 			console.log(err)
@@ -383,7 +382,7 @@ bot.on("messageCreate", async (msg)=>{
 						exp=0;
 					}
 
-					if(rows[0].disabled != "1") msg.channel.createMessage(`Congratulations, ${(msg.member.nickname==null ? msg.author.username : msg.member.nickname)}! You are now level ${lve}!`);
+					if(rows[0].disabled != "1" && !(cfg.disabled && cfg.disabled.levels)) msg.channel.createMessage(`Congratulations, ${(msg.member.nickname==null ? msg.author.username : msg.member.nickname)}! You are now level ${lve}!`);
 				} else {
 					exp=exp+5;
 				}
