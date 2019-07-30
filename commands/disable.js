@@ -1,7 +1,7 @@
 module.exports = {
 	help: ()=> "Disables a command/module or a command's subcommands.",
 	usage: ()=> [" [command/module] <subcommand> - disables given command or its subcommand",
-				" list - lists disabled commands"],
+				" view - lists disabled commands"],
 	execute: async (bot, msg, args) => {
 		if(!args[0]) return bot.commands.disable.subcommands.view.execute(bot, msg, args);
 		if(args[0] == "disable" || args[0] == "enable") return msg.channel.createMessage("You can't disable or enable this command.");

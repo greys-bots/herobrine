@@ -58,7 +58,8 @@ module.exports = {
 				opped: String,
 				feedback: JSON.parse,
 				logged: JSON.parse,
-				autopin: JSON.parse
+				autopin: JSON.parse,
+				aliases: JSON.parse
 			},(err,rows)=>{
 				if(err){
 					console.log(err)
@@ -107,6 +108,35 @@ module.exports = {
 			} else {
 				res(true);
 			}
+		})
+	},
+	genEmbeds: async (arr, genFunc, info = {}) => {
+		return new Promise(res => {
+			var embeds = [];
+			var current = { embed: {
+				title: info.title,
+				description: info.description,
+				fields: []
+			}};
+			
+			for(let i=0; i<arr.length; i++) {
+				if(current.embed.fields.length < 10) {
+					current.embed.fields.push(genFunc(arr[i]));
+				} else {
+					embeds.push(current);
+					current = { embed: {
+						title: info.title,
+						description: info.description,
+						fields: [genFunc(arr[i])]
+					}};
+				}
+			}
+			embeds.push(current);
+			if(embeds.length > 1) {
+				for(let i = 0; i < embeds.length; i++)
+					embeds[i].embed.title += ` (page ${i+1}/${embeds.length}, ${arr.length} total)`;
+			}
+			res(embeds);
 		})
 	}
 };

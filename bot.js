@@ -92,7 +92,7 @@ const setup = async function(){
 		}
 	});
 
-	bot.db.query(`CREATE TABLE IF NOT EXISTS configs (srv_id TEXT, prefix TEXT, welcome TEXT, autoroles TEXT, disabled TEXT, opped TEXT, feedback TEXT, logged TEXT, autopin TEXT)`,(err,rows)=>{
+	bot.db.query(`CREATE TABLE IF NOT EXISTS configs (srv_id TEXT, prefix TEXT, welcome TEXT, autoroles TEXT, disabled TEXT, opped TEXT, feedback TEXT, logged TEXT, autopin TEXT, aliases TEXT)`,(err,rows)=>{
 		if(err){
 			console.log(err)
 		}
@@ -119,6 +119,7 @@ const setup = async function(){
 
 bot.parseCommand = async function(bot, msg, args, command){
 	return new Promise(async (res,rej)=>{
+		var cfg = await bot.utils.getConfig(bot, msg.guild.id);
 		var commands;
 		var cmd;
 		var name = "";
@@ -136,6 +137,14 @@ bot.parseCommand = async function(bot, msg, args, command){
 			cmd = Object.values(commands).find(cm => cm.alias && cm.alias.includes(args[0].toLowerCase()));
 			name = Object.keys(commands).find(cm => commands[cm].alias && commands[cm].alias.includes(args[0].toLowerCase()));
 			args = args.slice(1);
+		} else if(cfg && cfg.aliases && cfg.aliases[0]) {
+			if(cfg.aliases.find(x => x.alias == args[0].toLowerCase())) {
+				let data = await bot.parseCommand(bot, msg, cfg.aliases.find(x => x.alias == args[0].toLowerCase()).cmdname.split(" ").concat(args.slice(1)));
+				if(data) {
+					cmd = data[0]; args = data[1];
+					name += " "+data[2];
+				}
+			}
 		}
 
 		if(cmd && cmd.subcommands && args[0]) {
@@ -351,7 +360,7 @@ bot.on("messageCreate", async (msg)=>{
 				  cfg && 
 				  (cfg.prefix!= undefined && 
 				  cfg.prefix!="")) ? 
-				  new RegExp(`^(${cfg.prefix}|${bot.cfg.prefix.join("|")})`, "i") :
+				  new RegExp(`^${cfg.prefix}`, "i") :
 				  new RegExp(`^(${bot.cfg.prefix.join("|")})`, "i");
 
 	if(bot.paused && !prefix.test(msg.content.toLowerCase())) {
@@ -361,7 +370,6 @@ bot.on("messageCreate", async (msg)=>{
 		return;
 	}
 
-	//if(new RegExp("good\s").test(msg.content.toLowerCase()))
 	bot.db.query(`SELECT * FROM profiles WHERE usr_id='${msg.author.id}'`,(err,rows)=>{
 		if(err){
 			console.log(err)
@@ -395,7 +403,7 @@ bot.on("messageCreate", async (msg)=>{
 	})
 
 	if(msg.guild && !cfg){
-		bot.db.query(`INSERT INTO configs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,[msg.guild.id,"",{},"",{},"",{},[],[]],(err,rows)=>{
+		bot.db.query(`INSERT INTO configs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,[msg.guild.id,"",{},"",{},"",{},[],[],[]],(err,rows)=>{
 			if(err) return console.log(err);
 			console.log(`Config for ${msg.guild.name} (${msg.guild.id}) created.`);
 		})
@@ -552,6 +560,27 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 					};
 					break;
 			}
+		}
+	}
+
+	if(bot.pages && bot.pages[msg.id] && bot.pages[msg.id].user == user) {
+		if(emoji.name == "\u2b05") {
+			if(bot.pages[msg.id].index == 0) {
+				bot.pages[msg.id].index = bot.pages[msg.id].data.length-1;
+			} else {
+				bot.pages[msg.id].index -= 1;
+			}
+			bot.editMessage(msg.channel.id, msg.id, bot.pages[msg.id].data[bot.pages[msg.id].index]);
+		} else if(emoji.name == "\u27a1") {
+			if(bot.pages[msg.id].index == bot.pages[msg.id].data.length-1) {
+				bot.pages[msg.id].index = 0;
+			} else {
+				bot.pages[msg.id].index += 1;
+			}
+			bot.editMessage(msg.channel.id, msg.id, bot.pages[msg.id].data[bot.pages[msg.id].index]);
+		} else if(emoji.name == "\u23f9") {
+			bot.deleteMessage(msg.channel.id, msg.id);
+			delete bot.pages[msg.id];
 		}
 	}
 })

@@ -2,6 +2,6 @@
 logs/
 node_modules/
 config.json
-data.sqlite
+*.sqlite
 Procfile
 run.bat
