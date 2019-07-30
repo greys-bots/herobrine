@@ -4,7 +4,7 @@ module.exports = {
 				" remove [chanName | chanID | #channel] - Removes channel config.",
 				" view - Views current configs."],
 	execute: (bot, msg, args)=> {
-		this.subcommands.view.execute(bot, msg, args);
+		bot.commands.autopin.subcommands.view.execute(bot, msg, args);
 	},
 	subcommands: {},
 	permissions: ["manageGuild"],

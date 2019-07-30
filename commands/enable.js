@@ -3,63 +3,56 @@ module.exports = {
 	usage: ()=> [" [command/module] <subcommand> - enables given command or its subcommand",
 				" list - lists enabled commands"],
 	execute: async (bot, msg, args) => {
-		var cfg = await bot.utils.getConfig(bot, msg.guild.id);
-		var disabled = cfg ? cfg.disabled : {modules: [], commands: []};
-		if(!args[0]) return msg.channel.createMessage("Please provide a command or module to disable.");
+		if(!args[0]) return msg.channel.createMessage("Please provide a command or module to enable.");
 		if(args[0] == "disable" || args[0] == "enable") return msg.channel.createMessage("You can't disable or enable this command.");
-		var name = args.join(" ");
-		if(bot.modules[name]) {
-			if(disabled.modules == undefined) {
-				return msg.channel.createMessage("Module aleady enabled.");
-			}
-			if(disabled.modules.includes(name)) {
-				disabled.modules = disabled.modules.filter(m => m != name);
-				bot.db.query(`UPDATE configs SET disabled=? WHERE srv_id=?`,[disabled,msg.guild.id],(err,res)=>{
-					if(err) {
-						console.log(err);
-						msg.channel.createMessage("There was an error.");
-					} else {
-						msg.channel.createMessage("Module enabled.")
-					}
-				});
+		var cfg = await bot.utils.getConfig(bot, msg.guild.id);
+		if(!cfg) return msg.guild.createMessage("No config registered for this server.");
+		if(!cfg.disabled) return msg.guild.createMessage("Nothing is disabled in this server.");
+		var dis = cfg.disabled;
+		var cmd;
+		try {
+			cmd = await bot.parseCommand(bot, msg, args);
+		} catch (e) {
+			cmd = undefined;
+		}
+		if(cmd) {
+			var disabled = await bot.utils.isDisabled(bot, msg.guild.id, cmd[0], cmd[2]);
+			if(!disabled) {
+				return msg.channel.createMessage("Module already enabled.")
 			} else {
-				msg.channel.createMessage("Module already enabled.");
+				dis.commands = dis.commands.filter(x => x != cmd[2]);
+				var success = await bot.utils.updateConfig(bot, msg.guild.id, "disabled", dis);
+				if(success) {
+					msg.channel.createMessage("Enabled!")
+				} else {
+					msg.channel.createMessage("Something went wrong.");
+				}
 			}
 		} else {
-			if(disabled.commands == undefined) {
-				return msg.channel.createMessage("Command already enabled.");
+			cmd = args[0].toLowerCase()
+			if(["levels", "levelup", "levelups"].includes(cmd)) {
+				dis.levels = false;
+
+				var success = await bot.utils.updateConfig(bot, msg.guild.id, "disabled", dis);
+				if(success) {
+					msg.channel.createMessage("Enabled!")
+				} else {
+					msg.channel.createMessage("Something went wrong.");
+				}
+			} else if(bot.modules[cmd]) {
+				var cmds = Object.keys(bot.commands).filter(c => bot.commands[c].module && bot.commands[c].module == cmd);
+				dis.commands = dis.commands.filter(x => !cmds.includes(x));
+				var success = await bot.utils.updateConfig(bot, msg.guild.id, "disabled", dis);
+				if(success) {
+					msg.channel.createMessage("Enabled!")
+				} else {
+					msg.channel.createMessage("Something went wrong.");
+				}
+			} else {
+				return msg.channel.createMessage("Could not enable: "+e);
 			}
-			await bot.parseCommand(bot, msg, args).then(dat =>{
-				name = dat[2].split(" ");
-				if((disabled.commands[name[0]] || disabled.commands[name.join(" ")])) {
-					disabled.commands.filter(c => c != name.join(" "));
-					bot.db.query(`UPDATE configs SET disabled=? WHERE srv_id=?`,[disabled,msg.guild.id],(err,res)=>{
-						if(err) {
-							console.log(err);
-							msg.channel.createMessage("There was an error.");
-						} else {
-							msg.channel.createMessage("Command enabled.")
-						}
-					});
-				} else {
-					msg.channel.createMessage("Command already enabled.");
-				}
-			}).catch(e => {
-				if(["levels", "levelup", "levelups"].includes(args[0])) {
-					disabled.levels = false
-					bot.db.query(`UPDATE configs SET disabled=? WHERE srv_id=?`,[disabled,msg.guild.id],(err,res)=>{
-						if(err) {
-							console.log(err);
-							msg.channel.createMessage("There was an error.");
-						} else {
-							msg.channel.createMessage("Levels enabled.")
-						}
-					});
-				} else {
-					msg.channel.createMessage("Could not enable: "+e);
-				}
-			});
 		}
+		
 	},
 	guildOnly: true,
 	module: "admin",

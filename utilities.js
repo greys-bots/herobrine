@@ -69,24 +69,30 @@ module.exports = {
 			})
 		})
 	},
-	checkDisabled: async function(bot, srv, cmd, name){
+	updateConfig: async function(bot,srv,key,val) {
+		return new Promise((res)=> {
+			bot.db.query(`UPDATE configs SET ?=? WHERE srv_id=?`,[key, val, srv], (err, rows)=> {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else {
+					res(true)
+				}
+			})
+		})
+	},
+	isDisabled: async function(bot, srv, cmd, name){
 		return new Promise(async res=>{
 			var cfg = await this.getConfig(bot, srv);
-			console.log(cfg);
-			if(cfg && cfg.disabled) {
-				let dlist = cfg.disabled;
-				name = name.split(" ");
-				if(dlist.modules && dlist.modules.includes(cmd.module)) {
-					res(true);
-				} else if(dlist.commands && (dlist.commands.includes(name[0]) || dlist.commands.includes(name.join(" ")))) {
-					res(true);
-				} else {
-					console.log(dlist);
-					res(false);
-				}
+			if(!cfg || !cfg.disabled) return res(false);
+			let dlist = cfg.disabled;
+			name = name.split(" ");
+			if(dlist.commands && (dlist.commands.includes(name[0]) || dlist.commands.includes(name.join(" ")))) {
+				res(true);
 			} else {
-				res(false)
+				res(false);
 			}
+
 		})
 	},
 	checkPermissions: async function(bot, msg, cmd){

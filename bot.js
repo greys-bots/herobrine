@@ -149,12 +149,8 @@ bot.parseCommand = async function(bot, msg, args, command){
 		if(!cmd) {
 			if(command) {
 				cmd = command;
-				console.log(args);
-				console.log(cmd);
 				res([cmd, args, name]);
 			} else {
-				console.log(command);
-				console.log("Command not found.")
 				rej("Command not found.");
 			}
 		} else {
@@ -288,7 +284,6 @@ bot.commands.reload = {
 				var git = exec(`git pull ${bot.cfg.remote} ${bot.cfg.branch}`,{cwd: __dirname}, (err, out, stderr)=>{
 					if(err){
 						console.error(err);
-						console.log(bot.cfg.accepted_ids);
 						bot.users.find(u => u.id == bot.cfg.accepted_ids[0]).getDMChannel().then((ch)=>{
 							ch.sendMessage("Error pulling files.")
 						})
@@ -429,7 +424,6 @@ bot.on("messageCreate", async (msg)=>{
 		} else {
 			await bot.parseCommand(bot, msg, args).then(async dat =>{
 				var cmd = dat[0];
-				console.log(dat[1])
 				var check;
 				if(cmd.guildOnly && !msg.guild) {
 					return msg.channel.createMessage("This command can only be used in guilds.");
@@ -438,8 +432,8 @@ bot.on("messageCreate", async (msg)=>{
 				if(!check && !bot.cfg.accepted_ids.includes(msg.author.id)) {
 					return msg.channel.createMessage("You do not have permission to use this command.");
 				}
-				check = await bot.utils.checkDisabled(bot, msg.guild.id, cmd, dat[2]);
-				if(check) {
+				check = await bot.utils.isDisabled(bot, msg.guild.id, cmd, dat[2]);
+				if(check && !(dat[2] == "enable" || dat[2] == "disable")) {
 					return msg.channel.createMessage("That command is disabled.");
 				}
 				cmd.execute(bot, msg, dat[1]);
@@ -501,14 +495,14 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 					}))
 				}
 				var embed = {
-					fields: [
-						{name: "Message", value: message.content || "*(image only)*"},
-						{name: "Author", value: message.member ? message.member.mention : message.author.username, inline: true},
-						{name: "Channel", value: message.channel.mention, inline: true}
-					],
-					footer: {
-						text: `Message ID: ${message.id}`
+					author: {
+						name: `${message.author.username}#${message.author.discriminator}`,
+						icon_url: message.author.avatarURL
 					},
+					footer: {
+						text: message.channel.name
+					},
+					description: (message.content || "*(image only)*") + `\n\n[Go to message](https://discordapp.com/channels/${message.channel.guild.id}/${message.channel.id}/${message.id})`,
 					timestamp: new Date(message.timestamp)
 				}
 

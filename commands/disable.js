@@ -3,61 +3,79 @@ module.exports = {
 	usage: ()=> [" [command/module] <subcommand> - disables given command or its subcommand",
 				" list - lists disabled commands"],
 	execute: async (bot, msg, args) => {
+		if(!args[0]) return bot.commands.disable.subcommands.view.execute(bot, msg, args);
+		if(args[0] == "disable" || args[0] == "enable") return msg.channel.createMessage("You can't disable or enable this command.");
 		var cfg = await bot.utils.getConfig(bot, msg.guild.id);
-		var disabled = cfg ? cfg.disabled : {modules: [], commands: [], levels: false};
-		if(!args[0]) return msg.channel.createMessage("Please provide a command or module to disable.");
-		if(args[0] == "disable" || args[0] == "enable") return msg.channel.createMessage("You can't disable this command.");
-		var name = args.join(" ");
-		if(bot.modules[name]) {
-			if(disabled.modules == undefined) disabled.modules = [];
-			if(disabled.modules.includes(name)) {
-				msg.channel.createMessage("Module already disabled.")
+		var dis;
+		if(!cfg) return msg.guild.createMessage("No config registered for this server.");
+		if(!cfg.disabled) dis = {modules: [], commands: [], levels: false};
+		else dis = cfg.disabled;
+		if(!dis.commands) dis.commands = [];
+		if(!dis.levels) dis.levels = false;
+		console.log(dis)
+		var cmd;
+		try {
+			cmd = await bot.parseCommand(bot, msg, args);
+		} catch (e) {
+			cmd = undefined;
+		}
+		if(cmd) {
+			var disabled = await bot.utils.isDisabled(bot, msg.guild.id, cmd[0], cmd[2]);
+			if(disabled) {
+				return msg.channel.createMessage("Module already disabled.")
 			} else {
-				disabled.modules.push(name);
-				bot.db.query(`UPDATE configs SET disabled=? WHERE srv_id=?`,[disabled,msg.guild.id],(err,res)=>{
-					if(err) {
-						console.log(err);
-						msg.channel.createMessage("There was an error.");
-					} else {
-						msg.channel.createMessage("Module disabled.")
-					}
-				});
+				dis.commands.push(cmd[2])
+				var success = await bot.utils.updateConfig(bot, msg.guild.id, "disabled", dis);
+				if(success) {
+					msg.channel.createMessage("Disabled!")
+				} else {
+					msg.channel.createMessage("Something went wrong.");
+				}
 			}
 		} else {
-			if(disabled.commands == undefined) disabled.commands = []
-			await bot.parseCommand(bot, msg, args).then(dat =>{
-				name = dat[2].split(" ");
-				if((disabled.commands[name[0]] || disabled.commands[name.join(" ")])) {
-					msg.channel.createMessage("Command already disabled.");
+			cmd = args[0].toLowerCase()
+			if(["levels", "levelup", "levelups"].includes(cmd)) {
+				dis.levels = true;
+				var success = await bot.utils.updateConfig(bot, msg.guild.id, "disabled", dis);
+				if(success) {
+					msg.channel.createMessage("Disabled!")
 				} else {
-					disabled.commands.push(name.join(" "));
-					bot.db.query(`UPDATE configs SET disabled=? WHERE srv_id=?`,[disabled,msg.guild.id],(err,res)=>{
-						if(err) {
-							console.log(err);
-							msg.channel.createMessage("There was an error.");
-						} else {
-							msg.channel.createMessage("Command disabled.")
-						}
-					});
+					msg.channel.createMessage("Something went wrong.");
 				}
-			}).catch(e => {
-				if(["levels", "levelup", "levelups"].includes(args[0])) {
-					disabled.levels = true
-					bot.db.query(`UPDATE configs SET disabled=? WHERE srv_id=?`,[disabled,msg.guild.id],(err,res)=>{
-						if(err) {
-							console.log(err);
-							msg.channel.createMessage("There was an error.");
-						} else {
-							msg.channel.createMessage("Levels disabled.")
-						}
-					});
+			} else if(bot.modules[cmd]) {
+				var cmds = Object.keys(bot.commands).filter(c => bot.commands[c].module && bot.commands[c].module == cmd);
+				cmds.forEach(c => dis.commands.push(c))
+				var success = await bot.utils.updateConfig(bot, msg.guild.id, "disabled", dis);
+				if(success) {
+					msg.channel.createMessage("Disabled!")
 				} else {
-					msg.channel.createMessage("Could not disable: "+e);
+					msg.channel.createMessage("Something went wrong.");
 				}
-			});
+			} else {
+				return msg.channel.createMessage("Could not disable: "+e);
+			}
 		}
 	},
+	subcommands: {},
 	guildOnly: true,
 	module: "admin",
+	alias: ["dis","disabled"],
 	permissions: ["manageGuild"]
+}
+
+module.exports.subcommands.view = {
+	help: ()=> "View currently disabled commands and modules.",
+	usage: ()=> [" - Views the disabled config for the server"],
+	execute: async (bot, msg, args) => {
+		var cfg = await bot.utils.getConfig(bot, msg.guild.id);
+		if(!cfg || !cfg.disabled || (cfg.disabled && !cfg.disabled.commands && !cfg.disabled.levels)) return msg.channel.createMessage('No config found for this server.')
+		
+		msg.channel.createMessage({embed: {
+			title: "Disabled Functions",
+			fields: [
+				{name: "Commands", value: cfg.disabled.commands[0] ? cfg.disabled.commands.sort().join("\n") : "(none)"},
+				{name: "Levels", value: cfg.disabled.levels ? "Yes" : "No"}
+			]
+		}})
+	}
 }
