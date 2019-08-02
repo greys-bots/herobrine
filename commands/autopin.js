@@ -3,7 +3,7 @@ module.exports = {
 	usage: [" add [chanName | chanID | #channel] [:emoji:] - Adds channel and reaction config.",
 				" remove [chanName | chanID | #channel] - Removes channel config.",
 				" view - Views current configs."],
-	examples: ["hh!ap add test-chan :pushpin","hh!ap remove test-chan", "hh!ap view"],
+	examples: ["hh!ap add test-chan :pushpin:","hh!ap remove test-chan", "hh!ap view"],
 	subcommands: {},
 	permissions: ["manageGuild"],
 	guildOnly: true,

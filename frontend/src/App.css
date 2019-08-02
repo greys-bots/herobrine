@@ -165,7 +165,14 @@ a:hover {
 }
 
 .App-extras {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.App-extra {
   padding: 10px;
+  margin: 2px;
   border-radius: 10px;
   background-color: #778;
 }

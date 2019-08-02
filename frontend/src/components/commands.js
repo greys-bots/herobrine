@@ -44,14 +44,18 @@ class Commands extends Component {
 	                <div className="App-command" key={i}>
 	                  <div>{c.name} (aliases: {c.data.alias ? c.data.alias.join(", ") : "(none)"})</div>
 	                  <div dangerouslySetInnerHTML={{__html: 
-	                  							c.data.help+
-	                  							"<br/><br/><span class='App-extras'><strong>Module:</strong> "+(c.data.module || "Unsorted")+"</span>"+
-	                  							(c.data.permissions ?
-	                  								"<br/><br/><span class='App-extras'><strong>Permissions:</strong> "+c.data.permissions.join(", ")+"</span>" :
+	                  							c.data.help +
+	                  							`<br/><br/>
+	                  							<div class='App-extras'>
+	                  							<span class='App-extra'><strong>Module:</strong> ${c.data.module || "unsorted"}</span>
+	                  							${c.data.permissions ?
+	                  								"<span class='App-extra'><strong>Permissions:</strong> "+c.data.permissions.join(', ')+"</span>" :
 	                  								""
-	                  							)+
-	                  							"<br/><br/><span class='App-extras'><strong>Guild only?</strong> "+(c.data.guildOnly ? "Yes" : "No")+"</span>"
-	                  							}}></div>
+	                  							}
+	                  							<span class='App-extra'><strong>Guild only?</strong> ${c.data.guildOnly ? "Yes" : "No"}</span>
+	                  							</div>`
+	                  						}}>
+	                  							</div>
 	                  <div dangerouslySetInnerHTML={{ __html: c.data.examples.join('<br/>')}}></div>
 	                </div>
 	              )
