@@ -360,8 +360,8 @@ bot.on("messageCreate", async (msg)=>{
 				  cfg && 
 				  (cfg.prefix!= undefined && 
 				  cfg.prefix!="")) ? 
-				  new RegExp(`^${cfg.prefix}`, "i") :
-				  new RegExp(`^(${bot.cfg.prefix.join("|")})`, "i");
+				  new RegExp(`^(?:${cfg.prefix}|<@!?${bot.user.id}>)`, "i") :
+				  new RegExp(`^(${bot.cfg.prefix.join("|")}|<@!?${bot.user.id}>)`, "i");
 
 	if(bot.paused && !prefix.test(msg.content.toLowerCase())) {
 		return;
@@ -427,6 +427,8 @@ bot.on("messageCreate", async (msg)=>{
 		});
 
 		let args = msg.content.replace(prefix, "").split(" ");
+		if(!args[0]) args.shift();
+		if(!args[0]) return msg.channel.createMessage("That's me!");
 		if(args[args.length-1] == "help"){
 			bot.commands.help.execute(bot, msg, args.slice(0,args.length-1));
 		} else {

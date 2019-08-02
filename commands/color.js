@@ -12,7 +12,7 @@ module.exports = {
 		await msg.channel.createMessage({embed: {
 			title: "Color "+color.toHexString().toUpperCase(),
 			image: {
-				url: `https://sheep.greysdawn.tk/color/${color.toHex()}`
+				url: `https://sheep.greysdawn.com/color/${color.toHex()}`
 			},
 			color: parseInt(color.toHex(), 16)
 		}}).then(message => {
@@ -34,7 +34,7 @@ module.exports = {
 			msg.channel.createMessage('Baa! There was an error D:');
 		});
 	},
-	alias: ['c', 'cl', 'colour', 'ch'],
+	alias: ['c', 'cl', 'colour', 'ch', 'change'],
 	module: 'utility',
 	guildOnly: true
 }

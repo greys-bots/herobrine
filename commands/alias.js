@@ -6,7 +6,7 @@ module.exports = {
 			" edit [name] - Runs a menu to edit an alias"],
 	execute: async (bot, msg, args) => {
 		var cfg = await bot.utils.getConfig(bot, msg.guild.id);
-		if(!cfg || !cfg.aliases || cfg.aliases.length == 0) return msg.channel.createMessage('No registered aliases found for this server.')
+		if(!cfg || !cfg.aliases || !cfg.aliases[0]) return msg.channel.createMessage('No registered aliases found for this server.')
 
 		if(cfg.aliases.length > 10) {
 			var embeds = await bot.utils.genEmbeds(cfg.aliases, dat => {
