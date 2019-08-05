@@ -354,7 +354,9 @@ bot.on("messageCreate", async (msg)=>{
 		return;
 	}
 
-	var cfg = await bot.utils.getConfig(bot, msg.guild.id)
+	var cfg;
+	if(msg.guild) cfg = await bot.utils.getConfig(bot, msg.guild.id);
+	else cfg = undefined;
 
 	var prefix = (msg.guild && 
 				  cfg && 
@@ -403,7 +405,7 @@ bot.on("messageCreate", async (msg)=>{
 	})
 
 	if(msg.guild && !cfg){
-		bot.db.query(`INSERT INTO configs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,[msg.guild.id,"",{},"",{},"",{},[],[],[]],(err,rows)=>{
+		bot.db.query(`INSERT INTO configs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,[msg.guild.id,"",{},"",{},"",{},[],{},[]],(err,rows)=>{
 			if(err) return console.log(err);
 			console.log(`Config for ${msg.guild.name} (${msg.guild.id}) created.`);
 		})
@@ -487,36 +489,15 @@ bot.on("guildMemberAdd", async (guild, member)=>{
 
 bot.on("messageReactionAdd",async (msg, emoji, user) => {
 	var cfg = await bot.utils.getConfig(bot, msg.channel.guild.id);
-	if(cfg && cfg.autopin) {
-		var cf = cfg.autopin.find(c => c.emoji == emoji.name || c.emoji == `:${emoji.name}:${emoji.id}`);
+	if(cfg && cfg.autopin && cfg.autopin.boards) {
+		var cf = cfg.autopin.boards.find(c => c.emoji == emoji.name || c.emoji == `:${emoji.name}:${emoji.id}`);
 		if(cf) {
 			var chan = cf.channel;
 			var member = msg.channel.guild.members.find(m => m.id == user);
-			if(member.permission.has("manageMessages")) {
-				var message = await msg.channel.getMessage(msg.id);
-				var attach = [];
-				if(message.attachments[0]) {
-					await Promise.all(message.attachments.map(async (f,i) => {
-						var att = await bot.fetch(f.url);
-						attach.push({file: Buffer.from(await att.buffer()), name: f.filename});
-						return new Promise(res => {
-							setTimeout(()=> res(1), 100);
-						})
-					}))
-				}
-				var embed = {
-					author: {
-						name: `${message.author.username}#${message.author.discriminator}`,
-						icon_url: message.author.avatarURL
-					},
-					footer: {
-						text: message.channel.name
-					},
-					description: (message.content || "*(image only)*") + `\n\n[Go to message](https://discordapp.com/channels/${message.channel.guild.id}/${message.channel.id}/${message.id})`,
-					timestamp: new Date(message.timestamp)
-				}
-
-				bot.createMessage(chan, {embed: embed}, attach ? attach : null)
+			var message = await bot.getMessage(msg.channel.id, msg.id);
+			var tolerance = cf.tolerance ? cf.tolerance : (cfg.autopin.tolerance || 2);
+			if((member.permission.has("manageMessages") && cfg.autopin.override) || (message.reactions[emoji.name].count === tolerance)) {
+				bot.utils.starMessage(bot, message, chan)
 			}
 		}
 	}
