@@ -250,7 +250,7 @@ module.exports.subcommands.tolerance = {
 					else {
 						ap.tolerance = parseInt(args[0]);
 						var sc = await bot.utils.updateConfig(bot, msg.guild.id, "autopin", ap);
-						if(sc) msg.channel.createMessage("Tolerance reset")
+						if(sc) msg.channel.createMessage("Global tolerance set")
 						else msg.channel.createMessage("Something went wrong")
 					}
 				} else {
@@ -265,7 +265,7 @@ module.exports.subcommands.tolerance = {
 							} else return b;
 						})
 						var sc = await bot.utils.updateConfig(bot, msg.guild.id, "autopin", ap);
-						if(sc) msg.channel.createMessage("Tolerance reset")
+						if(sc) msg.channel.createMessage("Board tolerance reset")
 						else msg.channel.createMessage("Something went wrong")
 					}
 				}
