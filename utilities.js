@@ -77,7 +77,7 @@ module.exports = {
 					console.log(err);
 				} else {
 					if(!rows[0]) {
-						bot.db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?,?,?)`,[srv, "", {}, "", {}, "", {}, [], {boards: [{channel: chan, emoji: emoji}]}, []]);
+						bot.db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?,?,?)`,[srv, "", {}, "", {}, "", {}, [], {}, []]);
 					}
 				}
 			})
