@@ -157,7 +157,7 @@ module.exports.subcommands.view = {
 		};
 		var remove = false;
 		var cfg = await bot.utils.getConfig(bot, msg.guild.id);
-		if(cfg && cfg.autopin && cfg.autopin.boards[0]) {
+		if(cfg && cfg.autopin && cfg.autopin.boards) {
 			await Promise.all(cfg.autopin.boards.map(c => {
 				chan = msg.guild.channels.find(ch => ch.id == c.channel);
 				if(chan) {
