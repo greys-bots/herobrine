@@ -183,7 +183,7 @@ module.exports = {
 	},
 	updateStarPost: async (bot, server, msg, data) => {
 		return new Promise((res) => {
-			bot.db.query(`SELECT * FROM starboard WHERE original_id=? AND server_id=?`,[msg, server], (err, rows) => {
+			bot.db.query(`SELECT * FROM starboard WHERE original_id=? AND server_id=? AND emoji=?`,[msg, server, data.emoji], (err, rows) => {
 				if(err) {
 					console.log(err);
 					res(false)
