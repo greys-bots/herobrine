@@ -108,6 +108,15 @@ const setup = async function(){
 		if(err) console.log("Error creating bundles table.\n" + err);
 	});
 
+	bot.db.query(`CREATE TABLE IF NOT EXISTS starboard (
+		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
+		server_id	BIGINT,
+		channel_id	BIGINT,
+		message_id 	BIGINT,
+		original_id BIGINT,
+		emoji 		TEXT
+	)`) //emoji is to keep track of posts from multiple boards
+
 	var files = fs.readdirSync("./commands");
 	await Promise.all(files.map(f => {
 		bot.commands[f.slice(0,-3)] = require("./commands/"+f);
@@ -490,14 +499,23 @@ bot.on("guildMemberAdd", async (guild, member)=>{
 bot.on("messageReactionAdd",async (msg, emoji, user) => {
 	var cfg = await bot.utils.getConfig(bot, msg.channel.guild.id);
 	if(cfg && cfg.autopin && cfg.autopin.boards) {
-		var cf = cfg.autopin.boards.find(c => c.emoji == emoji.name || c.emoji == `:${emoji.name}:${emoji.id}`);
+		var em;
+		if(emoji.id) em = `:${emoji.name}:${emoji.id}`;
+		else em = emoji.name; 
+		var cf = cfg.autopin.boards.find(c => c.emoji == em);
 		if(cf) {
-			var chan = cf.channel;
-			var member = msg.channel.guild.members.find(m => m.id == user);
+			var sbpost = await bot.utils.getStarPost(bot, msg.channel.guild.id, msg.id, em);
 			var message = await bot.getMessage(msg.channel.id, msg.id);
-			var tolerance = cf.tolerance ? cf.tolerance : (cfg.autopin.tolerance || 2);
-			if((member.permission.has("manageMessages") && cfg.autopin.override) || (message.reactions[emoji.name].count === tolerance)) {
-				bot.utils.starMessage(bot, message, chan)
+			if(!sbpost) {
+				console.log(em);
+				var chan = cf.channel;
+				var member = msg.channel.guild.members.find(m => m.id == user);
+				var tolerance = cf.tolerance ? cf.tolerance : (cfg.autopin.tolerance || 2);
+				if((member.permission.has("manageMessages") && cfg.autopin.override) || (message.reactions[em.replace(/^:/,"")].count === tolerance)) {
+					bot.utils.starMessage(bot, message, chan, {emoji: em, count: message.reactions[em.replace(/^:/,"")].count})
+				}
+			} else {
+				await bot.utils.updateStarPost(bot, msg.channel.guild.id, msg.id, {emoji: em, count: message.reactions[em.replace(/^:/,"")].count})
 			}
 		}
 	}
@@ -566,6 +584,17 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 			delete bot.pages[msg.id];
 		}
 	}
+})
+
+bot.on("messageReactionRemove", async (msg, emoji, user) => {
+	if(bot.user.id == user) return;
+
+	var em;
+	if(emoji.id) em = `:${emoji.name}:${emoji.id}`;
+	else em = emoji.name;
+
+	var message = await bot.getMessage(msg.channel.id, msg.id);
+	await bot.utils.updateStarPost(bot, msg.channel.guild.id, msg.id, {emoji: em, count: message.reactions[em.replace(/^:/,"")].count})
 })
 
 
