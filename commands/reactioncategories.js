@@ -31,7 +31,7 @@ module.exports.subcommands.create = {
 	usage: ()=> [" [name] (new line) [description] - Creates a new category with the given name and description (NOTE: description needs to be on new line)"],
 	execute: async (bot, msg, args)=> {
 		var nargs = args.join(" ").split("\n");
-		var code = bot.utils.genCode(bot.CHARS);
+		var code = bot.utils.genCode(4, bot.strings.codestab);
 		bot.db.query(`INSERT INTO reactcategories (hid, server_id, name, description, roles, posts) VALUES (?,?,?,?,?,?)`,[
 			code,
 			msg.guild.id,
