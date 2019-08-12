@@ -1,4 +1,3 @@
-//REACTION ROLES (currently mostly finished)
 
 module.exports = {
 	help: ()=> "Sets, views, or edits reaction roles for the server",
@@ -39,8 +38,7 @@ module.exports = {
 	},
 	alias: ['rr', 'reactroles', 'reactrole', 'reactionrole'],
 	subcommands: {},
-	permissions: ["manageRoles"],
-	module: "admin"
+	permissions: ["manageRoles"]
 }
 
 module.exports.subcommands.add = {

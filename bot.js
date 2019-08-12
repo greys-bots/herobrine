@@ -131,7 +131,8 @@ const setup = async function(){
     	server_id		BIGINT,
     	name 			TEXT,
     	description 	TEXT,
-    	roles 			TEXT
+    	roles 			TEXT,
+    	posts 			TEXT
     )`);
 
     bot.db.query(`CREATE TABLE IF NOT EXISTS reactposts (
@@ -139,7 +140,6 @@ const setup = async function(){
 		server_id	TEXT,
 		channel_id	TEXT,
 		message_id	TEXT,
-		category_id	TEXT,
 		roles		TEXT
 	)`);
 
