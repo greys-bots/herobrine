@@ -117,6 +117,32 @@ const setup = async function(){
 		emoji 		TEXT
 	)`) //emoji is to keep track of posts from multiple boards
 
+	bot.db.query(`CREATE TABLE IF NOT EXISTS reactroles (
+    	id 				INTEGER PRIMARY KEY AUTOINCREMENT,
+    	server_id		BIGINT,
+    	role_id 		BIGINT,
+    	emoji 			TEXT,
+    	description 	TEXT
+    )`);
+
+    bot.db.query(`CREATE TABLE IF NOT EXISTS reactcategories (
+    	id 				INTEGER PRIMARY KEY AUTOINCREMENT,
+    	hid 			TEXT,
+    	server_id		BIGINT,
+    	name 			TEXT,
+    	description 	TEXT,
+    	roles 			TEXT
+    )`);
+
+    bot.db.query(`CREATE TABLE IF NOT EXISTS reactposts (
+		id			INTEGER PRIMARY KEY AUTOINCREMENT,
+		server_id	TEXT,
+		channel_id	TEXT,
+		message_id	TEXT,
+		category_id	TEXT,
+		roles		TEXT
+	)`);
+
 	var files = fs.readdirSync("./commands");
 	await Promise.all(files.map(f => {
 		bot.commands[f.slice(0,-3)] = require("./commands/"+f);
@@ -584,6 +610,22 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 			delete bot.pages[msg.id];
 		}
 	}
+
+	var post = await bot.utils.getReactionRolePost(bot, msg.channel.guild.id, msg.id);
+	if(post) {
+		var role = post.roles.find(r => (emoji.id ? r.emoji == `:${emoji.name}:${emoji.id}` : r.emoji == emoji.name));
+		if(!role) return;
+		var rl = msg.channel.guild.roles.find(r => r.id == role.role_id);
+		if(!rl) return;
+		try {
+			msg.channel.guild.addMemberRole(user, rl.id);
+		} catch(e) {
+			console.log(e);
+			await bot.getDMChannel(user).then(ch => {
+				ch.createMessage(`Couldn't give you role **${rl.name}** in ${msg.channel.guild.name}. Please let a moderator know that something went wrong`)
+			})
+		}
+	}
 })
 
 bot.on("messageReactionRemove", async (msg, emoji, user) => {
@@ -592,6 +634,22 @@ bot.on("messageReactionRemove", async (msg, emoji, user) => {
 	var em;
 	if(emoji.id) em = `:${emoji.name}:${emoji.id}`;
 	else em = emoji.name;
+
+	var post = await bot.utils.getReactionRolePost(bot, msg.channel.guild.id, msg.id);
+	if(post) {
+		var role = post.roles.find(r => r.emoji == em);
+		if(!role) return;
+		var rl = msg.channel.guild.roles.find(r => r.id == role.role_id);
+		if(!rl) return;
+		try {
+			msg.channel.guild.removeMemberRole(user, rl.id);
+		} catch(e) {
+			console.log(e);
+			await bot.getDMChannel(user).then(ch => {
+				ch.createMessage(`Couldn't remove role **${rl.name}** in ${msg.channel.guild.name}. Please let a moderator know that something went wrong`)
+			})
+		}
+	}
 
 	var message = await bot.getMessage(msg.channel.id, msg.id);
 	await bot.utils.updateStarPost(bot, msg.channel.guild.id, msg.id, {emoji: em, count: message.reactions[em.replace(/^:/,"")].count})
