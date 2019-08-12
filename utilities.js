@@ -281,7 +281,6 @@ module.exports = {
 				server_id: String,
 				channel_id: String,
 				message_id: String,
-				category_id: String,
 				roles: JSON.parse
 			},(err, rows)=>{
 				if(err) {
