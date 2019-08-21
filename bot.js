@@ -590,6 +590,8 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 		}
 	}
 
+	if(user == bot.user.id) return;
+	
 	if(bot.pages && bot.pages[msg.id] && bot.pages[msg.id].user == user) {
 		if(emoji.name == "\u2b05") {
 			if(bot.pages[msg.id].index == 0) {
