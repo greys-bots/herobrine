@@ -214,6 +214,46 @@ module.exports = {
 			})
 		})
 	},
+	genReactPosts: async (bot, roles, msg, info = {}) => {
+		return new Promise(async res => {
+			var embeds = [];
+			var current = { embed: {
+				title: info.title,
+				description: info.description,
+				fields: []
+			}, roles: [], emoji: []};
+			
+			for(let i=0; i<roles.length; i++) {
+				if(current.embed.fields.length < 10) {
+					var rl = msg.guild.roles.find(x => x.id == roles[i].role_id);
+					if(rl) {
+					 	current.embed.fields.push({name: `${rl.name} (${roles[i].emoji.includes(":") ? `<${roles[i].emoji}>` : roles[i].emoji})`, value: roles[i].description || "*(no description provided)*"});
+					 	current.roles.push({role_id: roles[i].role_id, emoji: roles[i].emoji});
+					 	current.emoji.push(roles[i].emoji);
+					}
+				} else {
+					embeds.push(current);
+					current = { embed: {
+						title: info.title,
+						description: info.description,
+						fields: []
+					}, roles: [], emoji: []};
+					var rl = msg.guild.roles.find(x => x.id == roles[i].role_id);
+					if(rl) {
+					 	current.embed.fields.push({name: `${rl.name} (${roles[i].emoji.includes(":") ? `<${roles[i].emoji}>` : roles[i].emoji})`, value: roles[i].description || "*(no description provided)*"});
+					 	current.roles.push({role_id: roles[i].role_id, emoji: roles[i].emoji});
+					 	current.emoji.push(roles[i].emoji);
+					}
+				}
+			}
+			embeds.push(current);
+			if(embeds.length > 1) {
+				for(let i = 0; i < embeds.length; i++)
+					embeds[i].embed.title += ` (part ${i+1}/${embeds.length})`;
+			}
+			res(embeds);
+		})
+	},
 	getReactionRoles: async (bot, id) => {
 		return new Promise(res => {
 			bot.db.query(`SELECT * FROM reactroles WHERE server_id=?`,[id],(err, rows)=>{
@@ -245,13 +285,11 @@ module.exports = {
 						await Promise.all(rows[0].roles.map((r,i) => {
 							return new Promise(res2 => {
 								bot.db.query(`SELECT * FROM reactroles WHERE id=?`,[r], (err, rls)=> {
-									console.log(rls[0]);
 									roles[i] = rls[0]
 								});
 								setTimeout(()=> res2(''), 100)
 							})
 						})).then(()=> {
-							console.log(roles);
 							res(roles)
 						})
 					} else {
@@ -281,7 +319,8 @@ module.exports = {
 				server_id: String,
 				channel_id: String,
 				message_id: String,
-				roles: JSON.parse
+				roles: JSON.parse,
+				page: Number
 			},(err, rows)=>{
 				if(err) {
 					console.log(err);
@@ -304,37 +343,6 @@ module.exports = {
 			})
 		})
 	},
-	updateReactRolePost: async (bot, msg, roles) => {
-		bot.editMessage(msg.channel.id, msg.id, {
-			embed: {
-				title: "Server Reaction Roles",
-				description: "All available roles for the server",
-				fields: roles.map(r => {
-					var rl = msg.guild.roles.find(x => x.id == r.role_id);
-					 if(rl) {
-					 	return {name: `${rl.name} (${r.emoji.includes(":") ? `<${r.emoji}>` : r.emoji})`, value: r.description || "*(no description provided)*"}
-					 } else {
-					 	return null
-					 }
-				}).filter(x => x!=null)
-			}
-		}).then(message => {
-			var reacts = roles.map(r => r.emoji);
-			reacts.forEach(rc => message.addReaction(rc));
-		})
-
-		var post = await bot.utils.getReactionRolePost(bot, msg.channel.guild.id, msg.id);
-		if(post) {
-			bot.db.query(`UPDATE reactposts SET roles=? WHERE server_id=? AND channel_id=? AND message_id=?`,[roles.map(r => {return {emoji: r.emoji, role_id: r.role_id}})])
-		} else {
-			bot.db.query(`INSERT INTO reactposts (server_id, channel_id, message_id, roles) VALUES (?,?,?,?)`, [
-				msg.guild.id,
-				msg.channel.id,
-				msg.id,
-				roles.map(r => { return {emoji: r.emoji, role_id: r.role_id} })
-			])
-		}
-	},
 	getReactionCategories: async (bot, id) => {
 		return new Promise(res => {
 			bot.db.query(`SELECT * FROM reactcategories WHERE server_id=?`,[id], {
@@ -343,8 +351,7 @@ module.exports = {
 				server_id: String,
 				name: String,
 				description: String,
-				roles: JSON.parse,
-				posts: JSON.parse
+				roles: JSON.parse
 			}, (err, rows)=>{
 				if(err) {
 					console.log(err);
@@ -402,40 +409,113 @@ module.exports = {
 			if(!cat.posts || !cat.posts[0]) return res(true);
 			var roles = await bot.utils.getReactionRolesByCategory(bot, msg.guild.id, cat.hid);
 			if(!roles) return res(false);
-			await Promise.all(cat.posts.map(async p => {
-				var pst = await bot.utils.getReactionRolePost(bot, id, p);
-				if(!pst) return new Promise(res2 => res2(""));
-				var message = await bot.getMessage(pst.channel_id, pst.message_id);
-				if(!message) return new Promise(res2 => res2(""));
-				bot.editMessage(message.channel.id, message.id, {embed: {
-					title: cat.name,
-					description: cat.description,
-					fields: roles.map(r => {
-						var rl = msg.guild.roles.find(x => x.id == r.role_id);
-						return {name: `${rl.name} (${r.emoji.includes(":") ? `<${r.emoji}>` : r.emoji})`, value: r.description || "*(no description provided)*"}
-					})
-				}}).then(message => {	
-					var emoji = roles.map(r => r.emoji);
-					var oldreacts = Object.keys(message.reactions)
-									.filter(rr => message.reactions[rr].me)
-									.filter(rr => !emoji.includes(rr) && !emoji.includes(":"+rr));
-					emoji.forEach(rc => message.addReaction(rc));
-					oldreacts.forEach(rc => message.removeReaction(rc.replace(/^:/,"")));
-
-					bot.db.query(`UPDATE reactposts SET roles = ? WHERE server_id = ? AND message_id=?`,[
-						roles.map(r => {return {emoji: r.emoji, role_id: r.role_id}}),
+			if(roles.length == 0) {
+				await Promise.all(cat.posts.map(async p => {
+					var pst = await bot.utils.getReactionRolePost(bot, id, p);
+					if(!pst) return Promise.resolve("")
+					var message = await bot.getMessage(pst.channel_id, pst.message_id);
+					if(!message) return Promise.resolve("")
+					await message.delete();
+					bot.db.query(`DELETE FROM reactposts WHERE server_id = ? AND message_id=?`, [
 						message.guild.id,
 						message.id
 					], (err, rows)=> {
 						if(err) console.log(err);
 					})
-				}).catch(e => {
-					console.log(e);
-					res(false)
-				})
 
-			}))
+				}))
+			} else if(roles.length <= 10) {
+				await Promise.all(cat.posts.map(async p => {
+					var pst = await bot.utils.getReactionRolePost(bot, id, p);
+					if(!pst) return Promise.resolve("")
+					var message = await bot.getMessage(pst.channel_id, pst.message_id);
+					if(!message) return Promise.resolve("")
+					if(pst.page > 0) return await message.delete();
+					console.log(pst.page);
+
+					bot.editMessage(message.channel.id, message.id, {embed: {
+						title: cat.name,
+						description: cat.description,
+						fields: roles.map(r => {
+							var rl = msg.guild.roles.find(x => x.id == r.role_id);
+							return {name: `${rl.name} (${r.emoji.includes(":") ? `<${r.emoji}>` : r.emoji})`, value: r.description || "*(no description provided)*"}
+						})
+					}}).then(message => {	
+						var emoji = roles.map(r => r.emoji);
+						var oldreacts = Object.keys(message.reactions)
+										.filter(rr => message.reactions[rr].me)
+										.filter(rr => !emoji.includes(rr) && !emoji.includes(":"+rr));
+						emoji.forEach(rc => message.addReaction(rc));
+						oldreacts.forEach(rc => message.removeReaction(rc.replace(/^:/,"")));
+						if(roles.length > 10) {
+							message.addReaction("\u2b05");
+							message.addReaction("\u27a1");
+						}
+
+						bot.db.query(`UPDATE reactposts SET roles = ?, page=? WHERE server_id = ? AND message_id=?`,[
+							roles.map(r => {return {emoji: r.emoji, role_id: r.role_id}}),
+							0,
+							message.guild.id,
+							message.id
+						], (err, rows)=> {
+							if(err) console.log(err);
+						})
+					}).catch(e => {
+						console.log(e);
+						res(false)
+					})
+
+				}))
+			} else {
+				var posts = await bot.utils.genReactPosts(bot, roles, msg, {
+					title: cat.name,
+					description: cat.description
+				})
+				await Promise.all(cat.posts.map(async p => {
+					var pst = await bot.utils.getReactionRolePost(bot, id, p);
+					if(!pst) return Promise.resolve("");
+					var message = await bot.getMessage(pst.channel_id, pst.message_id);
+					if(!message) return Promise.resolve("");
+					bot.editMessage(message.channel.id, message.id, {embed: posts[pst.page].embed}).then(message => {	
+						var emoji = posts[pst.page].emoji;
+						var oldreacts = Object.keys(message.reactions)
+										.filter(rr => message.reactions[rr].me)
+										.filter(rr => !emoji.includes(rr) && !emoji.includes(":"+rr));
+						emoji.forEach(async rc => message.addReaction(rc));
+						oldreacts.forEach(rc => message.removeReaction(rc.replace(/^:/,"")));
+
+
+						bot.db.query(`UPDATE reactposts SET roles = ? WHERE server_id = ? AND message_id=?`,[
+							posts[pst.page].roles,
+							message.guild.id,
+							message.id
+						], (err, rows)=> {
+							if(err) console.log(err);
+						})
+					}).catch(e => {
+						console.log(e);
+						res(false)
+					})
+
+				}))
+			}
+			
 			res(true);
+		})
+	},
+	getHighestPage: async (bot, id, hid) => {
+		return new Promise(async res => {
+			var category = await bot.utils.getReactionCategory(bot, id, hid);
+			if(!category) return res(false);
+			bot.db.query(`SELECT MAX(page) AS max FROM reactposts WHERE message_id IN (${category.posts.join(", ")})`, (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else {
+					console.log(rows[0].max)
+					res(rows[0].max)
+				}
+			})
 		})
 	}
 };

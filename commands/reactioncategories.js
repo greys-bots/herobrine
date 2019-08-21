@@ -116,24 +116,33 @@ module.exports.subcommands.add = {
 
 		var result = [];
 		var roles = args.slice(1).join(" ").split(/,\s+/g);
+		var max = await bot.utils.getHighestPage(bot, msg.guild.id, category.hid);
 		await Promise.all(roles.map(async rl => {
 			var role = msg.roleMentions.length > 0 ?
 				   msg.roleMentions[0] :
 				   msg.guild.roles.find(r => r.id == rl || r.name.toLowerCase() == rl.toLowerCase());
 			if(!role) {
 				result.push({succ: false, name: rl, reason: "Role not found"})
-				return new Promise(res => setInterval(()=> res(0), 100))
+				return new Promise(res => setTimeout(()=> res(0), 100))
 			}
 			role = role.id;
 			var rr = await bot.utils.getReactionRole(bot, msg.guild.id, role);
 			if(!rr) {
 				result.push({succ: false, name: rl, reason: "React role not found"});
-				return new Promise(res => setInterval(()=> res(0), 100))
-			}
-			else {
-				result.push({succ: true, name: rl});
-				category.roles.push(rr.id);
-				return new Promise(res => setInterval(()=> res(0), 100))
+				return new Promise(res => setTimeout(()=> res(0), 100))
+			} else {
+				var existing = await bot.utils.getReactionRolesByCategory(bot, msg.guild.id, category.hid);
+				if(category.roles.find(r => r == rr.id)) {
+					result.push({succ: false, name: rl, reason: "React role already in category"});
+					return new Promise(res => setTimeout(()=> res(0), 100))
+				} else if(existing.find(r => r.emoji == rr.emoji)) {
+					result.push({succ: false, name: rl, reason: "React role with that emoji already in category"});
+					return new Promise(res => setTimeout(()=> res(0), 100))
+				} else {
+					result.push({succ: true, name: rl});
+					category.roles.push(rr.id);
+					return new Promise(res => setTimeout(()=> res(0), 100))
+				}
 			}
 			
 		})).then(()=> {
@@ -149,9 +158,15 @@ module.exports.subcommands.add = {
 							{name: "Not Added", value: result.filter(r => !r.succ).map(r => `${r.name} - ${r.reason}`).join("\n") || "none"},	
 						]
 					}})
-					var sc = await bot.utils.updateReactCategoryPosts(bot, msg.guild.id, msg, category.hid);
-					if(!sc) msg.channel.createMessage("Something went wrong while updating posts")
-
+					if(Math.ceil(category.roles.length/10)-1 > max) {
+						msg.channel.createMessage("The category has been updated- however, because the amount of roles is greater than "+
+												  "the amount that the current number of pages can handle, the posts have not been updated.\n"+
+												  "If you would like for all the roles to be visible, **delete the current posts** and use "+
+												  "`hub!rc post "+category.hid+" (channel)` to post them again.")
+					} else {
+						var sc = await bot.utils.updateReactCategoryPosts(bot, msg.guild.id, msg, category.hid);
+						if(!sc) msg.channel.createMessage("Something went wrong while updating posts")
+					}
 				}
 			})
 
@@ -173,24 +188,25 @@ module.exports.subcommands.remove = {
 
 		var result = [];
 		var roles = args.slice(1).join(" ").split(/,\s+/g);
+		var max = await bot.utils.getHighestPage(bot, msg.guild.id, category.hid);
 		await Promise.all(roles.map(async rl => {
 			var role = msg.roleMentions.length > 0 ?
 				   msg.roleMentions[0] :
 				   msg.guild.roles.find(r => r.id == rl || r.name.toLowerCase() == rl.toLowerCase());
 			if(!role) {
 				result.push({succ: false, name: rl, reason: "Role not found"})
-				return new Promise(res => setInterval(()=> res(0), 100))
+				return new Promise(res => setTimeout(()=> res(0), 100))
 			}
 			role = role.id;
 			var rr = await bot.utils.getReactionRole(bot, msg.guild.id, role);
 			if(!rr) {
 				result.push({succ: false, name: rl, reason: "React role not found"});
-				return new Promise(res => setInterval(()=> res(0), 100))
+				return new Promise(res => setTimeout(()=> res(0), 100))
 			}
 			else {
 				result.push({succ: true, name: rl});
 				category.roles = category.roles.filter(x => x != rr.id);
-				return new Promise(res => setInterval(()=> res(0), 100))
+				return new Promise(res => setTimeout(()=> res(0), 100))
 			}
 			
 		})).then(()=> {
@@ -208,7 +224,8 @@ module.exports.subcommands.remove = {
 					}})
 					var sc = await bot.utils.updateReactCategoryPosts(bot, msg.guild.id, msg, category.hid);
 					if(!sc) msg.channel.createMessage("Something went wrong while updating posts")
-
+					else if(category.roles.length == 0) msg.channel.createMessage("Category empty; posts have been deleted. This does not remove the category itself");
+					else if(Math.ceil(category.roles.length/10)-1 < max) msg.channel.createMessage("Extra posts have been deleted.")
 				}
 			})
 
@@ -231,37 +248,62 @@ module.exports.subcommands.post = {
 
 		var roles = await bot.utils.getReactionRolesByCategory(bot, msg.guild.id, category.hid);
 
-		var reacts = [];
-		var pass = []
+		if(roles.length < 10) {
+			var reacts = [];
+			var pass = []
 
-		var rls = roles.map(r => {
-			var role = msg.guild.roles.find(x => x.id == r.role_id);
-			if(role){
-				reacts.push(r.emoji);
-				pass.push(r.role_id);
-			 	return {name: `${role.name} (${r.emoji.includes(":") ? `<${r.emoji}>` : r.emoji})`,
-			 			value: r.description || "*(no description provided)*\n\n"};
-			} else {
-			 	return undefined
-			}
-		}).filter(x => x!=undefined);
+			var rls = roles.map(r => {
+				var role = msg.guild.roles.find(x => x.id == r.role_id);
+				if(role){
+					reacts.push(r.emoji);
+					pass.push(r.role_id);
+				 	return {name: `${role.name} (${r.emoji.includes(":") ? `<${r.emoji}>` : r.emoji})`,
+				 			value: r.description || "*(no description provided)*\n\n"};
+				} else {
+				 	return undefined
+				}
+			}).filter(x => x!=undefined);
 
-		await channel.createMessage({embed: {
-			title: category.name,
-			description: category.description,
-			fields: rls
-		}}).then(message => {
-			reacts.forEach(rc => message.addReaction(rc));
+			await channel.createMessage({embed: {
+				title: category.name,
+				description: category.description,
+				fields: rls
+			}}).then(message => {
+				reacts.forEach(rc => message.addReaction(rc));
 
-			bot.db.query(`INSERT INTO reactposts (server_id, channel_id, message_id, roles) VALUES (?,?,?,?)`, [
-				message.guild.id,
-				message.channel.id,
-				message.id,
-				roles.map(r => { return {emoji: r.emoji, role_id: r.role_id} })
-			])
-			category.posts.push(message.id);
-			bot.db.query(`UPDATE reactcategories SET posts=? WHERE server_id=? AND hid=?`,[category.posts, msg.guild.id, category.hid]);
-		})
+				bot.db.query(`INSERT INTO reactposts (server_id, channel_id, message_id, roles, page) VALUES (?,?,?,?,?)`, [
+					message.guild.id,
+					message.channel.id,
+					message.id,
+					roles.map(r => { return {emoji: r.emoji, role_id: r.role_id} }),
+					0
+				])
+				category.posts.push(message.id);
+				bot.db.query(`UPDATE reactcategories SET posts=? WHERE server_id=? AND hid=?`,[category.posts, msg.guild.id, category.hid]);
+			})
+		} else {
+			var posts = await bot.utils.genReactPosts(bot, roles, msg, {
+				title: category.name,
+				description: category.description
+			})
+
+			await Promise.all(posts.map(async (p,i) => {
+				await channel.createMessage({embed: p.embed}).then(message => {
+					p.emoji.forEach(rc => message.addReaction(rc));
+					bot.db.query(`INSERT INTO reactposts (server_id, channel_id, message_id, roles, page) VALUES (?,?,?,?,?)`, [
+						message.guild.id,
+						message.channel.id,
+						message.id,
+						p.roles,
+						i
+					])
+					category.posts.push(message.id);
+					bot.db.query(`UPDATE reactcategories SET posts=? WHERE server_id=? AND hid=?`,[category.posts, msg.guild.id, category.hid]);
+					return Promise.resolve("");
+				})
+			}))
+		}
+		
 	},
 	permissions: ["manageRoles"]
 }
