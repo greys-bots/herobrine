@@ -44,18 +44,19 @@ module.exports.subcommands.add = {
 			chan = msg.channelMentions[0];
 		}
 		var cfg = await bot.utils.getConfig(bot, msg.guild.id);
-		if(cfg && cfg.autopin) {
-			console.log(cfg.autopin);
-			if(cfg.autopin.boards) {
-				if(cfg.autopin.boards.find(c => c.channel == (chan))) return msg.channel.createMessage("Channel already configured.");
-				if(cfg.autopin.boards.find(c => c.emoji == emoji)) return msg.channel.createMessage("Emoji already configured.");
-			} else {
+		if(cfg) {
+			if(!cfg.autopin) cfg.autopin = {};
+			if(!cfg.autopin.boards)
 				cfg.autopin.boards = [];
-				cfg.autopin.boards.push({channel: chan, emoji: emoji});
-				var sc = await bot.utils.updateConfig(bot, msg.guild.id, "autopin", cfg.autopin);
-				if(sc) msg.channel.createMessage("Config saved")
-				else msg.channel.createMessage("Something went wrong")
-			}
+			else if(cfg.autopin.boards && (cfg.autopin.boards.find(c => c.channel == (chan))))
+				return msg.channel.createMessage("Channel already configured.");
+			else if(cfg.autopin.boards && cfg.autopin.boards.find(c => c.emoji == emoji))
+				return msg.channel.createMessage("Emoji already configured.");
+
+			cfg.autopin.boards.push({channel: chan, emoji: emoji});
+			var sc = await bot.utils.updateConfig(bot, msg.guild.id, "autopin", cfg.autopin);
+			if(sc) msg.channel.createMessage("Config saved")
+			else msg.channel.createMessage("Something went wrong")
 		} else if(cfg && !cfg.autopin) {
 			cfg.autopin = {};
 			cfg.autopin.boards = [];

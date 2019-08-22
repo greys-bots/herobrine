@@ -654,7 +654,13 @@ bot.on("messageReactionRemove", async (msg, emoji, user) => {
 	else em = emoji.name;
 
 	var message = await bot.getMessage(msg.channel.id, msg.id);
-	await bot.utils.updateStarPost(bot, msg.channel.guild.id, msg.id, {emoji: em, count: message.reactions[em.replace(/^:/,"")].count})
+	await bot.utils.updateStarPost(bot, msg.channel.guild.id, msg.id, {emoji: em, count: message.reactions[em.replace(/^:/,"")] ? message.reactions[em.replace(/^:/,"")].count : 0})
+})
+
+bot.on("messageDelete", async (msg) => {
+	bot.db.query(`DELETE FROM reactposts WHERE server_id=? AND message_id=?`,[msg.channel.guild.id, msg.id]);
+	bot.db.query(`DELETE FROM starboard WHERE server_id=? AND message_id=?`,[msg.channel.guild.id, msg.id]);
+
 })
 
 
