@@ -242,7 +242,7 @@ module.exports.subcommands.post = {
 		if(!category) return msg.channel.createMessage('Category does not exist');
 
 		var channel = msg.channelMentions.length > 0 ?
-				   msg.guild.channels.find(ch => ch.id == msg.channelMentions[1]) :
+				   msg.guild.channels.find(ch => ch.id == msg.channelMentions[0]) :
 				   msg.guild.channels.find(ch => ch.id == args[0] || ch.name == args[1]);
 		if(!channel) return msg.channel.createMessage('Channel not found');
 
