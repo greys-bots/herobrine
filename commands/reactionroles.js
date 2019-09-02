@@ -197,7 +197,7 @@ module.exports.subcommands.bind = {
 
 module.exports.subcommands.emoji = {
 	help: ()=> "Changes emoji for a role",
-	usage: ()=> " [role] [emoji] - Changes emoji for the given role",
+	usage: ()=> [" [role] [emoji] - Changes emoji for the given role"],
 	execute: async (bot, msg, args)=> {
 		var roles = await bot.utils.getReactionRoles(bot, msg.guild.id);
 		if(!roles || roles.length == 0) return msg.channel.createMessage('No reaction roles available');
@@ -222,7 +222,7 @@ module.exports.subcommands.emoji = {
 
 module.exports.subcommands.description = {
 	help: ()=> "Changes description for a role",
-	usage: ()=> " [role] (new line) [description] - Changes description for the given role",
+	usage: ()=> [" [role] (new line) [description] - Changes description for the given role"],
 	execute: async (bot, msg, args)=> {
 		var roles = await bot.utils.getReactionRoles(bot, msg.guild.id);
 		if(!roles || roles.length == 0) return msg.channel.createMessage('No reaction roles available');
