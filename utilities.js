@@ -119,8 +119,8 @@ module.exports = {
 			}
 		})
 	},
-	genEmbeds: async (arr, genFunc, info = {}) => {
-		return new Promise(res => {
+	genEmbeds: async (bot, arr, genFunc, info = {}, fieldnum) => {
+		return new Promise(async res => {
 			var embeds = [];
 			var current = { embed: {
 				title: info.title,
@@ -129,14 +129,14 @@ module.exports = {
 			}};
 			
 			for(let i=0; i<arr.length; i++) {
-				if(current.embed.fields.length < 10) {
-					current.embed.fields.push(genFunc(arr[i]));
+				if(current.embed.fields.length < (fieldnum || 10)) {
+					current.embed.fields.push(await genFunc(arr[i], bot));
 				} else {
 					embeds.push(current);
 					current = { embed: {
 						title: info.title,
 						description: info.description,
-						fields: [genFunc(arr[i])]
+						fields: [await genFunc(arr[i], bot)]
 					}};
 				}
 			}
