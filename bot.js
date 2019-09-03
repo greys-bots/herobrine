@@ -613,7 +613,7 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 		}
 	}
 
-	var post = await bot.utils.getReactionRolePost(bot, msg.channel.guild.id, msg.id);
+	var post = await bot.utils.getReactPost(bot, msg.channel.guild.id, msg.id);
 	var message = await bot.getMessage(msg.channel.id, msg.id);
 	if(post) {
 		var role = post.roles.find(r => (emoji.id ? r.emoji == `:${emoji.name}:${emoji.id}` || r.emoji == `a:${emoji.name}:${emoji.id}` : r.emoji == emoji.name));
@@ -658,7 +658,7 @@ bot.on("messageReactionRemove", async (msg, emoji, user) => {
 })
 
 bot.on("messageDelete", async (msg) => {
-	bot.db.query(`DELETE FROM reactposts WHERE server_id=? AND message_id=?`,[msg.channel.guild.id, msg.id]);
+	await bot.utils.deleteReactPost(bot, msg.channel.guild.id, msg.id);
 	bot.db.query(`DELETE FROM starboard WHERE server_id=? AND message_id=?`,[msg.channel.guild.id, msg.id]);
 
 })

@@ -70,12 +70,9 @@ module.exports = {
 		}
 
 		if(invalid.length > 0) {
-			bot.db.query(`DELETE FROM reactroles WHERE role_id IN (`+invalid.join(", ")+")",(err, rows)=> {
-				if(err) {
-					console.log(err);
-				} else {
-					msg.channel.createMessage('Deleted reaction roles that no longer exist');
-				}
+			console.log(invalid);
+			await bot.utils.asyncForEach(invalid, async r => {
+				await bot.utils.deleteReactionRole(bot, msg.guild.id, r);
 			})
 		}
 	},
@@ -122,6 +119,7 @@ module.exports.subcommands.remove = {
 				   msg.roleMentions[0] :
 				   msg.guild.roles.find(r => r.id == args.join(" ") || r.name.toLowerCase() == args.join(" ").toLowerCase());
 		if(!role) return msg.channel.createMessage("Role not found");
+		var rr = await bot.utils.getReactionRole(bot, msg.guild.id, role.id);
 		bot.db.query(`DELETE FROM reactroles WHERE role_id=?`,[role.id],async (err, rows)=>{
 			if(err) {
 				console.log(err);
@@ -130,6 +128,9 @@ module.exports.subcommands.remove = {
 				msg.channel.createMessage('React role deleted! NOTE: does not delete the actual role, nor remove it from members who have it');
 			}
 		})
+
+		var scc = await bot.utils.deleteReactionRole(bot, msg.guild.id, role.id);
+		if(!scc) msg.channel.createMessage("Something went wrong");
 	},
 	alias: ['delete'],
 	permissions: ["manageRoles"]
@@ -154,7 +155,7 @@ module.exports.subcommands.bind = {
 		var message = await bot.getMessage(channel.id, args[args.length-1]);
 		if(!message) return msg.channel.createMessage("Invalid message");
 
-		var post = await bot.utils.getReactionRolePost(bot, message.guild.id, message.id);
+		var post = await bot.utils.getReactPost(bot, message.guild.id, message.id);
 		console.log(post);
 		if(post) {
 			if(post.roles.find(r => r.role_id == role.role_id)) {
@@ -216,6 +217,12 @@ module.exports.subcommands.emoji = {
 				msg.channel.createMessage('Emoji changed!')
 			}
 		})
+
+		var posts = await bot.utils.getReactPostswithRole(bot, msg.guild.id, role);
+		if(posts) {
+			var scc = await bot.utils.updateReactPosts(bot, msg.guild.id, posts.map(p => p.message_id));
+			if(!scc) msg.channel.createMessage("Something went wrong while updating posts.");
+		}
 	},
 	permissions: ["manageRoles"]
 }
@@ -241,6 +248,11 @@ module.exports.subcommands.description = {
 				msg.channel.createMessage('Description changed!')
 			}
 		})
+		var posts = await bot.utils.getReactPostswithRole(bot, msg.guild.id, role);
+		if(posts) {
+			var scc = await bot.utils.updateReactPosts(bot, msg.guild.id, posts.map(p => p.message_id));
+			if(!scc) msg.channel.createMessage("Something went wrong while updating posts.");
+		}
 	},
 	alias: ["describe", "desc"],
 	permissions: ["manageRoles"]

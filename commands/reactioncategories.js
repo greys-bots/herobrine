@@ -135,7 +135,7 @@ module.exports.subcommands.add = {
 				if(category.roles.find(r => r == rr.id)) {
 					result.push({succ: false, name: rl, reason: "React role already in category"});
 					return new Promise(res => setTimeout(()=> res(0), 100))
-				} else if(existing.find(r => r.emoji == rr.emoji)) {
+				} else if(existing && existing.find(r => r.emoji == rr.emoji)) {
 					result.push({succ: false, name: rl, reason: "React role with that emoji already in category"});
 					return new Promise(res => setTimeout(()=> res(0), 100))
 				} else {
