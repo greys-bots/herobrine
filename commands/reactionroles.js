@@ -119,18 +119,9 @@ module.exports.subcommands.remove = {
 				   msg.roleMentions[0] :
 				   msg.guild.roles.find(r => r.id == args.join(" ") || r.name.toLowerCase() == args.join(" ").toLowerCase());
 		if(!role) return msg.channel.createMessage("Role not found");
-		var rr = await bot.utils.getReactionRole(bot, msg.guild.id, role.id);
-		bot.db.query(`DELETE FROM reactroles WHERE role_id=?`,[role.id],async (err, rows)=>{
-			if(err) {
-				console.log(err);
-				msg.channel.createMessage('Something went wrong');
-			} else {
-				msg.channel.createMessage('React role deleted! NOTE: does not delete the actual role, nor remove it from members who have it');
-			}
-		})
-
 		var scc = await bot.utils.deleteReactionRole(bot, msg.guild.id, role.id);
 		if(!scc) msg.channel.createMessage("Something went wrong");
+		else msg.channel.createMessage('React role deleted! NOTE: does not delete the actual role, nor remove it from members who have it');
 	},
 	alias: ['delete'],
 	permissions: ["manageRoles"]

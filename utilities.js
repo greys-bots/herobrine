@@ -42,7 +42,10 @@ module.exports = {
 		return table[r];
 	},
 	asyncForEach: async function(array,callback){
+		console.log(array);
+		console.log(array.length);
 		for (let index = 0; index < array.length; index++) {
+			console.log(array[index]);
 			await callback(array[index], index, array);
 		}
 	},
@@ -284,6 +287,16 @@ module.exports = {
 			var rr = await bot.utils.getReactionRole(bot, id, role);
 			if(!rr) return res(true);
 
+			bot.db.query(`DELETE FROM reactroles WHERE server_id = ? AND role_id = ?`,[id, rr.role_id], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else {
+					console.log("Deleted role")
+					res(true)
+				}
+			});
+
 			var cats = await bot.utils.getReactionCategorieswithRole(bot, id, rr.id);
 			if(cats) {
 				var scc = await bot.utils.updateReactionCategories(bot, id, cats.map(c => c.hid), "remove", rr.id);
@@ -295,15 +308,6 @@ module.exports = {
 				var scc2 = await bot.utils.updateReactPosts(bot, id, posts.map(p => p.message_id), "remove", rr.role_id);
 				if(!scc2) return res(false);
 			}
-
-			await bot.db.query(`DELETE FROM reactroles WHERE server_id = ? AND role_id = ?`,[id, role], (err, rows) => {
-				if(err) {
-					console.log(err);
-					res(false)
-				} else {
-					res(true)
-				}
-			});
 		})
 	},
 
@@ -391,7 +395,7 @@ module.exports = {
 	getReactPostswithRole: async (bot, id, role) => {
 		return new Promise(async res => {
 			var posts = await bot.utils.getReactPosts(bot, id);
-			if(posts) posts = posts.filter(r => r.roles.filter(rl => rl.role_id == role));
+			if(posts) posts = posts.filter(r => r.roles.filter(rl => rl.role_id == role)[0]);
 			if(posts) res(posts);
 			else res(undefined);
 		})
@@ -494,40 +498,23 @@ module.exports = {
 		})
 	},
 	updateReactPosts: async (bot, id, msgs, action, data) => {
-		return new Promise(res => {
-			bot.db.query(`SELECT * FROM reactposts WHERE server_id=? AND message_id IN (${msgs.join(",")})`, [id],
-			{
-				id: Number,
-				server_id: String,
-				channel_id: String,
-				message_id: String,
-				roles: JSON.parse,
-				page: Number
-			}, async (err, rows) => {
-				if(err) {
-					console.log(err);
-					res(false);
-				} else {
+		return new Promise(async res => {
+			await Promise.all(msgs.map(m => {
+				return new Promise(async res2 => {
+					var post = await bot.utils.getReactPost(bot, id, m);
 					if(action && action == "remove") {
-						console.log('removing...');
-						rows.forEach((r,i) => {
-							console.log(data);
-							r.roles = r.roles.filter(x => x.role_id != data);
-							console.log(r.roles);
-							bot.db.query(`UPDATE reactposts SET roles = ? WHERE server_id = ? AND message_id = ?`,[r.roles, id, r.message_id])
-							rows[i] = r;
-						})
+						post.roles = post.roles.filter(x => x.role_id != data);
+						bot.db.query(`UPDATE reactposts SET roles = ? WHERE server_id = ? AND message_id = ?`,[post.roles, id, m]);
 					}
-					console.log('updating');
-					console.log(rows[0].roles);
-					await bot.utils.asyncForEach(rows, async r => {
-						try {
-							await bot.utils.updateReactPost(bot, id, r.message_id)
-						} catch(e) {
-							console.log(e);
-						}
-					})
-				}
+					try {
+						await bot.utils.updateReactPost(bot, id, m)
+					} catch(e) {
+						console.log(e);
+					}
+					setTimeout(()=> res2(), 100);
+				})
+			})).then(()=> {
+				res(true);
 			})
 		})
 	},
@@ -538,6 +525,7 @@ module.exports = {
 			var message = await bot.getMessage(post.channel_id, post.message_id);
 			if(!message) return res(false);
 
+			console.log(post.roles);
 			if(post.roles.length == 0) {
 				await message.delete();
 				bot.db.query(`DELETE FROM reactposts WHERE server_id = ? AND message_id = ?`,[id, msg],(err, rows) => {
@@ -659,31 +647,20 @@ module.exports = {
 		})
 	},
 	updateReactionCategories: async (bot, id, hids, action, data) => {
-		return new Promise(res => {
-			console.log(hids)
-			bot.db.query(`SELECT * FROM reactcategories WHERE server_id=? AND hid IN (?)`, [id,hids.join(",")],
-			{
-				id: Number,
-				hid: String,
-				server_id: String,
-				name: String,
-				description: String,
-				roles: JSON.parse,
-				posts: JSON.parse
-			}, async (err, rows) => {
-				if(err) {
-					console.log(err);
-					res(false);
-				} else {
+		return new Promise(async res => {
+			console.log(hids);
+			await Promise.all(hids.map(m => {
+				return new Promise(async res2 => {
+					var cat = await bot.utils.getReactionCategory(bot, id, m);
 					if(action && action == "remove") {
-						console.log('removing from categories...');
-						rows.forEach((r,i) => {
-							r.roles = r.roles.filter(x => x != data);
-							bot.db.query(`UPDATE reactcategories SET roles = ? WHERE server_id = ? AND hid = ?`,[r.roles, id, r.hid])
-						})
+						cat.roles = cat.roles.filter(x => x != data);
+						console.log("Updating category "+m);
+						bot.db.query(`UPDATE reactcategories SET roles = ? WHERE server_id = ? AND hid = ?`,[cat.roles, id, m]);
 					}
-					res(true);
-				}
+					setTimeout(()=> res2(), 100);
+				})
+			})).then(()=> {
+				res(true);
 			})
 		})
 	},
