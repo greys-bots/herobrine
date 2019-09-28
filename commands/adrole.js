@@ -249,7 +249,7 @@ module.exports.subcommands.index = {
 							setTimeout(function(){
 								switch(sar){
 									case "1":
-									bot.db.query(`INSERT INTO roles VALUES (?,?,?,?)`,[msg.guild.id,role_id,1,0],(err,rows)=>{
+									bot.db.query(`INSERT INTO roles VALUES (?,?,?)`,[msg.guild.id,role_id,1],(err,rows)=>{
 										if(err){
 											console.log(err);
 											msg.channel.createMessage("There was an error.");
@@ -259,7 +259,7 @@ module.exports.subcommands.index = {
 									})
 									break;
 									case "0":
-									bot.db.query(`INSERT INTO roles VALUES (?,?,?,?)`,[msg.guild.id,role_id,0,0],(err,rows)=>{
+									bot.db.query(`INSERT INTO roles VALUES (?,?,?)`,[msg.guild.id,role_id,0],(err,rows)=>{
 										if(err){
 											console.log(err);
 											msg.channel.createMessage("There was an error.");

@@ -81,30 +81,65 @@ const setup = async function(){
 	}
 
 	bot.db.query(".databases");
-	bot.db.query(`CREATE TABLE IF NOT EXISTS triggers (user_id TEXT, code TEXT, list TEXT, alias TEXT)`,(err,rows)=>{
+	bot.db.query(`CREATE TABLE IF NOT EXISTS triggers (
+			user_id TEXT,
+			code TEXT,
+			list TEXT,
+			alias TEXT
+		)`,(err,rows)=>{
 		if(err){
 			console.log("There was an error creating the triggers table.")
 		}
 	});
-	bot.db.query(`CREATE TABLE IF NOT EXISTS roles (srv_id TEXT, id TEXT, sar TEXT, bundle TEXT)`,(err,rows)=>{
+	bot.db.query(`CREATE TABLE IF NOT EXISTS roles (
+			srv_id TEXT,
+			id TEXT,
+			sar TEXT
+		)`,(err,rows)=>{
 		if(err){
 			console.log("There was an error creating the roles table.")
 		}
 	});
 
-	bot.db.query(`CREATE TABLE IF NOT EXISTS configs (srv_id TEXT, prefix TEXT, welcome TEXT, autoroles TEXT, disabled TEXT, opped TEXT, feedback TEXT, logged TEXT, autopin TEXT, aliases TEXT)`,(err,rows)=>{
+	//{srv_id: "", prefix: "", welcome: {}, autoroles: "", disabled: {}, opped: "", feedback: {}, logged: [], autopin: {}, aliases: []}
+	bot.db.query(`CREATE TABLE IF NOT EXISTS configs (
+			srv_id TEXT,
+			prefix TEXT,
+			welcome TEXT,
+			autoroles TEXT,
+			disabled TEXT,
+			opped TEXT,
+			feedback TEXT,
+			logged TEXT,
+			autopin TEXT,
+			aliases TEXT
+		)`,(err,rows)=>{
 		if(err){
 			console.log(err)
 		}
 	});
 
-	bot.db.query(`CREATE TABLE IF NOT EXISTS profiles (usr_id TEXT, info TEXT, badges TEXT, lvl TEXT, exp TEXT, cash TEXT, daily TEXT, disabled TEXT)`,(err,rows)=>{
+	bot.db.query(`CREATE TABLE IF NOT EXISTS profiles (
+			usr_id TEXT,
+			info TEXT,
+			badges TEXT,
+			lvl TEXT,
+			exp TEXT,
+			cash TEXT,
+			daily TEXT,
+			disabled TEXT
+		)`,(err,rows)=>{
 		if(err) {
 			console.log("There was an error creating the profiles table");
 		}
 	});
 
-	bot.db.query(`CREATE TABLE IF NOT EXISTS bundles (srv_id TEXT, name TEXT, roles TEXT, sa TEXT)`, (err, rows)=> {
+	bot.db.query(`CREATE TABLE IF NOT EXISTS bundles (
+			srv_id TEXT,
+			name TEXT,
+			roles TEXT,
+			sa TEXT
+		)`, (err, rows)=> {
 		if(err) console.log("Error creating bundles table.\n" + err);
 	});
 
@@ -143,6 +178,22 @@ const setup = async function(){
 		roles		TEXT
 	)`);
 
+	bot.db.query(`CREATE TABLE IF NOT EXISTS responses (
+		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
+		server_id	TEXT,
+		name 		TEXT,
+		value 		TEXT
+	)`);
+
+	bot.db.query(`CREATE TABLE IF NOT EXISTS feedback (
+		id			INTEGER PRIMARY KEY AUTOINCREMENT,
+		hid			TEXT,
+		server_id	TEXT,
+		sender_id 	TEXT,
+		message 	TEXT,
+		anon 		INTEGER
+	)`);
+
 	var files = fs.readdirSync("./commands");
 	await Promise.all(files.map(f => {
 		bot.commands[f.slice(0,-3)] = require("./commands/"+f);
@@ -154,7 +205,7 @@ const setup = async function(){
 
 bot.parseCommand = async function(bot, msg, args, command){
 	return new Promise(async (res,rej)=>{
-		var cfg = await bot.utils.getConfig(bot, msg.guild.id);
+		var cfg = msg.guild ? await bot.utils.getConfig(bot, msg.guild.id) : undefined;
 		var commands;
 		var cmd;
 		var name = "";
@@ -195,7 +246,7 @@ bot.parseCommand = async function(bot, msg, args, command){
 				cmd = command;
 				res([cmd, args, name]);
 			} else {
-				rej("Command not found.");
+				res(undefined);
 			}
 		} else {
 			res([cmd, args, name])
@@ -411,7 +462,7 @@ bot.on("messageCreate", async (msg)=>{
 		if(err){
 			console.log(err)
 		} else {
-			if(rows[0]){
+			if(rows[0] && msg.guild){
 				var exp = eval(rows[0].exp);
 				var lve = eval(rows[0].lvl);
 				if(exp+5>=(Math.pow(lve,2)+100)){
@@ -427,7 +478,7 @@ bot.on("messageCreate", async (msg)=>{
 					exp=exp+5;
 				}
 				bot.db.query(`UPDATE profiles SET exp='${exp}', lvl='${lve}', cash='${eval(rows[0].cash)+5}' WHERE usr_id='${msg.author.id}'`);
-			} else {
+			} else if(!rows[0]) {
 				bot.db.query(`INSERT INTO profiles VALUES (?,?,?,?,?,?,?,?)`,[msg.author.id,{title:"Title Here",bio:"Beep boop!"},{},"1","5","5","0","0"],(err,rows)=>{
 					if(err){
 						console.log("Error creating profile: \n"+err);
@@ -469,24 +520,26 @@ bot.on("messageCreate", async (msg)=>{
 		if(args[args.length-1] == "help"){
 			bot.commands.help.execute(bot, msg, args.slice(0,args.length-1));
 		} else {
-			await bot.parseCommand(bot, msg, args).then(async dat =>{
-				var cmd = dat[0];
-				var check;
-				if(cmd.guildOnly && !msg.guild) {
+			var cmd = await bot.parseCommand(bot, msg, args);
+			if(cmd) {
+				if(cmd[0].guildOnly && !msg.guild) {
 					return msg.channel.createMessage("This command can only be used in guilds.");
 				}
-				check = await bot.utils.checkPermissions(bot, msg, cmd);
-				if(!check && !bot.cfg.accepted_ids.includes(msg.author.id)) {
-					return msg.channel.createMessage("You do not have permission to use this command.");
+				if(msg.guild) {
+					var check;
+					check = await bot.utils.checkPermissions(bot, msg, cmd[0]);
+					if(!check && !bot.cfg.accepted_ids.includes(msg.author.id)) {
+						return msg.channel.createMessage("You do not have permission to use this command.");
+					}
+					check = await bot.utils.isDisabled(bot, msg.guild.id, cmd[0], cmd[2]);
+					if(check && !(cmd[2] == "enable" || cmd[2] == "disable")) {
+						return msg.channel.createMessage("That command is disabled.");
+					}
 				}
-				check = await bot.utils.isDisabled(bot, msg.guild.id, cmd, dat[2]);
-				if(check && !(dat[2] == "enable" || dat[2] == "disable")) {
-					return msg.channel.createMessage("That command is disabled.");
-				}
-				cmd.execute(bot, msg, dat[1]);
-			}).catch(e =>{
-				msg.channel.createMessage("Error: "+ e);
-			});
+				cmd[0].execute(bot, msg, cmd[1], cfg);
+			} else {
+				msg.channel.createMessage("Command not found");
+			}
 		}
 		
 	}

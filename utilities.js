@@ -106,15 +106,6 @@ module.exports = {
 	},
 	updateConfig: async function(bot,srv,key,val) {
 		return new Promise((res)=> {
-			bot.db.query(`SELECT * FROM configs WHERE srv_id=?`,[srv], (err, rows)=> {
-				if(err) {
-					console.log(err);
-				} else {
-					if(!rows[0]) {
-						bot.db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?,?,?)`,[srv, "", {}, "", {}, "", {}, [], {}, []]);
-					}
-				}
-			})
 			bot.db.query(`UPDATE configs SET ?=? WHERE srv_id=?`,[key, val, srv], (err, rows)=> {
 				if(err) {
 					console.log(err);
@@ -199,7 +190,8 @@ module.exports = {
 					var post = rows[0];
 					if(!post) return res(true);
 					try {
-						bot.editMessage(post.channel_id, post.message_id, `${data.emoji.includes(":") ? `<${data.emoji}>` : data.emoji} ${data.count}`)
+						if(data.count > 0) bot.editMessage(post.channel_id, post.message_id, `${data.emoji.includes(":") ? `<${data.emoji}>` : data.emoji} ${data.count}`);
+						else bot.deleteMessage(post.channel_id, post.message_id);
 					} catch(e) {
 						console.log(e);
 						return res(false);
@@ -682,6 +674,165 @@ module.exports = {
 			})
 			bot.db.query(`DELETE FROM reactcategories WHERE server_id=? AND hid=?`,[id, categoryid]);
 			res(true);
+		})
+	},
+
+	//custom responses
+	getTags: async (bot, srv) => {
+		return new Promise(async res => {
+			bot.db.query(`SELECT * FROM responses WHERE server_id = ?`, [srv], {
+				id: Number,
+				server_id: String,
+				name: String,
+				value: JSON.parse
+			}, (err, rows) => {
+				if(rows[0]) {
+					res(undefined);
+				} else {
+					res(rows);
+				}
+			})
+		})
+	},
+
+	//feedback
+	addTicket: async (bot, hid, server, user, message, anon) => {
+		return new Promise(async res=> {
+			bot.db.query(`INSERT INTO feedback (hid, server_id, sender_id, message, anon) VALUES (?,?,?,?,?)`,
+				[hid, server, user, message, anon], (err, rows)=> {
+					if(err) {
+						console.log(err);
+						res(false)
+					} else {
+						res(true);
+					}
+				})
+		})
+	},
+	getTickets: async (bot, server) => {
+		return new Promise(async res=> {
+			bot.db.query(`SELECT * FROM feedback WHERE server_id = ?`, [server],
+			{
+				id: Number,
+				hid: String,
+				server_id: String,
+				sender_id: String,
+				message: String,
+				anon: Boolean
+			}, (err, rows)=> {
+					if(err) {
+						console.log(err);
+						res(false)
+					} else {
+						res(rows);
+					}
+				}) 
+		})
+	},
+	getTicket: async (bot, server, hid) => {
+		return new Promise(async res=> {
+			bot.db.query(`SELECT * FROM feedback WHERE server_id = ? AND hid = ?`, [server, hid],
+			{
+				id: Number,
+				hid: String,
+				server_id: String,
+				sender_id: String,
+				message: String,
+				anon: Boolean
+			}, (err, rows)=> {
+					if(err) {
+						console.log(err);
+						res(false)
+					} else {
+						res(rows[0]);
+					}
+				}) 
+		})
+	},
+	getTicketsFromUser: async (bot, server, id) => {
+		return new Promise(async res=> {
+			bot.db.query(`SELECT * FROM feedback WHERE server_id = ? AND sender_id = ? AND anon = 0`, [server, id],
+			{
+				id: Number,
+				hid: String,
+				server_id: String,
+				sender_id: String,
+				message: String,
+				anon: Boolean
+			}, (err, rows)=> {
+					if(err) {
+						console.log(err);
+						res(false)
+					} else {
+						res(rows);
+					}
+				}) 
+		})
+	},
+	searchTickets: async (bot, server, query) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT * FROM feedback WHERE server_id = ?`,[server],
+			{
+				id: Number,
+				hid: String,
+				server_id: String,
+				sender_id: String,
+				message: String,
+				anon: Boolean
+			}, (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else {
+					res(rows.filter(r => r.message.toLowerCase().includes(query)));
+				}
+			})
+		})
+	},
+	searchTicketsFromUser: async (bot, server, id, query) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT * FROM feedback WHERE server_id = ? AND sender_id = ? AND anon = 0`,[server, id],
+			{
+				id: Number,
+				hid: String,
+				server_id: String,
+				sender_id: String,
+				message: String,
+				anon: Boolean
+			}, (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else {
+					res(rows.filter(r => r.message.toLowerCase().includes(query)));
+				}
+			})
+		})
+	},
+	deleteTicket: async (bot, server, hid) => {
+		return new Promise(res => {
+			bot.db.query(`DELETE FROM feedback WHERE server_id = ? AND hid = ?`,[server, hid], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false);
+				} else res(true);
+			})
+		})
+	},
+	deleteTickets: async (bot, server) => {
+		return new Promise(res => {
+			bot.db.query(`DELETE FROM feedback WHERE server_id = ?`,[server], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false);
+				} else res(true);
+			})
+		})
+	},
+	fetchUser: async (bot, id) => {
+		return new Promise(res => {
+			var user = bot.users.find(u => u.id == id);
+			res(user);
 		})
 	}
 };

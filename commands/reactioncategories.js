@@ -243,7 +243,7 @@ module.exports.subcommands.post = {
 
 		var channel = msg.channelMentions.length > 0 ?
 				   msg.guild.channels.find(ch => ch.id == msg.channelMentions[0]) :
-				   msg.guild.channels.find(ch => ch.id == args[0] || ch.name == args[1]);
+				   msg.guild.channels.find(ch => ch.id == args[1] || ch.name == args[1]);
 		if(!channel) return msg.channel.createMessage('Channel not found');
 
 		var roles = await bot.utils.getReactionRolesByCategory(bot, msg.guild.id, category.hid);
