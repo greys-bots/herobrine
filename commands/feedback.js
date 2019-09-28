@@ -134,8 +134,9 @@ module.exports.subcommands.reply = {
 		}
 
 		msg.channel.createMessage('Reply sent!');
-
-	}
+	},
+	guildOnly: true,
+	permissions: ['manageServer']
 }
 
 module.exports.subcommands.delete = {
@@ -153,7 +154,9 @@ module.exports.subcommands.delete = {
 			if(scc) msg.channel.createMessage('Ticket deleted!');
 			else msg.channel.createMessage('Something went wrong')
 		}
-	}
+	},
+	guildOnly: true,
+	permissions: ['manageServer']
 }
 
 module.exports.subcommands.list = {
