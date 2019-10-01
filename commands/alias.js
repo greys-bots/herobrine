@@ -1,6 +1,6 @@
 module.exports = {
-	help: ()=> "Set a custom command alias for the server",
-	usage: ()=> [" - View registered aliases",
+	help: "Set a custom command alias for the server",
+	usage: [" - View registered aliases",
 			" add <name> <command> - Add a new alias. Runs a menu if sent with no arguments",
 			" remove [name] - Remove an alias",
 			" edit [name] - Runs a menu to edit an alias"],
