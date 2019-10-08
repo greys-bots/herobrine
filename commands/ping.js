@@ -8,11 +8,8 @@ module.exports = {
 }
 
 module.exports.subcommands.test = {
-	help: ()=> "Test the Boy:tm:",
-	usage: ()=> [" - yeet"],
-	execute: (bot, msg, args)=>{
-		var yeets = ["yeet!","yate!","yote!","yute!", "yite!"];
-		msg.channel.createMessage(yeets[Math.floor(Math.random()*yeets.length)]);
-	},
+	help: "Test the Boy:tm:",
+	usage: [" - yeet"],
+	examples: ["hh!ping test"],
 	module: "fun"
 }

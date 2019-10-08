@@ -18,351 +18,60 @@ module.exports = {
 }
 
 module.exports.subcommands.channel = {
-	help: ()=> "Sets (or resets) welcome channel.",
-	usage: ()=> [" <channel> - sets welcome channel to this, or resets if nothing's given. accepts mention, name, and ID"],
-	execute: async (bot, msg, args)=>{
-		if(!args[0]) {
-			bot.db.query(`SELECT * FROM configs WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
-				if(err) return console.log(err);
-				if(rows[0]){
-					var w = JSON.parse(rows[0].welcome);
-					w.channel = "";
-					bot.db.query(`UPDATE configs SET welcome=? WHERE srv_id='${msg.guild.id}'`,[w],(err,rows)=>{
-						if(err) {
-							console.log(err);
-							msg.channel.createMessage("There was an error.");
-						} else {
-							msg.channel.createMessage("Channel reset.")
-						}
-					})
-				} else {
-					msg.channel.createMessage("Channel reset.")
-				}
-			})
-		} else {
-			bot.db.query(`SELECT * FROM configs WHERE srv_id='${msg.guild.id}'`, async (err,rows)=>{
-				if(err) return console.log(err);
-				if(rows[0]){
-					var w = JSON.parse(rows[0].welcome);
-					console.log(w)
-					if(msg.channelMentions > 0){
-						w.channel = msg.channelMentions[0];
-						// console.log(msg.channelMentions[0]);
-						bot.db.query(`UPDATE configs SET welcome=? WHERE srv_id='${msg.guild.id}'`,[w],(err,rows)=>{
-							if(err) return console.log(err);
-							console.log(w);
-							msg.channel.createMessage("Channel updated.")
-						})
-					} else {
-						if(msg.guild.channels.find(c => c.name == args[0].toLowerCase() || c.id == args[0]).id){
-							w.channel = msg.guild.channels.find(c => c.name == args[0].toLowerCase() || c.id == args[0]).id;
-							console.log(w.channel)
-							bot.db.query(`UPDATE configs SET welcome=? WHERE srv_id='${msg.guild.id}'`,[w],(err,rows)=>{
-								if(err) return console.log(err);
-								msg.channel.createMessage("Channel updated.")
-							})
-						} else {
-							msg.channel.createMessage("Channel not found.")
-						}
-					}
-				} else {
-					if(msg.channelMentions){
-						bot.db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?,?)`,[msg.guild.id,"",{channel:msg.channelMentions[0]},"",{},"",{},[]],(err,rows)=>{
-							msg.channel.createMessage("Channel updated.")
-						})
-					} else {
-						if(msg.guild.channels.find(c => c.name == args[0].toLowerCase() || c.id == args[0])){
-							var ch = msg.guild.channels.find(c => c.name == args[0].toLowerCase() || c.id == args[0]).id;
-							bot.db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?,?)`,[msg.guild.id,"",{channel:ch},"",{},"",{},[]])
-						} else {
-							msg.channel.createMessage("Channel not found.")
-						}
-					}
-				}
-			})
-		}
-		Util.reloadConfig(bot, msg.guild.id);
-	},
+	help: "Sets (or resets) welcome channel.",
+	usage: [" <channel> - sets welcome channel to this, or resets if nothing's given. accepts mention, name, and ID"],
+	examples: ["hh!welc chan welcome-wagon"],
 	guildOnly: true,
 	alias: ["chan"],
 	permisions: ["manageGuild"]
 }
 
 module.exports.subcommands.message = {
-	help: ()=> "Sets (or resets) welcome message.",
-	usage: ()=> [" <new message> - sets welcome message to this, or resets if nothing's given"],
-	desc: ()=> ["**Defined Vars**",
+	help: "Sets (or resets) welcome message.<br/>"+
+				["**Defined Vars**",
 				"$MEMBER.MENTION = mentions the member who joined",
 				"$MEMBER.NAME = gives the member's name and discriminator",
 				"$MEMBER.ID = gives the member's ID",
 				"$GUILD.NAME = gives the guild's name",
 				"*Vars should be in all caps*"].join("\n"),
-	execute: (bot, msg, args)=>{
-		if(!args[0]) {
-			bot.db.query(`SELECT * FROM configs WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
-				if(err) return console.log(err);
-				if(rows[0]){
-					var w = JSON.parse(rows[0].welcome);
-					w.msg = "";
-					bot.db.query(`UPDATE configs SET welcome=? WHERE srv_id='${msg.guild.id}'`,[w],(err,rows)=>{
-						if(err) {
-							console.log(err);
-							msg.channel.createMessage("There was an error.");
-						} else {
-							msg.channel.createMessage("Message reset.")
-						}
-					})
-				} else {
-					msg.channel.createMessage("Message reset.")
-				}
-				Util.reloadConfig(bot, msg.guild.id);
-			})
-		} else {
-			bot.db.query(`SELECT * FROM configs WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
-				if(err) return console.log(err);
-				if(rows[0]){
-					var w = JSON.parse(rows[0].welcome);
-					w.msg = args.join(" ");
-					bot.db.query(`UPDATE configs SET welcome=? WHERE srv_id='${msg.guild.id}'`,[w],(err,rows)=>{
-						if(err) return console.log(err);
-						msg.channel.createMessage("Message updated.")
-					})
-				} else {
-					bot.db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?,?)`,[msg.guild.id,"",{msg:args.join(" ")},"",{},"",{},[]],(err,rows)=>{
-						msg.channel.createMessage("Message updated.")
-					})
-				}
-				Util.reloadConfig(bot, msg.guild.id);
-			})
-		}
-	},
+	usage: [" <new message> - sets welcome message to this, or resets if nothing's given"],
+	examples: ["hh!welc msg Welcome to $GUILD.NAME, $MEMBER.MENTION!"],
 	guildOnly: true,
 	alias: ["msg"],
 	permisions: ["manageGuild"]
 }
 
 module.exports.subcommands.enable = {
-	help: ()=> "Enables welcome protocol.",
-	usage: ()=> [" - enables welcome protocol"],
-	execute: (bot, msg, args)=>{
-		bot.db.query(`SELECT * FROM configs WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
-			if(err) return console.log(err);
-			if(rows[0]){
-				var w = JSON.parse(rows[0].welcome);
-				w.enabled = true;
-				bot.db.query(`UPDATE configs SET welcome=? WHERE srv_id='${msg.guild.id}'`,[w],(err,rows)=>{
-					if(err) return console.log(err);
-					msg.channel.createMessage("Welcome enabled.")
-				})
-			} else {
-				msg.channel.createMessage("Welcome not enabled; no configuration exists yet.");
-			}
-		})
-		Util.reloadConfig(bot, msg.guild.id);
-	},
+	help: "Enables welcome protocol.",
+	usage: [" - enables welcome protocol"],
+	examples: ["hh!welc enable"],
 	guildOnly: true,
 	alias: ["e","1"],
 	permisions: ["manageGuild"]
 }
 
 module.exports.subcommands.disable = {
-	help: ()=> "Disables welcome protocol.",
-	usage: ()=> [" - disables welcome protocol"],
-	execute: (bot, msg, args)=>{
-		bot.db.query(`SELECT * FROM configs WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
-			if(err) return console.log(err);
-			if(rows[0]){
-				var w = JSON.parse(rows[0].welcome);
-				w.enabled = false;
-				bot.db.query(`UPDATE configs SET welcome=? WHERE srv_id='${msg.guild.id}'`,[w],(err,rows)=>{
-					if(err) return console.log(err);
-					msg.channel.createMessage("Welcome disabled.")
-				})
-			} else {
-				msg.channel.createMessage("Welcome not disabled; no configuration exists yet.");
-			}
-		})
-		Util.reloadConfig(bot, msg.guild.id);
-	},
+	help: "Disables welcome protocol.",
+	usage: [" - disables welcome protocol"],
+	examples: ["hh!welc disable"],
 	guildOnly: true,
 	alias: ["d","0"],
 	permisions: ["manageGuild"]
 }
 
 module.exports.subcommands.preroles = {
-	help: ()=> "Add roles to be added when users join the server.",
-	usage: ()=> [" [roles, to, add] -[re]sets autoroles for the server. accepts names and IDs"],
-	execute: async (bot, msg, args) => {
-		bot.db.query(`SELECT * FROM configs WHERE srv_id='${msg.guild.id}'`, async (err,rows)=>{
-			if(rows[0]){
-				if(args[0]){
-					var embed = {
-						title: "Autoroles",
-						fields: [
-							{name: "Indexed", value: "none"},
-							{name: "Not indexed: reason", value: "none"}
-						]
-					};
-					var rs = [];
-					await Promise.all(args.join(" ").split(/,\s*/).map(ar =>{
-						if(msg.guild.roles.find(r => r.name == ar || r.id == ar)){
-							embed.fields[0].value = (embed.fields[0].value == "none" ?
-								msg.guild.roles.find(r => r.name == ar || r.id == ar).name :
-								embed.fields[0].value + "\n" + msg.guild.roles.find(r => r.name == ar || r.id == ar).name);
-							rs.push(msg.guild.roles.find(r => r.name == ar || r.id == ar).id);
-						} else {
-							embed.fields[1].value = (embed.fields[1].value == "none" ?
-								ar :
-								embed.fields[1].value + " " + ar);
-						}
-						return new Promise(res => setTimeout(res("done"),100))
-					})).then(()=>{
-						bot.db.query(`UPDATE configs SET autoroles=? WHERE srv_id='${msg.guild.id}'`,[rs.join(", ")],(err,rows)=>{
-							if(err) {
-								console.log(err);
-								msg.channel.createMessage("There was an error.")
-							} else {
-								msg.channel.createMessage({embed})
-								Util.reloadConfig(bot, msg.guild.id)
-							}
-						})
-					})
-				} else {
-					bot.db.query(`UPDATE configs SET autoroles="" WHERE srv_id='${msg.guild.id}'`,(err,rows)=>{
-						if(err) {
-							console.log(err);
-							msg.channel.createMessage("There was an error.")
-						} else {
-							msg.channel.createMessage("Autoroles reset.")
-							Util.reloadConfig(bot, msg.guild.id)
-						}
-					})
-				}
-			} else {
-				if(args[0]){
-					var embed = {
-						title: "Autoroles",
-						fields: [
-							{name: "Indexed", value: "none"},
-							{name: "Not indexed: reason", value: "none"}
-						]
-					};
-					var rs = [];
-					await Promise.all(args.join(" ").split(/,\s*/).map(ar =>{
-						if(msg.guild.roles.find(r => r.name == ar || r.id == ar)){
-							embed.fields[0].value = (embed.fields[0].value == "none" ?
-								msg.guild.roles.find(r => r.name == ar || r.id == ar).name :
-								embed.fields[0].value + "\n" + msg.guild.roles.find(r => r.name == ar || r.id == ar).name);
-							rs.push(msg.guild.roles.find(r => r.name == ar || r.id == ar).id);
-						} else {
-							embed.fields[1].value = (embed.fields[1].value == "none" ?
-								ar :
-								embed.fields[1].value + " " + ar);
-						}
-						return new Promise(res => setTimeout(res("done"),100))
-					})).then(()=>{
-						bot.db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?,?)`,[msg.guild.id,"",{},rs.join(", "),{},"",{},[]],(err,rows)=>{
-							msg.channel.createMessage("Autoroles updated.");
-							Util.reloadConfig(bot, msg.guild.id)
-						})
-					})
-				} else {
-					msg.channel.createMessage("Autoroles reset.");
-				}
-			}
-		})
-	},
+	help: "Add roles to be added when users join the server.",
+	usage: [" [roles, to, add] - [Re]sets autoroles for the server. Accepts names and IDs"],
+	examples: ["hh!welc autorole newbie"],
 	guildOnly: true,
 	alias: ["autoroles","autorole"],
 	permissions: ["manageRoles","manageGuil"]
 }
 
 module.exports.subcommands.postroles = {
-	help: ()=> "Sets a list of roles to add to members after they're welcomed.",
-	usage: ()=> [" [roles, to, index] - indexes roles to be added after using `hh!* welcome [member]`"],
-	execute: async (bot, msg, args)=>{
-		bot.db.query(`SELECT * FROM configs WHERE srv_id='${msg.guild.id}'`, async (err,rows)=>{
-			if(rows[0]){
-				var wlc = JSON.parse(rows[0].welcome);
-				wlc.welcroles = [];
-				if(args[0]){
-					var embed = {
-						title: "Postroles",
-						fields: [
-							{name: "Indexed", value: "none"},
-							{name: "Not indexed: reason", value: "none"}
-						]
-					};
-					await Promise.all(args.join(" ").split(/,\s*/).map(ar =>{
-						if(msg.guild.roles.find(r => r.name == ar || r.id == ar)){
-							embed.fields[0].value = (embed.fields[0].value == "none" ?
-								msg.guild.roles.find(r => r.name == ar || r.id == ar).name :
-								embed.fields[0].value + "\n" + msg.guild.roles.find(r => r.name == ar || r.id == ar).name);
-							wlc.welcroles.push(msg.guild.roles.find(r => r.name == ar || r.id == ar).id);
-						} else {
-							embed.fields[1].value = (embed.fields[1].value == "none" ?
-								ar :
-								embed.fields[1].value + " " + ar);
-						}
-						return new Promise(res => setTimeout(res("done"),100))
-					})).then(()=>{
-						bot.db.query(`UPDATE configs SET welcome=? WHERE srv_id='${msg.guild.id}'`,[wlc],(err,rows)=>{
-							if(err) {
-								console.log(err);
-								msg.channel.createMessage("There was an error.")
-							} else {
-								msg.channel.createMessage({embed})
-								Util.reloadConfig(bot, msg.guild.id)
-							}
-						})
-					})
-				} else {
-					bot.db.query(`UPDATE configs SET welcome=? WHERE srv_id='${msg.guild.id}'`,[wlc],(err,rows)=>{
-						if(err) {
-							console.log(err);
-							msg.channel.createMessage("There was an error.")
-						} else {
-							msg.channel.createMessage("Postroles reset.")
-							Util.reloadConfig(bot, msg.guild.id)
-						}
-					})
-				}
-			} else {
-				if(args[0]){
-					var embed = {
-						title: "Autoroles",
-						fields: [
-							{name: "Indexed", value: "none"},
-							{name: "Not indexed: reason", value: "none"}
-						]
-					};
-					var rs = [];
-					await Promise.all(args.join(" ").split(/,\s*/).map(ar =>{
-						if(msg.guild.roles.find(r => r.name == ar || r.id == ar)){
-							embed.fields[0].value = (embed.fields[0].value == "none" ?
-								msg.guild.roles.find(r => r.name == ar || r.id == ar).name :
-								embed.fields[0].value + "\n" + msg.guild.roles.find(r => r.name == ar || r.id == ar).name);
-							rs.push(msg.guild.roles.find(r => r.name == ar || r.id == ar).id);
-						} else {
-							embed.fields[1].value = (embed.fields[1].value == "none" ?
-								ar :
-								embed.fields[1].value + " " + ar);
-						}
-						return new Promise(res => setTimeout(res("done"),100))
-					})).then(()=>{
-
-						bot.db.query(`INSERT INTO configs VALUES (?,?,?,?,?,?,?,?)`,[msg.guild.id,"",{welcroles:rs.join(", ")},"",{},"",{},[]],(err,rows)=>{
-							if(err) console.log(err);
-							msg.channel.createMessage("Postroles updated.")
-							Util.reloadConfig(bot, msg.guild.id)
-						})
-					})
-				} else {
-					msg.channel.createMessage("Postroles reset.");
-				}
-			}
-		})
-	},
+	help: "Sets a list of roles to add to members after they're welcomed.",
+	usage: [" [roles, to, index] - Indexes roles to be added after using `hh!welcome [member]`"],
+	examples: ["hh!welc postrole welcomed, cool kid"],
 	guildOnly: true,
 	permissions: ["manageRoles","manageGuild"],
 	alias: ["postrole","welcomerole","welcomeroles","welcroles","welcrole"]
