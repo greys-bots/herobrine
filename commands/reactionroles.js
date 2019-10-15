@@ -89,7 +89,7 @@ module.exports.subcommands.add = {
 		var arg1 = nargs[0].split(" ");
 		var role = msg.roleMentions.length > 0 ?
 				   msg.roleMentions[0] :
-				   msg.guild.roles.find(r => r.id == arg1.slice(0, arg1.length-1) || r.name.toLowerCase() == arg1.slice(0, arg1.length-1));
+				   msg.guild.roles.find(r => r.id == arg1.slice(0, arg1.length-1).join(" ") || r.name.toLowerCase() == arg1.slice(0, arg1.length-1).join(" ").toLowerCase());
 		if(!role) return msg.channel.createMessage("Role not found");
 		var emoji = arg1.slice(-1)[0].replace(/[<>\s]/g,"");
 		var description = nargs.slice(1).join("\n");
@@ -132,7 +132,6 @@ module.exports.subcommands.bind = {
 	usage: ()=> [" [role name] [channel] [messageID] - Binds a role to the message"],
 	execute: async (bot, msg, args) => {
 		if(!args[2]) return msg.channel.createMessage("This command requires at least 3 arguments.");
-		console.log(args.slice(0, args.length-3));
 		var role = msg.roleMentions.length > 0 ?
 				   msg.roleMentions[0] :
 				   msg.guild.roles.find(r => r.id == args[0] || r.name.toLowerCase() == args.slice(0, args.length-2).join(" ").toLowerCase());
