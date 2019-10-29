@@ -8,14 +8,16 @@
     "npm": "*"
   },
   "dependencies": {
+    "datauri": "^2.0.0",
     "dblite": "^0.10.0",
     "discord": "^0.8.2",
-    "discord.js": "^11.3.0",
-    "eris": "^0.9.0",
-    "eris-additions": "^1.2.5",
-    "jimp": "^0.6.0",
-    "node-fetch": "^2.3.0",
-    "pg": "^7.4.3",
+    "discord.js": "^11.5.1",
+    "eris": "github:abalabahaha/eris#dev",
+    "eris-additions": "^1.3.0",
+    "jimp": "^0.6.8",
+    "mime": "^2.4.4",
+    "node-fetch": "^2.6.0",
+    "pg": "^7.12.1",
     "pngjs-image": "^0.11.7",
     "supervisor": "^0.12.0",
     "tinycolor2": "^1.4.1",
@@ -24,7 +26,7 @@
   "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "supervisor -e .js,.json -i logs,data.sqlite,data.sqlite-journal bot.js"
+    "start": "supervisor -e .js,.json -i logs,data.sqlite,data.sqlite-journal,376384358388465667.emoji bot.js"
   },
   "repository": {
     "type": "git",

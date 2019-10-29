@@ -11,6 +11,7 @@ module.exports = {
 				 'find [query] - Search through tickets to find ones matching the given query'],
 	desc: ()=> "A server's ID can be found by turning on developer mode and right clicking on a server (desktop) or opening a server's menu (mobile)",
 	execute: async (bot, msg, args) => {
+		if(!args[0]) return msg.channel.createMessage("Please provide a server ID.")
 		var cfg = await bot.utils.getConfig(bot, args[0]);
 		var embed, anon;
 		if(!cfg || !cfg.feedback || !cfg.feedback.channel) return msg.channel.createMessage("That server is not currently accepting feedback");
@@ -58,6 +59,7 @@ module.exports.subcommands.channel = {
 				 " - Resets the channel (disabled feedback"],
 	execute: async (bot, msg, args, cfg = {feedback: {anon: true}}) => {
 		if(!cfg.feedback) cfg.feedback = {};
+		if(!args[0]) return msg.channel.createMessage("Please provide a channel.")
 		var channel = msg.channelMentions.length > 0 ?
 				   msg.guild.channels.find(ch => ch.id == msg.channelMentions[0]) :
 				   msg.guild.channels.find(ch => ch.id == args[0] || ch.name == args[0]);
@@ -72,7 +74,7 @@ module.exports.subcommands.channel = {
 		else msg.channel.createMessage("Something went wrong");
 	},
 	guildOnly: true,
-	permissions: ['manageServer'],
+	permissions: ['manageGuild'],
 	alias: ['ch', 'chan']
 }
 
@@ -81,6 +83,7 @@ module.exports.subcommands.anon = {
 	usage: ()=> [" [1|0] - Sets the anon value"],
 	execute: async (bot, msg, args, cfg = {feedback: {anon: true}}) => {
 		if(!cfg.feedback) cfg.feedback = {};
+		if(!args[0]) return msg.channel.createMessage("Please provide a value.")
 
 		cfg.feedback.anon = args[0] == 1 ? true : false;
 
@@ -89,13 +92,14 @@ module.exports.subcommands.anon = {
 		else msg.channel.createMessage("Something went wrong");
 	},
 	guildOnly: true,
-	permissions: ['manageServer']
+	permissions: ['manageGuild']
 }
 
 module.exports.subcommands.config = {
 	help: ()=> "Views current config",
 	usage: ()=> [" - Views server's feedback config"],
-	execute: async (bot, msg, args, cfg) => {
+	execute: async (bot, msg, args, cfg = {feedback: {}}) => {
+		console.log(cfg)
 		var channel = cfg.feedback.channel ? msg.guild.channels.find(c => c.id == cfg.feedback.channel) : undefined;
 		msg.channel.createMessage({embed: {
 			title: "Feedback Config",
@@ -104,7 +108,8 @@ module.exports.subcommands.config = {
 			{name: "Anon", value: cfg.feedback.anon ? "True" : "False"}
 			]
 		}})
-	}
+	},
+	guildOnly: true
 }
 
 module.exports.subcommands.reply = {
@@ -136,7 +141,7 @@ module.exports.subcommands.reply = {
 		msg.channel.createMessage('Reply sent!');
 	},
 	guildOnly: true,
-	permissions: ['manageServer']
+	permissions: ['manageGuild']
 }
 
 module.exports.subcommands.delete = {
@@ -156,7 +161,7 @@ module.exports.subcommands.delete = {
 		}
 	},
 	guildOnly: true,
-	permissions: ['manageServer']
+	permissions: ['manageGuild']
 }
 
 module.exports.subcommands.list = {
@@ -210,13 +215,14 @@ module.exports.subcommands.list = {
 		}
 	},
 	guildOnly: true,
-	permissions: ['manageServer']
+	permissions: ['manageGuild']
 }
 
 module.exports.subcommands.view = {
 	help: ()=> "Views an individual ticket",
 	usage: ()=> [" [id] - Views a ticket with the given ID"],
 	execute: async (bot, msg, args) => {
+		if(!args[0]) return msg.channel.createMessage("Please provide a ticket ID.")
 		var ticket = await bot.utils.getTicket(bot, msg.guild.id, args[0]);
 		if(!ticket) return msg.channel.createMessage("That ticket does not exist");
 
@@ -231,7 +237,7 @@ module.exports.subcommands.view = {
 		}})
 	},
 	guildOnly: true,
-	permissions: ['manageServer']
+	permissions: ['manageGuild']
 }
 
 module.exports.subcommands.find = {
@@ -240,6 +246,7 @@ module.exports.subcommands.find = {
 				 " from:[userID] - Find tickets from a certain user (does not list anonymous ones)",
 				 " from:[userID] [words to search] - Find tickets from a certain user that also contain certain words (also does not list anonymous ones)"],
 	execute: async (bot, msg, args) => {
+		if(!args[0]) return msg.channel.createMessage("Please provide a search query.")
 		var query;
 		var user;
 		var tickets;
@@ -303,5 +310,5 @@ module.exports.subcommands.find = {
 	},
 	alias: ['search'],
 	guildOnly: true,
-	permissions: ['manageServer']
+	permissions: ['manageGuild']
 }

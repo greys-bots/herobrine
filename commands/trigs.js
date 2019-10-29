@@ -35,7 +35,7 @@ module.exports= {
 			}
 		},
 		module: "utility",
-		subcommands: []
+		subcommands: {}
 	}
 
 module.exports.subcommands.new = {
@@ -76,7 +76,7 @@ module.exports.subcommands.new = {
 }
 module.exports.subcommands.add = {
 	help: ()=> "Add new triggers.",
-	usage: ()=> [" <stuff, to, add> - Adds new triggers. Uses a menu if no triggers are given in the command."],
+	usage: ()=> [" [listID] <stuff, to, add> - Adds new triggers. Uses a menu if no triggers are given in the command."],
 	execute: (bot, msg, args)=>{
 		if(!args[0]) return msg.channel.createMessage("Please provide a list to add to.");
 		bot.db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
@@ -100,7 +100,7 @@ module.exports.subcommands.add = {
 }
 module.exports.subcommands.remove = {
 	help: ()=> "Remove existing triggers.",
-	usage: ()=> [" <stuff, to, remove> - Removes triggers from a list. Runs a menu if triggers aren't specified."],
+	usage: ()=> [" [listID] <stuff, to, remove> - Removes triggers from a list. Runs a menu if triggers aren't specified."],
 	execute: (bot, msg, args)=>{
 		if(!args[0]) return msg.channel.createMessage("Please provide a list to remove from.");
 		bot.db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{
@@ -170,7 +170,7 @@ module.exports.subcommands.remove = {
 }
 module.exports.subcommands.delete = {
 	help: ()=> "Delete a trigger list.",
-	usage: ()=> [" [code] - Delete a trigger list with code [code]."],
+	usage: ()=> [" [listID] - Delete a trigger list with the given ID."],
 	execute: (bot, msg, args)=>{
 		if(!args[0]) return msg.channel.createMessage("Please provide a list to remove from.");
 		bot.db.query(`SELECT * FROM triggers WHERE code='${args[0].toLowerCase()}'`,(err,rows)=>{

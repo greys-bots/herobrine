@@ -8,13 +8,11 @@ Official "birthday": 25 September 2017
 */
 
 const Eris = 		require("eris-additions")(require("eris")); //da lib
-const fs =			require("fs"); //file stuff
 const {Client} =	require("pg"); //postgres, for data things
 const dblite =		require("dblite").withSQLite('3.8.6+'); //dblite, also for data things
 const exec =		require("child_process").exec; //self-updating code! woo!
 const config = 		require ("./config.json");
 
-var cur_logs =		"";
 var status = 		0;
 
 const bot = new Eris(config.token,{restMode: true});
@@ -23,11 +21,15 @@ bot.utils = require('./utilities');
 bot.cfg = config;
 bot.strings = require('./strings.json');
 bot.fetch = require('node-fetch');
+bot.duri = require('datauri');
 bot.tc = require('tinycolor2');
+bot.fs = require('fs');
 
 bot.modules = {};
 
 bot.paused = false;
+
+bot.cur_logs = "";
 
 //uncommenting the line below may fix "kill einvalid" errors on some computers;
 //make sure the config is set up and then uncomment if you're getting issues
@@ -51,7 +53,7 @@ try{
 SETUP
 ***********************************/
 
-const setup = async function(){
+const setup = async () => {
 	if(bot.cfg.update && bot.cfg.remote && bot.cfg.branch){
 		var git = exec(`git pull ${bot.cfg.remote} ${bot.cfg.branch}`,{cwd: __dirname}, (err, out, stderr)=>{
 			if(err){
@@ -127,7 +129,7 @@ const setup = async function(){
 			exp TEXT,
 			cash TEXT,
 			daily TEXT,
-			disabled TEXT
+			disabled INTEGER
 		)`,(err,rows)=>{
 		if(err) {
 			console.log("There was an error creating the profiles table");
@@ -194,7 +196,7 @@ const setup = async function(){
 		anon 		INTEGER
 	)`);
 
-	var files = fs.readdirSync("./commands");
+	var files = bot.fs.readdirSync("./commands");
 	await Promise.all(files.map(f => {
 		bot.commands[f.slice(0,-3)] = require("./commands/"+f);
 		return new Promise((res,rej)=>{
@@ -203,7 +205,38 @@ const setup = async function(){
 	})).then(()=> console.log("finished loading commands."));
 }
 
-bot.parseCommand = async function(bot, msg, args, command){
+const writeLog = (bot, type, msg) => {
+	let now = new Date();
+	let ndt = `${(now.getMonth() + 1).toString().length < 2 ? "0"+ (now.getMonth() + 1) : now.getMonth()+1}.${now.getDate().toString().length < 2 ? "0"+ now.getDate() : now.getDate()}.${now.getFullYear()}`;
+	if(!bot.fs.existsSync(`./logs/${ndt}.log`)){
+		bot.fs.writeFileSync(`./logs/${ndt}.log`,"===== LOG START =====",(err)=>{
+			console.log(`Error while attempting to write log ${ndt}\n${err.stack}`);
+		});
+	}
+
+	bot.cur_logs = ndt;
+
+	try {
+		switch(type) {
+			case "msg":
+				var str = `\r\nTime: ${ndt} at ${now.getHours().toString().length < 2 ? "0"+ now.getHours() : now.getHours()}${now.getMinutes()}\nMessage: ${msg.content}\nUser: ${msg.author.username}#${msg.author.discriminator}\nGuild: ${(msg.guild!=undefined ? msg.guild.name + "(" +msg.guild.id+ ")" : "DMs")}\r\n--------------------`;
+				console.log(str);
+				bot.fs.appendFileSync(`./logs/${ndt}.log`,str);
+				break;
+			case "startup":
+				bot.fs.appendFileSync(`./logs/${ndt}.log`,"\n=== BOT READY ===");
+				break;
+			default:
+				console.log("Invalid log type");
+				bot.fs.appendFileSync(`./logs/${ndt}.log`,"Invalid log type");
+				break;
+		}
+	} catch(e) {
+		console.log(`Error while attempting to write log ${ndt}\n${e.stack}`)	
+	}
+}
+
+bot.parseCommand = async (bot, msg, args, command) =>{
 	return new Promise(async (res,rej)=>{
 		var cfg = msg.guild ? await bot.utils.getConfig(bot, msg.guild.id) : undefined;
 		var commands;
@@ -415,19 +448,7 @@ bot.commands.reload = {
 
 bot.on("ready",()=>{
 	console.log("Ready.");
-	let now = new Date();
-	let ndt = `${(now.getMonth() + 1).toString().length < 2 ? "0"+ (now.getMonth() + 1) : now.getMonth()+1}.${now.getDate().toString().length < 2 ? "0"+ now.getDate() : now.getDate()}.${now.getFullYear()}`;
-	if(!fs.existsSync(`./logs/${ndt}.log`)){
-		fs.writeFile(`./logs/${ndt}.log`,"===== LOG START =====\r\n=== BOT READY ===",(err)=>{
-			if(err) console.log(`Error while attempting to write log ${ndt}\n`+err);
-		});
-		cur_logs = ndt;
-	} else {
-		fs.appendFile(`./logs/${ndt}.log`,"\n=== BOT READY ===",(err)=>{
-			if(err) console.log(`Error while attempting to apend to log ${ndt}\n`+err);
-		});
-		cur_logs = ndt;
-	}
+	writeLog(bot, "startup");
 	updateStatus();
 })
 
@@ -458,61 +479,18 @@ bot.on("messageCreate", async (msg)=>{
 		return;
 	}
 
-	bot.db.query(`SELECT * FROM profiles WHERE usr_id='${msg.author.id}'`,(err,rows)=>{
-		if(err){
-			console.log(err)
-		} else {
-			if(rows[0] && msg.guild){
-				var exp = eval(rows[0].exp);
-				var lve = eval(rows[0].lvl);
-				if(exp+5>=(Math.pow(lve,2)+100)){
-					lve=lve+1;
-					if(exp-(Math.pow(lve,2)+100)>=0){
-						exp=exp-(Math.pow(lve,2)+100);
-					} else {
-						exp=0;
-					}
-
-					if(rows[0].disabled != "1" && !(cfg.disabled && cfg.disabled.levels)) msg.channel.createMessage(`Congratulations, ${(msg.member.nickname==null ? msg.author.username : msg.member.nickname)}! You are now level ${lve}!`);
-				} else {
-					exp=exp+5;
-				}
-				bot.db.query(`UPDATE profiles SET exp='${exp}', lvl='${lve}', cash='${eval(rows[0].cash)+5}' WHERE usr_id='${msg.author.id}'`);
-			} else if(!rows[0]) {
-				bot.db.query(`INSERT INTO profiles VALUES (?,?,?,?,?,?,?,?)`,[msg.author.id,{title:"Title Here",bio:"Beep boop!"},{},"1","5","5","0","0"],(err,rows)=>{
-					if(err){
-						console.log("Error creating profile: \n"+err);
-					} else {
-						console.log("profile created");
-					}
-				})
-			}
-		}
-	})
-
-	if(msg.guild && !cfg){
-		bot.db.query(`INSERT INTO configs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,[msg.guild.id,"",{},"",{},"",{},[],{},[]],(err,rows)=>{
-			if(err) return console.log(err);
-			console.log(`Config for ${msg.guild.name} (${msg.guild.id}) created.`);
-		})
+	var lvlup = await bot.utils.handleBonus(bot, msg);
+	if(lvlup.success) {
+		if(lvlup.msg && !(cfg && cfg.disabled && cfg.disabled.levels)) msg.channel.createMessage(lvlup.msg);
+	} else {
+		console.log("Couldn't handle cash/exp");
 	}
 
+	if(msg.guild && !cfg) await bot.utils.createConfig(bot, msg.guild.id);
+
 	if(prefix.test(msg.content.toLowerCase())){
-		let now = new Date();
-		let ndt = `${(now.getMonth() + 1).toString().length < 2 ? "0"+ (now.getMonth() + 1) : now.getMonth()+1}.${now.getDate().toString().length < 2 ? "0"+ now.getDate() : now.getDate()}.${now.getFullYear()}`;
-		if(!fs.existsSync(`./logs/${ndt}.log`)){
-			fs.writeFile(`./logs/${ndt}.log`,"===== LOG START =====",(err)=>{
-				console.log(`Error while attempting to write log ${ndt}\n`+err);
-			});
-			cur_logs = ndt;
-		} else {
-			cur_logs = ndt;
-		}
-		var str = `\r\nTime: ${ndt} at ${now.getHours().toString().length < 2 ? "0"+ now.getHours() : now.getHours()}${now.getMinutes()}\nMessage: ${msg.content}\nUser: ${msg.author.username}#${msg.author.discriminator}\nGuild: ${(msg.guild!=undefined ? msg.guild.name + "(" +msg.guild.id+ ")" : "DMs")}\r\n--------------------`;
-		console.log(str);
-		fs.appendFile(`./logs/${ndt}.log`,str,(err)=>{
-			if(err) console.log(`Error while attempting to write log ${ndt}\n`+err);
-		});
+
+		writeLog(bot, "msg", msg);
 
 		let args = msg.content.replace(prefix, "").split(" ");
 		if(!args[0]) args.shift();
