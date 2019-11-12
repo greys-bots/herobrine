@@ -1,14 +1,14 @@
 module.exports = {
 	help: ()=> "Send feedback to a server",
 	usage: ()=> [' [serverID] - Initiate feedback menu',
-				 'channel [channel] - Set the channel for feedback to go to',
-				 'anon [1|0] - Set whether anon messages are allowed. Default: true',
-				 'config - View the current feedback config',
-				 'reply [id] [message] - Reply to feedback',
-				 'delete [id] - Delete a feedback message (use * to delete all)',
-				 'list - List all feedback posts',
-				 'view [id] - View an individual ticket',
-				 'find [query] - Search through tickets to find ones matching the given query'],
+				 ' channel [channel] - Set the channel for feedback to go to',
+				 ' anon [1|0] - Set whether anon messages are allowed. Default: true',
+				 ' config - View the current feedback config',
+				 ' reply [id] [message] - Reply to feedback',
+				 ' delete [id] - Delete a feedback message (use * to delete all)',
+				 ' list - List all feedback posts',
+				 ' view [id] - View an individual ticket',
+				 ' find [query] - Search through tickets to find ones matching the given query'],
 	desc: ()=> "A server's ID can be found by turning on developer mode and right clicking on a server (desktop) or opening a server's menu (mobile)",
 	execute: async (bot, msg, args) => {
 		if(!args[0]) return msg.channel.createMessage("Please provide a server ID.")
