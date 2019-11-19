@@ -12,6 +12,7 @@
     "dblite": "^0.10.0",
     "discord": "^0.8.2",
     "discord.js": "^11.5.1",
+    "emoji-name-map": "^1.2.8",
     "eris": "github:abalabahaha/eris#dev",
     "eris-additions": "^1.3.0",
     "jimp": "^0.6.8",

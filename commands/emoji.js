@@ -21,7 +21,8 @@ module.exports = {
 		}})
 	},
 	guildOnly: true,
-	subcommands: {}
+	subcommands: {},
+	module: "admin"
 }
 
 module.exports.subcommands.add = {

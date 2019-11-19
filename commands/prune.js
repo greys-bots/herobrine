@@ -15,7 +15,7 @@ module.exports = {
 	permissions: ["manageMessages"],
 	guildOnly: true,
 	alias: ["delete", "purge"],
-	module: "admin"
+	module: "utility"
 }
 
 module.exports.subcommands.safe = {

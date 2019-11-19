@@ -58,7 +58,6 @@ const setup = async () => {
 		var git = exec(`git pull ${bot.cfg.remote} ${bot.cfg.branch}`,{cwd: __dirname}, (err, out, stderr)=>{
 			if(err){
 				console.error(err);
-				console.log(bot.cfg.accepted_ids);
 				bot.users.find(u => u.id == bot.cfg.accepted_ids[0]).getDMChannel().then((ch)=>{
 					ch.sendMessage("Error pulling files.")
 				})
@@ -196,6 +195,14 @@ const setup = async () => {
 		anon 		INTEGER
 	)`);
 
+	bot.db.query(`CREATE TABLE IF NOT EXISTS strikes (
+		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
+		hid 		TEXT,
+		server_id 	TEXT,
+		user_id 	TEXT,
+		reason 	TEXT
+	)`)
+
 	var files = bot.fs.readdirSync("./commands");
 	await Promise.all(files.map(f => {
 		bot.commands[f.slice(0,-3)] = require("./commands/"+f);
@@ -321,6 +328,11 @@ bot.modules.utility = {
 	color: "cc5555"
 }
 
+bot.modules.unsorted = {
+	help: ()=> "Commands that aren't sorted into the other categories.",
+	color: "aaaaaa"
+}
+
 /***********************************
 COMMANDS
 ***********************************/
@@ -375,29 +387,43 @@ bot.commands.help = {
 				}
 			}
 		} else {
-			embed = {
+			var embeds = await bot.utils.genEmbeds(bot, Object.keys(bot.modules), m => {
+				return {
+					name: `**${m.toUpperCase()}**`,
+					value: Object.keys(bot.commands).map(c => {
+						return bot.commands[c].module == m || (m == "unsorted" && !bot.commands[c].module) ?
+						`**${bot.cfg.prefix[0] + c}** - ${bot.commands[c].help()}\n` :
+						""
+					}).join("")
+				}
+			}, {
 				title: `Herobrine - Help`,
 				description: "I'm Herobrine! This bot is multi-purpose and intended for a wide range of functions.",
-				fields: Object.keys(bot.modules).map(m => {
-					return {name: `**${m.toUpperCase()}**`,
-							value: Object.keys(bot.commands).map(c => {
-								return bot.commands[c].module == m ?
-								`**${bot.cfg.prefix[0] + c}** - ${bot.commands[c].help()}\n` :
-								""
-							}).join("")}
-				}),
-				footer: {
-					text: "[required] <optional>"
+				color: function(m) {
+					return parseInt(bot.modules[m].color, 16);
 				}
-			}
-			embed.fields.push({name: "**UNSORTED**",value: Object.keys(bot.commands).map(c => {
-								return !bot.commands[c].module ?
-								`**${bot.cfg.prefix[0] + c}** - ${bot.commands[c].help()}\n` :
-								""
-							}).join("") })
+			}, 1)
+			
+			var message = await msg.channel.createMessage(embeds[0]);
+			if(!bot.menus) bot.menus = {};
+				bot.menus[message.id] = {
+				user: msg.author.id,
+				index: 0,
+				data: embeds,
+				timeout: setTimeout(()=> {
+					if(!bot.menus[message.id]) return;
+					message.removeReaction("\u2b05");
+					message.removeReaction("\u27a1");
+					message.removeReaction("\u23f9");
+					delete bot.menus[message.id];
+				}, 900000),
+				execute: bot.utils.paginateEmbeds
+			};
+			message.addReaction("\u2b05");
+			message.addReaction("\u27a1");
+			message.addReaction("\u23f9");
+			
 		}
-
-		msg.channel.createMessage({embed: embed});
 	},
 	module: "utility",
 	alias: ["h"]
@@ -488,6 +514,11 @@ bot.on("messageCreate", async (msg)=>{
 
 	if(msg.guild && !cfg) await bot.utils.createConfig(bot, msg.guild.id);
 
+	if(msg.guild) {
+		var tag = await bot.utils.getTag(bot, msg.guild.id, msg.content.replace(prefix, "").toLowerCase());
+		if(tag) return msg.channel.createMessage(typeof tag.value == "string" ? tag.value : bot.utils.randomText(tag.value));
+	}
+
 	if(prefix.test(msg.content.toLowerCase())){
 
 		writeLog(bot, "msg", msg);
@@ -531,7 +562,6 @@ bot.on("guildMemberAdd", async (guild, member)=>{
 			var msg = cfg.welcome.msg;
 			await Promise.all(Object.keys(bot.strings.welc_strings).map(s => {
 				msg = msg.replace(s,eval("`"+bot.strings.welc_strings[s]+"`"),"g");
-				console.log(msg);
 				return new Promise(res=> setTimeout(()=>res(1),100))
 			})).then(()=>{
 				bot.createMessage(cfg.welcome.channel, msg);
@@ -564,7 +594,6 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 			var sbpost = await bot.utils.getStarPost(bot, msg.channel.guild.id, msg.id, em);
 			var message = await bot.getMessage(msg.channel.id, msg.id);
 			if(!sbpost) {
-				console.log(em);
 				var chan = cf.channel;
 				var member = msg.channel.guild.members.find(m => m.id == user);
 				var tolerance = cf.tolerance ? cf.tolerance : (cfg.autopin.tolerance || 2);
@@ -577,71 +606,16 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 		}
 	}
 
-	if(bot.posts){
-		if(bot.user.id == user) return;
-		if(bot.posts && bot.posts[msg.id] && bot.posts[msg.id].user == user) {
-			switch(emoji.name) {
-				case '\u2705':
-					var role;
-					var color = bot.posts[msg.id].data.toHex() == "000000" ? "000001" : bot.posts[msg.id].data.toHex();
-					role = msg.channel.guild.roles.find(r => r.name == user);
-					if(!role) role = await bot.createRole(msg.channel.guild.id, {name: user, color: parseInt(color,16)});
-					else role = await bot.editRole(msg.channel.guild.id, role.id, {color: parseInt(color, 16)});
-					await bot.addGuildMemberRole(msg.channel.guild.id, user, role.id);
-					await bot.editMessage(msg.channel.id, msg.id, {content: "Color successfully changed to #"+color+".", embed: {}});
-					await bot.removeMessageReactions(msg.channel.id, msg.id);
-					delete bot.posts[msg.id];
-					break;
-				case '\u274C':
-					bot.editMessage(msg.channel.id, msg.id, {content: "Action cancelled.", embed: {}});
-					bot.removeMessageReactions(msg.channel.id, msg.id);
-					delete bot.posts[msg.id];
-					break
-				case '🔀':
-					var color = bot.tc(Math.floor(Math.random()*16777215).toString(16));
-					bot.editMessage(msg.channel.id, msg.id, {embed: {
-						title: "Color "+color.toHexString().toUpperCase(),
-						image: {
-							url: `https://sheep.greysdawn.tk/color/${color.toHex()}`
-						},
-						color: parseInt(color.toHex(), 16)
-					}})
-					clearTimeout(bot.posts[msg.id].timeout)
-					bot.posts[msg.id] = {
-						user: bot.posts[msg.id].user,
-						data: color,
-						timeout: setTimeout(()=> {
-							if(!bot.posts[msg.id]) return;
-							message.removeReactions()
-							delete bot.posts[message.id];
-						}, 900000)
-					};
-					break;
-			}
-		}
-	}
-
 	if(user == bot.user.id) return;
-	
-	if(bot.pages && bot.pages[msg.id] && bot.pages[msg.id].user == user) {
-		if(emoji.name == "\u2b05") {
-			if(bot.pages[msg.id].index == 0) {
-				bot.pages[msg.id].index = bot.pages[msg.id].data.length-1;
-			} else {
-				bot.pages[msg.id].index -= 1;
-			}
-			bot.editMessage(msg.channel.id, msg.id, bot.pages[msg.id].data[bot.pages[msg.id].index]);
-		} else if(emoji.name == "\u27a1") {
-			if(bot.pages[msg.id].index == bot.pages[msg.id].data.length-1) {
-				bot.pages[msg.id].index = 0;
-			} else {
-				bot.pages[msg.id].index += 1;
-			}
-			bot.editMessage(msg.channel.id, msg.id, bot.pages[msg.id].data[bot.pages[msg.id].index]);
-		} else if(emoji.name == "\u23f9") {
-			bot.deleteMessage(msg.channel.id, msg.id);
-			delete bot.pages[msg.id];
+
+	if(bot.menus && bot.menus[msg.id] && bot.menus[msg.id].user == user) {
+		try {
+			await bot.menus[msg.id].execute(bot, msg, emoji);	
+		} catch(e) {
+			console.log(e);
+			msg.channel.createMessage("ERR:\n"+e.message);
 		}
+		return;
 	}
 
 	var post = await bot.utils.getReactPost(bot, msg.channel.guild.id, msg.id);

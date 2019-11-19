@@ -16,22 +16,75 @@ module.exports = {
 			},
 			color: parseInt(color.toHex(), 16)
 		}}).then(message => {
-			if(!bot.posts) bot.posts = {};
-			bot.posts[message.id] = {
+			if(!bot.menus) bot.menus = {};
+			bot.menus[message.id] = {
 				user: msg.author.id,
 				data: color,
 				timeout: setTimeout(()=> {
-					if(!bot.posts[message.id]) return;
+					if(!bot.menus[message.id]) return;
 					message.removeReactions()
-					delete bot.posts[message.id];
-				}, 900000)
+					delete bot.menus[message.id];
+				}, 900000),
+				execute: async function (m, emoji) {
+					switch(emoji.name) {
+						case '\u2705':
+							var color = this.data;
+							var role;
+							try {
+								role = m.channel.guild.roles.find(r => r.name == this.user);
+								if(!role) role = await bot.createRole(msg.channel.guild.id, {name: this.user, color: parseInt(color.toHex(),16)});
+								else role = await bot.editRole(msg.channel.guild.id, role, {color: parseInt(color.toHex(), 16)});
+								await bot.addGuildMemberRole(msg.channel.guild.id, msg.author.id, role.id);
+								await bot.editMessage(m.channel.id, m.id, {content: "Color successfully changed to "+color.toHexString(), embed: {}});
+								await bot.removeMessageReactions(m.channel.id, m.id);
+								delete bot.menus[m.id];
+							} catch(e) {
+								console.log(e.stack);
+								var err = "";
+								if(e.stack.includes('Client.editRole')) {
+									err = "Can't edit the role. Make sure I have the `manageRoles` permission";
+								} else if(e.stack.includes('Client.removeMessageReactions')) {
+									err = "Can't remove the messsage's reactions. Make sure I have the `manageMessages` permission";
+								}
+								msg.channel.createMessage("Something went wrong; ERR: "+err);
+							}
+							break;
+						case '\u274C':
+							bot.editMessage(m.channel.id, m.id, {content: "Action cancelled", embed: {}});
+							bot.removeMessageReactions(m.channel.id, m.id);
+							delete bot.menus[m.id];
+							break
+						case '🔀':
+							var color = bot.tc(Math.floor(Math.random()*16777215).toString(16));
+							bot.editMessage(m.channel.id, m.id, {embed: {
+								title: "Color "+color.toHexString().toUpperCase(),
+								image: {
+									url: `https://sheep.greysdawn.com/color/${color.toHex()}`
+								},
+								color: parseInt(color.toHex(), 16)
+							}})
+							await bot.removeMessageReaction(m.channel.id, m.id, emoji.name, msg.author.id);
+							clearTimeout(bot.menus[m.id].timeout)
+							bot.menus[m.id] = {
+								user: this.user,
+								data: color,
+								timeout: setTimeout(()=> {
+									if(!bot.menus[m.id]) return;
+									m.removeReactions()
+									delete bot.menus[m.id];
+								}, 900000),
+								execute: this.execute
+							};
+							break;
+					}
+				}
 			};
 			message.addReaction("\u2705");
 			message.addReaction("\u274C");
 			message.addReaction("🔀");
 		}).catch(e => {
 			console.log(e);
-			msg.channel.createMessage('Baa! There was an error D:');
+			msg.channel.createMessage('ERR:\n'+e.message);
 		});
 	},
 	alias: ['c', 'cl', 'colour', 'ch', 'change'],

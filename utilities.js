@@ -55,6 +55,9 @@ module.exports = {
 			var current = { embed: {
 				title: info.title,
 				description: info.description,
+				color: typeof info.color == "function" ?
+						info.color(arr[0], 0) : info.color,
+				footer: info.footer,
 				fields: []
 			}};
 			
@@ -66,6 +69,9 @@ module.exports = {
 					current = { embed: {
 						title: info.title,
 						description: info.description,
+						color: typeof info.color == "function" ?
+								info.color(arr[i], i) : info.color,
+						footer: info.footer,
 						fields: [await genFunc(arr[i], bot)]
 					}};
 				}
@@ -77,6 +83,34 @@ module.exports = {
 			}
 			res(embeds);
 		})
+	},
+	paginateEmbeds: async function(bot, m, emoji) {
+		switch(emoji.name) {
+			case "\u2b05":
+				if(this.index == 0) {
+					this.index = this.data.length-1;
+				} else {
+					this.index -= 1;
+				}
+				await bot.editMessage(m.channel.id, m.id, this.data[this.index]);
+				await bot.removeMessageReaction(m.channel.id, m.id, emoji.name, this.user)
+				bot.menus[m.id] = this;
+				break;
+			case "\u27a1":
+				if(this.index == this.data.length-1) {
+					this.index = 0;
+				} else {
+					this.index += 1;
+				}
+				await bot.editMessage(m.channel.id, m.id, this.data[this.index]);
+				await bot.removeMessageReaction(m.channel.id, m.id, emoji.name, this.user)
+				bot.menus[m.id] = this;
+				break;
+			case "\u23f9":
+				await bot.deleteMessage(m.channel.id, m.id);
+				delete bot.menus[m.id];
+				break;
+		}
 	},
 
 	//configs
@@ -310,6 +344,16 @@ module.exports = {
 			}
 		})
 	},
+	deleteReactionRoles: async (bot, server, roles) => {
+		return new Promise(async res => {
+			bot.db.query(`DELETE FROM reactroles WHERE server_id = ? AND role_id IN (${roles.join(",")})`,[server], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else res(true)
+			});
+		})
+	},
 
 	//react posts
 	genReactPosts: async (bot, roles, msg, info = {}) => {
@@ -388,6 +432,19 @@ module.exports = {
 					res(undefined);
 				} else {
 					res(rows[0]);
+				}
+			})
+		})
+	},
+	addReactPost: async (bot, server, channel, message, roles, page) => {
+		return new Promise(res => {
+			bot.db.query(`INSERT INTO reactposts (server_id, channel_id, message_id, roles, page) VALUES (?,?,?,?,?)`,
+				[server, channel, message, roles, page], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else {
+					res(true);
 				}
 			})
 		})
@@ -617,6 +674,17 @@ module.exports = {
 			})
 		})
 	},
+	createReactionCategory: async (bot, hid, server, name, description) => {
+		return new Promise(res => {
+			bot.db.query(`INSERT INTO reactcategories (hid, server_id, name, description, roles, posts) VALUES (?,?,?,?,?,?)`,
+				[hid, server, name, description, [], []], (err, rows)=> {
+				if(err) {
+					console.log(err);
+					res(false);
+				} else res(true);
+			})
+		})
+	},
 	getReactionCategory: async (bot, id, categoryid) => {
 		return new Promise(res => {
 			bot.db.query(`SELECT * FROM reactcategories WHERE server_id=? AND hid=?`,[id, categoryid], {
@@ -644,6 +712,16 @@ module.exports = {
 			if(categories) categories = categories.filter(c => c.roles.includes(role));
 			if(categories) res(categories);
 			else res(undefined);
+		})
+	},
+	updateReactionCategory: async (bot, server, hid, key, val) => {
+		return new Promise(res => {
+			bot.db.query(`UPDATE reactcategories SET ?=? WHERE server_id = ? AND hid = ?`,[key, val, server, hid], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false);
+				} else res(true);
+			})
 		})
 	},
 	updateReactionCategories: async (bot, id, hids, action, data) => {
@@ -686,19 +764,75 @@ module.exports = {
 	},
 
 	//custom responses
-	getTags: async (bot, srv) => {
-		return new Promise(async res => {
-			bot.db.query(`SELECT * FROM responses WHERE server_id = ?`, [srv], {
+	getTags: async (bot, server) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT * FROM responses WHERE server_id = ?`, [server], {
 				id: Number,
 				server_id: String,
 				name: String,
-				value: JSON.parse
+				value: function(val) {
+					if(val && val.startsWith("[") && val.endsWith("]")) return JSON.parse(val);
+					else if(val) return val;
+					else return undefined;
+				}
 			}, (err, rows) => {
-				if(rows[0]) {
+				if(!rows[0]) {
 					res(undefined);
 				} else {
 					res(rows);
 				}
+			})
+		})
+	},
+	getTag: async (bot, server, name) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT * FROM responses WHERE server_id = ? AND name = ?`, [server, name], {
+				id: Number,
+				server_id: String,
+				name: String,
+				value: function(val) {
+					console.log(val);
+					if(val && val.startsWith("[") && val.endsWith("]")) return JSON.parse(val);
+					else if(val) return val;
+					else return undefined;
+				}
+			}, (err, rows) => {
+				if(rows[0]) {
+					console.log(rows[0].value)
+					res(rows[0]);
+				} else {
+					res(undefined);
+				}
+			})
+		})
+	},
+	createTag: async (bot, server, name, value) => {
+		return new Promise(res => {
+			bot.db.query(`INSERT INTO responses (server_id, name, value) VALUES (?,?,?)`,[server, name, value], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false);
+				} else res(true);
+			})
+		})
+	},
+	deleteTag: async (bot, server, name) => {
+		return new Promise(res => {
+			bot.db.query(`DELETE FROM responses WHERE server_id = ? AND name = ?`,[server, name], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false);
+				} else res(true);
+			})
+		})
+	},
+	updateTag: async (bot, server, name, key, val) => {
+		return new Promise(res => {
+			bot.db.query(`UPDATE responses SET ?=? WHERE server_id = ? AND name = ?`,[key, val, server, name], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false);
+				} else res(true);
 			})
 		})
 	},
@@ -880,7 +1014,7 @@ module.exports = {
 	},
 	createProfile: async (bot, user) => {
 		return new Promise(res => {
-			bot.db.query(`INSERT INTO profiles VALUES (?,?,?,?,?,?,?,?)`,[msg.author.id,{title:"Title Here",bio:"Beep boop!"},{},"1","5","5","0",0],(err,rows)=>{
+			bot.db.query(`INSERT INTO profiles VALUES (?,?,?,?,?,?,?,?)`,[user,{title:"Title Here",bio:"Beep boop!"},{},"1","5","5","0",0],(err,rows)=>{
 				if(err){
 					console.log("Error creating profile: \n"+err);
 					res(false)
@@ -898,7 +1032,7 @@ module.exports = {
 			var prof = await bot.utils.getProfile(bot, msg.author.id);
 			if(!prof) {
 				var scc = await bot.utils.createProfile(bot, msg.author.id);
-				res({success: scc, msg: null});
+				return res({success: scc, msg: null});
 			}
 			var exp = parseInt(prof.exp);
 			var lve = parseInt(prof.lvl);
@@ -975,6 +1109,58 @@ module.exports = {
 						} else res(true)
 					})
 				}
+			})
+		})
+	},
+
+	//strikes
+	getStrikes: async (bot, server, user) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT * FROM strikes WHERE server_id = ? AND user_id = ?`, [server, user], {
+				id: Number,
+				hid: String,
+				server_id: String,
+				user_id: String,
+				reason: String
+			}, (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(undefined);
+				} else {
+					if(rows[0]) res(rows);
+					else res(undefined);
+				}
+			})
+		})
+	},
+	addStrike: async (bot, server, user, reason) => {
+		return new Promise(res => {
+			bot.db.query(`INSERT INTO strikes (hid, server_id, user_id, reason) VALUES (?,?,?,?)`,
+				[bot.utils.genCode(4, bot.strings.codestab), server, user, reason], (err, rows) => {
+					if(err) {
+						console.log(err);
+						res(false)
+					} else res(true);
+				})
+		})
+	},
+	deleteStrike: async (bot, server, user, hid) => {
+		return new Promise(res => {
+			bot.db.query(`DELETE FROM strikes WHERE server_id = ? AND user_id = ? AND hid = ?`,[server, user, hid], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else res(true);
+			})
+		})
+	},
+	deleteAllStrikes: async (bot, server, user) => {
+		return new Promise(res => {
+			bot.db.query(`DELETE FROM strikes WHERE server_id = ? AND user_id = ?`,[server, user], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else res(true);
 			})
 		})
 	}

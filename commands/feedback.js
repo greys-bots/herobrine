@@ -50,7 +50,8 @@ module.exports = {
 		} else return msg.channel.createMessage("Action cancelled: timed out");
 	},
 	subcommands: {},
-	alias: ['fb']
+	alias: ['fb'],
+	module: "utility"
 }
 
 module.exports.subcommands.channel = {
@@ -187,22 +188,23 @@ module.exports.subcommands.list = {
 			}, 10);
 
 			msg.channel.createMessage(embeds[0]).then(message => {
-				if(!bot.pages) bot.pages = {};
-				bot.pages[message.id] = {
+				if(!bot.menus) bot.menus = {};
+					bot.menus[message.id] = {
 					user: msg.author.id,
 					index: 0,
-					data: embeds
+					data: embeds,
+					timeout: setTimeout(()=> {
+						if(!bot.menus[message.id]) return;
+						message.removeReaction("\u2b05");
+						message.removeReaction("\u27a1");
+						message.removeReaction("\u23f9");
+						delete bot.menus[message.id];
+					}, 900000),
+					execute: bot.utils.paginateEmbeds
 				};
 				message.addReaction("\u2b05");
 				message.addReaction("\u27a1");
 				message.addReaction("\u23f9");
-				setTimeout(()=> {
-					if(!bot.pages[message.id]) return;
-					message.removeReaction("\u2b05");
-					message.removeReaction("\u27a1");
-					message.removeReaction("\u23f9");
-					delete bot.pages[msg.author.id];
-				}, 900000)
 			})
 		} else {
 			msg.channel.createMessage({embed: {
@@ -281,22 +283,23 @@ module.exports.subcommands.find = {
 			}, 10);
 
 			msg.channel.createMessage(embeds[0]).then(message => {
-				if(!bot.pages) bot.pages = {};
-				bot.pages[message.id] = {
+				if(!bot.menus) bot.menus = {};
+					bot.menus[message.id] = {
 					user: msg.author.id,
 					index: 0,
-					data: embeds
+					data: embeds,
+					timeout: setTimeout(()=> {
+						if(!bot.menus[message.id]) return;
+						message.removeReaction("\u2b05");
+						message.removeReaction("\u27a1");
+						message.removeReaction("\u23f9");
+						delete bot.menus[message.id];
+					}, 900000),
+					execute: bot.utils.paginateEmbeds
 				};
 				message.addReaction("\u2b05");
 				message.addReaction("\u27a1");
 				message.addReaction("\u23f9");
-				setTimeout(()=> {
-					if(!bot.pages[message.id]) return;
-					message.removeReaction("\u2b05");
-					message.removeReaction("\u27a1");
-					message.removeReaction("\u23f9");
-					delete bot.pages[msg.author.id];
-				}, 900000)
 			})
 		} else {
 			msg.channel.createMessage({embed: {

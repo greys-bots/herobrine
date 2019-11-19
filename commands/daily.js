@@ -8,5 +8,6 @@ module.exports = {
 		var scc = await bot.utils.setDaily(bot, msg.author.id);
 		if(scc) msg.channel.createMessage("You've been given 150 bucks!");
 		else msg.channel.createMessage("Something went wrong");
-	}
+	},
+	module: "fun"
 }

@@ -17,5 +17,6 @@ module.exports = {
 			]
 		}})
 	},
-	alias: ['abt', 'a']
+	alias: ['abt', 'a'],
+	module: "utility"
 }

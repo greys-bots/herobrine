@@ -9,5 +9,5 @@ module.exports = {
 		msg.channel.createMessage("Your number:\n"+nums.map(n => ":"+bot.strings.numbers[eval(n)] + ":").join(""));
 	},
 	module: "utility",
-	alias: ["rand"]
+	alias: ["rand", "rng"]
 }

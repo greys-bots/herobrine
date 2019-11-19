@@ -13,17 +13,47 @@ module.exports = {
 		var categories = await bot.utils.getReactionCategories(bot, msg.guild.id);
 		if(!categories || categories.length < 1) return msg.channel.createMessage('No categories have been indexed');
 
-		msg.channel.createMessage({embed: {
-			title: "Categories",
-			description: "All categories registered for the server",
-			fields: categories.map(c => {
-				return {name: c.name, value: `ID: ${c.hid}\nDescription: ${c.description}`}
+		if(categories.length > 10) {
+			var embeds = await bot.utils.genEmbeds(bot, categories, async data => {
+				return {name: data.name, value: `ID: ${data.hid}\nDescription: ${data.description}`}
+			}, {
+				title: "Categories",
+				description: "All categories registered for the server",
+			}, 10)
+
+			msg.channel.createMessage(embeds[0]).then(message => {
+				if(!bot.menus) bot.menus = {};
+					bot.menus[message.id] = {
+					user: msg.author.id,
+					index: 0,
+					data: embeds,
+					timeout: setTimeout(()=> {
+						if(!bot.menus[message.id]) return;
+						message.removeReaction("\u2b05");
+						message.removeReaction("\u27a1");
+						message.removeReaction("\u23f9");
+						delete bot.menus[message.id];
+					}, 900000),
+					execute: bot.utils.paginateEmbeds
+				};
+				message.addReaction("\u2b05");
+				message.addReaction("\u27a1");
+				message.addReaction("\u23f9");
 			})
-		}})
+		} else {
+			msg.channel.createMessage({embed: {
+				title: "Categories",
+				description: "All categories registered for the server",
+				fields: categories.map(c => {
+					return {name: c.name, value: `ID: ${c.hid}\nDescription: ${c.description}`}
+				})
+			}})
+		}
 	},
 	alias: ['reactcategories', 'rc'],
 	permissions: ["manageRoles"],
-	subcommands: {}
+	subcommands: {},
+	module: "utility"
 }
 
 module.exports.subcommands.create = {
@@ -32,21 +62,9 @@ module.exports.subcommands.create = {
 	execute: async (bot, msg, args)=> {
 		var nargs = args.join(" ").split("\n");
 		var code = bot.utils.genCode(4, bot.strings.codestab);
-		bot.db.query(`INSERT INTO reactcategories (hid, server_id, name, description, roles, posts) VALUES (?,?,?,?,?,?)`,[
-			code,
-			msg.guild.id,
-			nargs[0],
-			nargs.slice(1).join("\n"),
-			[],
-			[]
-		], (err, rows)=> {
-			if(err) {
-				console.log(err);
-				msg.channel.createMessage('Something went wrong')
-			} else {
-				msg.channel.createMessage("Category created! ID: "+code);
-			}
-		})
+		var scc = await bot.utils.createReactionCategory(bot, code, msg.guild.id, nargs[0], nargs.slice(1).join("\n"))
+		if(scc) msg.channel.createMessage("Category created! ID: "+code);
+		else msg.channel.createMessage("Something went wrong");
 	},
 	permissions: ["manageRoles"]
 }
@@ -145,30 +163,27 @@ module.exports.subcommands.add = {
 				}
 			}
 			
-		})).then(()=> {
-			bot.db.query(`UPDATE reactcategories SET roles=? WHERE server_id=? AND hid=?`,[category.roles, msg.guild.id, category.hid], async (err, rows)=>{
-				if(err) {
-					console.log(err);
-					msg.channel.createMessage('Something went wrong')
-				} else {
-					msg.channel.createMessage({ embed: {
-						title: "Results",
-						fields: [
-							{name: "Added", value: result.filter(r => r.succ).map(r => r.name).join("\n") || "none"},
-							{name: "Not Added", value: result.filter(r => !r.succ).map(r => `${r.name} - ${r.reason}`).join("\n") || "none"},	
-						]
-					}})
-					if(Math.ceil(category.roles.length/10)-1 > max) {
-						msg.channel.createMessage("The category has been updated- however, because the amount of roles is greater than "+
-												  "the amount that the current number of pages can handle, the posts have not been updated.\n"+
-												  "If you would like for all the roles to be visible, **delete the current posts** and use "+
-												  "`hub!rc post "+category.hid+" (channel)` to post them again.")
-					} else {
-						var sc = await bot.utils.updateReactCategoryPosts(bot, msg.guild.id, msg, category.hid);
-						if(!sc) msg.channel.createMessage("Something went wrong while updating posts")
-					}
-				}
-			})
+		})).then(async ()=> {
+			var scc = await bot.utils.updateReactionCategory(bot, msg.guild.id, category.hid, "roles", category.roles);
+			if(!scc) return msg.channel.createMessage("Something went wrong");
+
+			msg.channel.createMessage({ embed: {
+				title: "Results",
+				fields: [
+					{name: "Added", value: result.filter(r => r.succ).map(r => r.name).join("\n") || "none"},
+					{name: "Not Added", value: result.filter(r => !r.succ).map(r => `${r.name} - ${r.reason}`).join("\n") || "none"},	
+				]
+			}})
+
+			if(Math.ceil(category.roles.length/10)-1 > max) {
+				msg.channel.createMessage("The category has been updated- however, because the amount of roles is greater than "+
+										  "the amount that the current number of pages can handle, the posts have not been updated.\n"+
+										  "If you would like for all the roles to be visible, **delete the current posts** and use "+
+										  "`hub!rc post "+category.hid+" (channel)` to post them again.")
+			} else {
+				scc = await bot.utils.updateReactCategoryPosts(bot, msg.guild.id, msg, category.hid);
+				if(!scc) msg.channel.createMessage("Something went wrong while updating posts")
+			}
 
 		})
 
@@ -209,27 +224,22 @@ module.exports.subcommands.remove = {
 				return new Promise(res => setTimeout(()=> res(0), 100))
 			}
 			
-		})).then(()=> {
-			bot.db.query(`UPDATE reactcategories SET roles=? WHERE server_id=? AND hid=?`,[category.roles, msg.guild.id, category.hid], async (err, rows)=>{
-				if(err) {
-					console.log(err);
-					msg.channel.createMessage('Something went wrong')
-				} else {
-					msg.channel.createMessage({ embed: {
-						title: "Results",
-						fields: [
-							{name: "Removed", value: result.filter(r => r.succ).map(r => r.name).join("\n") || "none"},
-							{name: "Not removed", value: result.filter(r => !r.succ).map(r => `${r.name} - ${r.reason}`).join("\n") || "none"},	
-						]
-					}})
-					var sc = await bot.utils.updateReactCategoryPosts(bot, msg.guild.id, msg, category.hid);
-					if(!sc) msg.channel.createMessage("Something went wrong while updating posts")
-					else if(category.roles.length == 0) msg.channel.createMessage("Category empty; posts have been deleted. This does not remove the category itself");
-					else if(Math.ceil(category.roles.length/10)-1 < max) msg.channel.createMessage("Extra posts have been deleted.")
-				}
-			})
+		}))
 
-		})
+		var scc = await bot.utils.updateReactionCategory(bot, msg.guild.id, category.hid, "roles", category.roles);
+		if(!scc) return msg.channel.createMessage("Something went wrong");
+
+		msg.channel.createMessage({ embed: {
+			title: "Results",
+			fields: [
+				{name: "Removed", value: result.filter(r => r.succ).map(r => r.name).join("\n") || "none"},
+				{name: "Not removed", value: result.filter(r => !r.succ).map(r => `${r.name} - ${r.reason}`).join("\n") || "none"},	
+			]
+		}})
+		var sc = await bot.utils.updateReactCategoryPosts(bot, msg.guild.id, msg, category.hid);
+		if(!sc) msg.channel.createMessage("Something went wrong while updating posts")
+		else if(category.roles.length == 0) msg.channel.createMessage("Category empty; posts have been deleted. This does not remove the category itself");
+		else if(Math.ceil(category.roles.length/10)-1 < max) msg.channel.createMessage("Extra posts have been deleted.")
 	},
 	permissions: ["manageRoles"]
 }
@@ -264,23 +274,22 @@ module.exports.subcommands.post = {
 				}
 			}).filter(x => x!=undefined);
 
-			await channel.createMessage({embed: {
+			var message = await channel.createMessage({embed: {
 				title: category.name,
 				description: category.description,
 				fields: rls
-			}}).then(message => {
-				reacts.forEach(rc => message.addReaction(rc));
+			}})
 
-				bot.db.query(`INSERT INTO reactposts (server_id, channel_id, message_id, roles, page) VALUES (?,?,?,?,?)`, [
-					message.guild.id,
-					message.channel.id,
-					message.id,
-					roles.map(r => { return {emoji: r.emoji, role_id: r.role_id} }),
-					0
-				])
-				category.posts.push(message.id);
-				bot.db.query(`UPDATE reactcategories SET posts=? WHERE server_id=? AND hid=?`,[category.posts, msg.guild.id, category.hid]);
-			})
+			reacts.forEach(rc => message.addReaction(rc));
+
+			var scc = await bot.utils.addReactPost(bot, message.guild.id, message.channel.id, message.id,
+				roles.map(r => { return {emoji: r.emoji, role_id: r.role_id} }), 0);
+			if(!scc) return msg.channel.createMessage("Something went wrong");
+
+			category.posts.push(message.id);
+			scc = await bot.utils.updateReactionCategory(bot, msg.guild.id, category.hid, "posts", category.posts)
+			if(scc) msg.channel.createMessage("Posted!");
+			else msg.channel.createMessage("Something went wrong");
 		} else {
 			var posts = await bot.utils.genReactPosts(bot, roles, msg, {
 				title: category.name,
@@ -288,19 +297,13 @@ module.exports.subcommands.post = {
 			})
 
 			await Promise.all(posts.map(async (p,i) => {
-				await channel.createMessage({embed: p.embed}).then(message => {
-					p.emoji.forEach(rc => message.addReaction(rc));
-					bot.db.query(`INSERT INTO reactposts (server_id, channel_id, message_id, roles, page) VALUES (?,?,?,?,?)`, [
-						message.guild.id,
-						message.channel.id,
-						message.id,
-						p.roles,
-						i
-					])
-					category.posts.push(message.id);
-					bot.db.query(`UPDATE reactcategories SET posts=? WHERE server_id=? AND hid=?`,[category.posts, msg.guild.id, category.hid]);
-					return Promise.resolve("");
-				})
+				var message = await channel.createMessage({embed: p.embed})
+				p.emoji.forEach(rc => message.addReaction(rc));
+				await bot.utils.addReactPost(bot, message.guild.id, message.channel.id, message.id,
+					p.roles, i);
+				category.posts.push(message.id);
+				await bot.utils.updateReactionCategory(bot, msg.guild.id, category.hid, "posts", category.posts)
+				return Promise.resolve("");
 			}))
 		}
 		
@@ -333,13 +336,9 @@ module.exports.subcommands.info = {
 		}})
 
 		if(invalid.length > 0) {
-			bot.db.query(`DELETE FROM reactroles WHERE role_id IN (`+invalid.join(", ")+")",(err, rows)=> {
-				if(err) {
-					console.log(err);
-				} else {
-					msg.channel.createMessage('Deleted reaction roles that no longer exist');
-				}
-			})
+			var scc = await bot.utils.deleteReactionRoles(bot, msg.guild.id, invalid);
+			if(scc) msg.channel.createMessage("Invalid reaction roles have been deleted");
+			else msg.channel.createMessage("Something went wrong while removing invalid reaction roles");
 		}
 	},
 	permissions: ["manageRoles"]

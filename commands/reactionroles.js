@@ -34,25 +34,25 @@ module.exports = {
 					})
 				}
 			})
-			msg.channel.createMessage(embeds[0]).then(message => {
-				if(!bot.pages) bot.pages = {};
-				bot.pages[message.id] = {
-					user: msg.author.id,
-					index: 0,
-					data: embeds
-				};
-				message.addReaction("\u2b05");
-				message.addReaction("\u27a1");
-				message.addReaction("\u23f9");
-				setTimeout(()=> {
-					if(!bot.pages[message.id]) return;
+			var message = await msg.channel.createMessage(embeds[0]);
+
+			if(!bot.menus) bot.menus = {};
+			bot.menus[message.id] = {
+				user: msg.author.id,
+				index: 0,
+				data: embeds,
+				timeout: setTimeout(()=> {
+					if(!bot.menus[message.id]) return;
 					message.removeReaction("\u2b05");
 					message.removeReaction("\u27a1");
 					message.removeReaction("\u23f9");
-					delete bot.pages[msg.author.id];
-				}, 900000)
-			})
-			
+					delete bot.menus[message.id];
+				}, 900000),
+				execute: bot.utils.paginateEmbeds
+			};
+			message.addReaction("\u2b05");
+			message.addReaction("\u27a1");
+			message.addReaction("\u23f9");
 		} else {
 			msg.channel.createMessage({ embed: {
 				title: "Server Reaction Roles",
@@ -78,7 +78,8 @@ module.exports = {
 	},
 	alias: ['rr', 'reactroles', 'reactrole', 'reactionrole'],
 	subcommands: {},
-	permissions: ["manageRoles"]
+	permissions: ["manageRoles"],
+	module: "utility"
 }
 
 module.exports.subcommands.add = {
