@@ -90,14 +90,9 @@ module.exports.subcommands.name = {
 		if(!category)
 			return msg.channel.createMessage('Category does not exist');
 
-		bot.db.query(`UPDATE reactcategories SET name=? WHERE hid=?`,[args.slice(1).join(" "), args[0]],(err,rows)=> {
-			if(err) {
-				console.log(err);
-				msg.channel.createMessage('Something went wrong');
-			} else {
-				msg.channel.createMessage('Description changed!')
-			}
-		})
+		var scc = await bot.utils.updateReactionCategory(bot, msg.guild.id, category.hid, "name", args.slice(1).join(" "))
+		if(scc) msg.channel.createMessage("Category updated!");
+		else msg.channel.createMessage("Something went wrong");
 	},
 	alias: ["describe", "desc"],
 	permissions: ["manageRoles"]
@@ -111,14 +106,9 @@ module.exports.subcommands.description = {
 		if(!category)
 			return msg.channel.createMessage('Category does not exist');
 
-		bot.db.query(`UPDATE reactcategories SET description=? WHERE hid=?`,[args.slice(1).join(" "), args[0]],(err,rows)=> {
-			if(err) {
-				console.log(err);
-				msg.channel.createMessage('Something went wrong');
-			} else {
-				msg.channel.createMessage('Description changed!')
-			}
-		})
+		var scc = await bot.utils.updateReactionCategory(bot, msg.guild.id, category.hid, "description", args.slice(1).join(" "))
+		if(scc) msg.channel.createMessage("Category updated!");
+		else msg.channel.createMessage("Something went wrong");
 	},
 	alias: ["describe", "desc"],
 	permissions: ["manageRoles"]

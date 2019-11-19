@@ -39,7 +39,7 @@ module.exports.subcommands.add = {
 		var resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 60000, maxMatches: 1});
 		if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
 		var cmd = await bot.parseCommand(bot, msg, resp[0].content.toLowerCase().split(" "));
-		if(tags.find(t => t.name == resp[0].content.toLowerCase()) || cmd) return msg.channel.createMessage("ERR: another tag or command exists with that name. Aborting");
+		if(tags && tags.find(t => t.name == resp[0].content.toLowerCase()) || cmd) return msg.channel.createMessage("ERR: another tag or command exists with that name. Aborting");
 		name = resp[0].content.toLowerCase();
 
 		var done;
