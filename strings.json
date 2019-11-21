@@ -80,5 +80,13 @@
 	"!": "❗",
 	"?": "❓"
 },
-"thinkemote": "<:thinksteve:646257084060663818>"
+"thinkemote": "<:thinksteve:646257084060663818>",
+"choices": [
+	"How about $CHOICE?",
+	"Hmm... I say $CHOICE.",
+	"Why not $CHOICE?",
+	"You know you want $CHOICE~",
+	"I'm going for $CHOICE.",
+	"Go with $CHOICE!"
+]
 }

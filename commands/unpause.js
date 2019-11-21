@@ -9,5 +9,6 @@ module.exports = {
 
 		bot.paused = false;
 		msg.channel.createMessage("Unpaused.")
-	}
+	},
+	module: "owner only"
 }

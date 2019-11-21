@@ -311,19 +311,55 @@ module.exports.subcommands.info = {
 		var roles = await bot.utils.getReactionRolesByCategory(bot, msg.guild.id, args[0]);
 		if(roles.length == 0 || !roles) return msg.channel.createMessage('No reaction roles available');
 		var invalid = [];
-		await msg.channel.createMessage({embed: {
-			title: `${category.name} (${category.hid})`,
-			description: category.description,
-			fields: roles.map(r => {
+
+		if(roles.length > 10) {
+			var embeds = await bot.utils.genEmbeds(bot, roles, async r => {
 				var rl = msg.guild.roles.find(x => x.id == r.role_id);
-				 if(rl) {
-				 	return {name: `${rl.name} (${r.emoji.includes(":") ? `<${r.emoji}>` : r.emoji})`, value: r.description || "*(no description provided)*"}
-				 } else {
-				 	invalid.push(r.role_id);
-				 	return {name: r.role_id, value: '*Role not found. Removing after list.*'}
-				 }
+				if(rl) {
+					return {name: `${rl.name} (${r.emoji.includes(":") ? `<${r.emoji}>` : r.emoji})`, value: r.description || "*(no description provided)*"}
+				} else {
+					invalid.push(r.role_id);
+					return {name: r.role_id, value: '*Role not found. Removing after list.*'}
+				}
+			}, {
+				title: `${category.name} (${category.hid})`,
+				description: category.description,
+			}, 10)
+
+			msg.channel.createMessage(embeds[0]).then(message => {
+				if(!bot.menus) bot.menus = {};
+					bot.menus[message.id] = {
+					user: msg.author.id,
+					index: 0,
+					data: embeds,
+					timeout: setTimeout(()=> {
+						if(!bot.menus[message.id]) return;
+						message.removeReaction("\u2b05");
+						message.removeReaction("\u27a1");
+						message.removeReaction("\u23f9");
+						delete bot.menus[message.id];
+					}, 900000),
+					execute: bot.utils.paginateEmbeds
+				};
+				message.addReaction("\u2b05");
+				message.addReaction("\u27a1");
+				message.addReaction("\u23f9");
 			})
-		}})
+		} else {
+			msg.channel.createMessage({embed: {
+				title: `${category.name} (${category.hid})`,
+				description: category.description,
+				fields: roles.map(r => {
+					var rl = msg.guild.roles.find(x => x.id == r.role_id);
+					 if(rl) {
+					 	return {name: `${rl.name} (${r.emoji.includes(":") ? `<${r.emoji}>` : r.emoji})`, value: r.description || "*(no description provided)*"}
+					 } else {
+					 	invalid.push(r.role_id);
+					 	return {name: r.role_id, value: '*Role not found. Removing after list.*'}
+					 }
+				})
+			}})
+		}
 
 		if(invalid.length > 0) {
 			var scc = await bot.utils.deleteReactionRoles(bot, msg.guild.id, invalid);

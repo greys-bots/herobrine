@@ -7,7 +7,8 @@ module.exports = {
 		if(nargs.length < 2 || (nargs.length == 2 && nargs[1] == "")) return msg.channel.createMessage("Please provide at least two options to choose from");
 
 		var choice = bot.utils.randomText(nargs);
-		msg.channel.createMessage(bot.strings.thinkemote + " My choice: "+choice);
+		var rand = bot.utils.randomText(bot.strings.choices);
+		msg.channel.createMessage(`${bot.strings.thinkemote} | ${rand.replace("$CHOICE", `**${choice}**`)}`);
 	},
 	alias: ["choice", "chose", "pick"],
 	module: "fun"

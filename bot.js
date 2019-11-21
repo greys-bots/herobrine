@@ -31,6 +31,25 @@ bot.paused = false;
 
 bot.cur_logs = "";
 
+bot.customActions = [
+	{name: "member.hr", replace: "msg.member.hasRole"},
+	{name: "member.rr", replace: "await msg.member.removeRole"},
+	{name: "member.ar", replace: "await msg.member.addRole"},
+	{name: "member.bl", replace: "await bot.commands.blacklist.execute(bot, msg, [msg.member.id])"},
+	{name: "args.hr", replace: (arg) => "msg.guild.members.find(m => m.id == "+arg+").hasRole"},
+	{name: "args.rr", replace: (arg) => "await msg.guild.members.find(m => m.id == "+arg+").removeRole"},
+	{name: "args.ar", replace: (arg) => "await msg.guild.members.find(m => m.id == "+arg+").addRole"},
+	{name: "args.bl", replace: (arg) => "await bot.commands.blacklist.subcommands.add.execute(bot, msg, [msg.guild.members.find(m => m.id == "+arg+").id])"},
+	{name: "rf\\(('.*')\\)", replace: "msg.guild.roles.find(r => r.name.toLowerCase() == $1.toLowerCase()).id", regex: true}
+]
+
+bot.customActionTypes = [
+	{name: "rr", description: "Remove a role"},
+	{name: "hr", description: "Check if member has a role"},
+	{name: "ar", description: "Add a role"},
+	{name: "bl", description: "Blacklist the user from using the bot"}
+]
+
 //uncommenting the line below may fix "kill einvalid" errors on some computers;
 //make sure the config is set up and then uncomment if you're getting issues
 // dblite.bin = bot.cfg.sqlite;
@@ -48,6 +67,7 @@ try{
 	process.exit(1);
 }
 
+const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 
 /***********************************
 SETUP
@@ -203,6 +223,15 @@ const setup = async () => {
 		reason 	TEXT
 	)`)
 
+	bot.db.query(`CREATE TABLE IF NOT EXISTS commands (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		server_id 	BIGINT,
+		name 		TEXT,
+		actions 	TEXT,
+		target 		TEXT,
+		del 		INTEGER
+	)`)
+
 	var files = bot.fs.readdirSync("./commands");
 	await Promise.all(files.map(f => {
 		bot.commands[f.slice(0,-3)] = require("./commands/"+f);
@@ -294,6 +323,186 @@ bot.parseCommand = async (bot, msg, args, command) =>{
 	})
 }
 
+bot.parseCustomCommand = async function(bot, msg, args) {
+	return new Promise(async res => {
+		if(!args || !args[0]) return res(undefined);
+		if(!msg.guild) return res(undefined);
+		var name = args.shift();
+		var cmd = await bot.utils.getCustomCommand(bot, msg.guild.id, name);
+		if(!cmd) return res(undefined);
+
+		cmd.newActions = [];
+
+		cmd.actions.forEach(action => {
+			if(cmd.target == "member") {
+				switch(action.type) {
+					case "if":
+						var condition = action.condition;
+						var ac = action.action;
+						bot.customActions.forEach(ca => {
+							var n = ca.regex ? new RegExp(ca.name) : ca.name;
+							condition = condition.replace(n, ca.replace)
+							ac = ac.replace(n, ca.replace);
+						})
+						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+							`if(${condition}) ${ac};`
+						), action.success, action.fail]);
+						break;
+					case "if:else":
+						var condition = action.condition;
+						var tr = action.action[0];
+						var fls = action.action[1];
+						bot.customActions.forEach(ca => {
+							var n = ca.regex ? new RegExp(ca.name) : ca.name;
+							condition = condition.replace(n, ca.replace)
+							tr = tr.replace(n, ca.replace);
+							fls = fls.replace(n, ca.replace);
+						})
+
+						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+							`if(${condition}) ${tr};
+							 else ${fls}`
+						), action.success, action.fail]);
+						break;
+					case "rr":
+						var ac = action.action;
+						bot.customActions.forEach(ca => {
+							var n = ca.regex ? new RegExp(ca.name) : ca.name;
+							ac = ac.replace(n, ca.replace);
+						})
+						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+							`${ac}`
+						), action.success, action.fail]);
+						break;
+					case "ar":
+						console.log("got to ar");
+						var ac = action.action;
+						bot.customActions.forEach(ca => {
+							var n = ca.regex ? new RegExp(ca.name) : ca.name;
+							ac = ac.replace(n, ca.replace);
+						})
+						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+							`${ac}`
+						), action.success, action.fail]);
+						break;
+					case "bl":
+						var ac = action.action;
+						bot.customActions.forEach(ca => {
+							var n = ca.regex ? new RegExp(ca.name) : ca.name;
+							ac = ac.replace(n, ca.replace);
+						})
+						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+							`${ac}`
+						), action.success, action.fail]);
+						break;
+				}
+			} else {
+				switch(action.type) {
+					case "if":
+						var condition = action.condition;
+						var ac = action.action;
+						bot.customActions.forEach(ca => {
+							var n = ca.regex ? new RegExp(ca.name) : ca.name;
+							condition = condition.replace(n, ca.replace)
+							ac = ac.replace(n, ca.replace);
+						})
+						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+							`if(${condition}) ${ac};`
+						), action.success, action.fail]);
+						break;
+					case "if:else":
+						var condition = action.condition;
+						var tr = action.action[0];
+						var fls = action.action[1];
+						bot.customActions.forEach(ca => {
+							var n = ca.regex ? new RegExp(ca.name) : ca.name;
+							condition = condition.replace(n, ca.replace)
+							tr = tr.replace(n, ca.replace);
+							fls = fls.replace(n, ca.replace);
+						})
+
+						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+							`if(${condition}) ${tr};
+							 else ${fls}`
+						), action.success, action.fail]);
+						break;
+					case "rr":
+						args.forEach(arg => {
+							var ac = action.action;
+							bot.customActions.forEach(ca => {
+								var n = ca.regex ? new RegExp(ca.name) : ca.name;
+								ac = ac.replace(n, typeof ca.replace == "function" ? ca.replace(arg) : ca.replace);
+							})
+							cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+								`${ac}`
+							), action.success, action.fail]);
+						})
+						break;
+					case "ar":
+						args.forEach(arg => {
+							var ac = action.action;
+							bot.customActions.forEach(ca => {
+								var n = ca.regex ? new RegExp(ca.name) : ca.name;
+								ac = ac.replace(n, typeof ca.replace == "function" ? ca.replace(arg) : ca.replace);
+							})
+							cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+								`${ac}`
+							), action.success, action.fail]);
+						})
+						break;
+					case "bl":
+						args.forEach(arg => {
+							var ac = action.action;
+							bot.customActions.forEach(ca => {
+								var n = ca.regex ? new RegExp(ca.name) : ca.name;
+								ac = ac.replace(n, typeof ca.replace == "function" ? ca.replace(arg) : ca.replace);
+							})
+							cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+								`${ac}`
+							), action.success, action.fail]);
+						})
+						break;
+				}
+			}			
+		})
+
+		cmd.execute = async (bot, msg, args, cmd) => {
+			console.log("executing...");
+			let msgs = [];
+			await bot.asyncForEach(cmd.newActions, bot, msg, args, async (bot, msg, args, a) => {
+				try {
+					await a[0].call(null, bot, msg, args);
+				} catch (e) {
+					if(e) console.log(e);
+					if(a[2]) return await msg.channel.createMessage(a[2] +`\n${e.message}`).then(message => {msgs.push(message)})
+				}
+				if(a[1]) await msg.channel.createMessage(a[1]).then(message => {
+					msgs.push(message);
+				})
+			})
+			if(cmd.del) {
+				setTimeout(async ()=> {
+					await msg.delete();
+					await Promise.all(msgs.map(async m => {
+						await m.delete()
+						return new Promise(res => res(""))
+					}))
+				}, 2000)
+				
+			}
+			
+		}
+
+		res([cmd, args, name])
+	})
+}
+
+bot.asyncForEach = async (arr, bot, msg, args, cb) => {
+	for (let i = 0; i < arr.length; i++) {
+	    await cb(bot, msg, args, arr[i], i, arr);
+	  }
+}
+
 const updateStatus = function(){
 	switch(status){
 		case 0:
@@ -318,19 +527,24 @@ bot.modules.admin = {
 	color: "55aa77"
 }
 
-bot.modules.fun = {
-	help: ()=> "Fun stuff! Affirming, silly, and/or random XD",
-	color: "6677bb"
-}
-
 bot.modules.utility = {
 	help: ()=> "Util commands that aren't necessarily mod-based.",
 	color: "cc5555"
 }
 
+bot.modules.fun = {
+	help: ()=> "Fun stuff! Affirming, silly, and/or random XD",
+	color: "6677bb"
+}
+
+bot.modules["owner only"] = {
+	help: ()=> "Commands that aren't sorted into other categories.",
+	color: "aaaaaa"
+}
+
 bot.modules.unsorted = {
 	help: ()=> "Commands that aren't sorted into the other categories.",
-	color: "aaaaaa"
+	color: "555555"
 }
 
 /***********************************
@@ -339,6 +553,7 @@ COMMANDS
 
 bot.commands = {};
 
+//This is in here in case something goes wrong with loading commands from files
 bot.commands.help = {
 	help: () => "Use this to list commands or get help with a specific command",
 	usage: () => [" - List commands and basic help functions."," [command] - Get help with that command"],
@@ -387,23 +602,33 @@ bot.commands.help = {
 				}
 			}
 		} else {
-			var embeds = await bot.utils.genEmbeds(bot, Object.keys(bot.modules), m => {
-				return {
-					name: `**${m.toUpperCase()}**`,
-					value: Object.keys(bot.commands).map(c => {
-						return bot.commands[c].module == m || (m == "unsorted" && !bot.commands[c].module) ?
-						`**${bot.cfg.prefix[0] + c}** - ${bot.commands[c].help()}\n` :
-						""
-					}).join("")
+			var embeds = [];
+			for(var i = 0; i < Object.keys(bot.modules).length; i++) {
+				var cmds = Object.keys(bot.commands).filter(c => bot.commands[c].module == Object.keys(bot.modules)[i]
+										|| (Object.keys(bot.modules)[i] == "unsorted" && !bot.commands[c].module))
+										.sort();
+				if(cmds && cmds[0]) {
+					console.log("commands found");
+					var nembeds = await bot.utils.genEmbeds(bot, cmds, c => {
+						return {name: `**${bot.cfg.prefix[0] + c}**`, value: bot.commands[c].help()}
+					}, {
+						title: `**${Object.keys(bot.modules)[i].toUpperCase()}**`,
+						description: bot.modules[Object.keys(bot.modules)[i]].help(),
+						color:  parseInt(bot.modules[Object.keys(bot.modules)[i]].color, 16),
+						footer: {
+							icon_url: bot.user.avatarURL,
+							text: "I'm Herobrine! This bot is multi-purpose and intended for a wide range of functions."
+						}
+					}, 10, {addition: ""})
+					console.log(nembeds);
+					embeds = embeds.concat(nembeds);
 				}
-			}, {
-				title: `Herobrine - Help`,
-				description: "I'm Herobrine! This bot is multi-purpose and intended for a wide range of functions.",
-				color: function(m) {
-					return parseInt(bot.modules[m].color, 16);
-				}
-			}, 1)
-			
+			}
+
+			for(let i=0; i<embeds.length; i++) {
+				if(embeds.length > 1) embeds[i].embed.title += ` (page ${i+1}/${embeds.length}, ${Object.keys(bot.commands).length} commands total)`;
+			}
+
 			var message = await msg.channel.createMessage(embeds[0]);
 			if(!bot.menus) bot.menus = {};
 				bot.menus[message.id] = {
@@ -429,6 +654,7 @@ bot.commands.help = {
 	alias: ["h"]
 }
 
+//same as above with this
 bot.commands.reload = {
 	help: ()=> "Reloads entire bot.",
 	usage: ()=> [" - reloads Herobrine"],
@@ -465,7 +691,8 @@ bot.commands.reload = {
 		} else {
 			msg.channel.createMessage("Updates are disabled. Turn them on and supply a remote and branch in order to use this command.")
 		}
-	}
+	},
+	module: "owner only"
 }
 
 //---------------------------------------------- FUN ---------------------------------------------------
@@ -530,6 +757,7 @@ bot.on("messageCreate", async (msg)=>{
 			bot.commands.help.execute(bot, msg, args.slice(0,args.length-1));
 		} else {
 			var cmd = await bot.parseCommand(bot, msg, args);
+			if(!cmd) cmd = await bot.parseCustomCommand(bot, msg, args);
 			if(cmd) {
 				if(cmd[0].guildOnly && !msg.guild) {
 					return msg.channel.createMessage("This command can only be used in guilds.");
@@ -545,7 +773,7 @@ bot.on("messageCreate", async (msg)=>{
 						return msg.channel.createMessage("That command is disabled.");
 					}
 				}
-				cmd[0].execute(bot, msg, cmd[1], cfg);
+				cmd[0].execute(bot, msg, cmd[1], cmd[0]);
 			} else {
 				msg.channel.createMessage("Command not found");
 			}

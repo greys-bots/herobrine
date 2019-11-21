@@ -58,7 +58,8 @@ module.exports.subcommands.channel = {
 	help: ()=> "Sets the channel where feedback goes, enabling feedback",
 	usage: ()=> [" [channel] - Sets the channel",
 				 " - Resets the channel (disabled feedback"],
-	execute: async (bot, msg, args, cfg = {feedback: {anon: true}}) => {
+	execute: async (bot, msg, args) => {
+		var cfg = (await bot.utils.getConfig(bot, msg.guild.id)) || {feedback: {anon: true}};
 		if(!cfg.feedback) cfg.feedback = {};
 		if(!args[0]) return msg.channel.createMessage("Please provide a channel.")
 		var channel = msg.channelMentions.length > 0 ?
@@ -82,7 +83,8 @@ module.exports.subcommands.channel = {
 module.exports.subcommands.anon = {
 	help: ()=> "Sets whether anon feedback is allowed or not",
 	usage: ()=> [" [1|0] - Sets the anon value"],
-	execute: async (bot, msg, args, cfg = {feedback: {anon: true}}) => {
+	execute: async (bot, msg, args) => {
+		var cfg = (await bot.utils.getConfig(bot, msg.guild.id)) || {feedback: {anon: true}};
 		if(!cfg.feedback) cfg.feedback = {};
 		if(!args[0]) return msg.channel.createMessage("Please provide a value.")
 
@@ -99,8 +101,8 @@ module.exports.subcommands.anon = {
 module.exports.subcommands.config = {
 	help: ()=> "Views current config",
 	usage: ()=> [" - Views server's feedback config"],
-	execute: async (bot, msg, args, cfg = {feedback: {}}) => {
-		console.log(cfg)
+	execute: async (bot, msg, args) => {
+		var cfg = (await bot.utils.getConfig(bot, msg.guild.id)) || {feedback: {}};
 		var channel = cfg.feedback.channel ? msg.guild.channels.find(c => c.id == cfg.feedback.channel) : undefined;
 		msg.channel.createMessage({embed: {
 			title: "Feedback Config",

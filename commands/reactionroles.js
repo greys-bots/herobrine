@@ -11,7 +11,7 @@ module.exports = {
 		var roles = await bot.utils.getReactionRoles(bot, msg.guild.id);
 		if(roles.length == 0 || !roles) return msg.channel.createMessage('No reaction roles available');
 		var invalid = [];
-		if(roles.length > 20) {
+		if(roles.length > 10) {
 			var embeds = await bot.utils.genEmbeds(bot, roles, async dat => {
 				var rl = msg.guild.roles.find(x => x.id == dat.role_id);
 				 if(rl) {

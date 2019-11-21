@@ -17,7 +17,7 @@ module.exports = {
 			if(err){console.log(err)}
 		};
 	},
-	module: "admin",
+	module: "owner only",
 	subcommands: {}
 }
 
