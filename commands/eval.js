@@ -27,10 +27,9 @@ module.exports.subcommands.prm = {
 	execute: (bot, msg, args)=>{
 		if(!bot.cfg.accepted_ids.includes(msg.author.id)){ return msg.channel.createMessage("Only the bot owner can use this command."); }
 		async function f(){
-
+			var fn = new bot.AsyncFunction("bot", "msg", "args",`${args.join(" ")}`)
 			try {
-				const promeval = args.join(" ");
-				let evlp = await eval(promeval);
+				let evlp = await fn.call(null, bot, msg, args);
 
 				if(typeof(evlp)!=="string"){
 					evlp=require("util").inspect(evlp);

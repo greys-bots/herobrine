@@ -1,7 +1,8 @@
 {
 "wass":["The sky! Hahaha", "Um... Prices?", "Not hell!", "Possibly, the temperature. But I'm no weather man.", "The atmosphere.", "Raisins! *throws raisins into the air*", "My hair. If I had hair.", "Slenderman, probably.", "Extinction rates. Of the human species, especially. Soon I'll be free...", "1. Toward the sky or a higher position.\n2. To the place where someone is.","The ceiling.","My love for you! :purple_heart:","Not Rick Astley~"],
 "lovebombs": ["I love you very much, msg.author.username","Please stay safe.","I would miss you very much if you left. I think we all would.","You mean a lot to me.","If anyone tells you that you are not loved, do not listen. You are more loved than you could ever imagine.\nI am happy to be one person that says that they love you."],
-"numbers": ["zero","one","two","three","four","five","six","seven","eight","nine"],
+"numbers": ["zero","one","two","three","four","five","six","seven","eight","nine","keycap_ten"],
+"pollnumbers": ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"],
 "codestab":["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","0","1","2","3","4","5","6","7","8","9"],
 "colors":{
 	"default": "000000",
@@ -51,6 +52,7 @@
 	"7": "7️⃣",
 	"8": "8️⃣",
 	"9": "9️⃣",
+	"10": "🔟",
 	"a": "🇦",
 	"b": "🇧",
 	"c": "🇨",

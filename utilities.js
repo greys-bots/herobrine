@@ -188,7 +188,6 @@ module.exports = {
 	checkPermissions: async function(bot, msg, cmd){
 		return new Promise((res)=> {
 			if(cmd.permissions) {
-				console.log(cmd.permissions.filter(p => msg.member.permission.has(p)).length)
 				if(!cmd.permissions.filter(p => msg.member.permission.has(p)).length == cmd.permissions.length) {
 					res(false);
 					return;
@@ -1306,6 +1305,225 @@ module.exports = {
 				actions.push(text);
 			})
 			res(actions);
+		})
+	},
+
+	//polls
+	addPoll: async (bot, hid, server, channel, message, user, title, description, choices, time) => {
+		return new Promise(res => {
+			bot.db.query(`INSERT INTO polls (hid, server_id, channel_id, message_id, user_id, title, 
+						  description, choices, active, start) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+				[hid, server, channel, message, user, title, description, choices, 1, time], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false);
+				} else {
+					res(true)
+				}
+			})
+		})
+	},
+	getPoll: async (bot, server, channel, message) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT * FROM polls WHERE server_id = ? AND channel_id = ? AND message_id = ?`,[server, channel, message], {
+				id: Number,
+				hid: String,
+				server_id: String,
+				channel_id: String,
+				message_id: String,
+				user_id: String,
+				title: String,
+				description: String,
+				choices: JSON.parse,
+				active: Boolean,
+				start: String,
+				end: String
+			}, (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(undefined);
+				} else {
+					res(rows[0])
+				}
+			})
+		})
+	},
+	getPollByHid: async (bot, server, hid) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT * FROM polls WHERE server_id = ? AND hid = ?`,[server, hid], {
+				id: Number,
+				hid: String,
+				server_id: String,
+				channel_id: String,
+				message_id: String,
+				user_id: String,
+				title: String,
+				description: String,
+				choices: JSON.parse,
+				active: Boolean,
+				start: String,
+				end: String
+			}, (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(undefined);
+				} else {
+					res(rows[0])
+				}
+			})
+		})
+	},
+	getPolls: async (bot, server) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT * FROM polls WHERE server_id = ?`,[server], {
+				id: Number,
+				hid: String,
+				server_id: String,
+				channel_id: String,
+				message_id: String,
+				user_id: String,
+				title: String,
+				description: String,
+				choices: JSON.parse,
+				active: Boolean,
+				start: String,
+				end: String
+			}, (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(undefined);
+				} else {
+					if(rows[0]) res(rows);
+					else res(undefined)
+				}
+			})
+		})
+	},
+	getPollsFromUser: async (bot, server, user) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT * FROM polls WHERE server_id = ?`,[server, user], {
+				id: Number,
+				hid: String,
+				server_id: String,
+				channel_id: String,
+				message_id: String,
+				user_id: String,
+				title: String,
+				description: String,
+				choices: JSON.parse,
+				active: Boolean,
+				start: String,
+				end: String
+			}, (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(undefined);
+				} else {
+					if(rows[0]) res(rows);
+					else res(undefined)
+				}
+			})
+		})
+	},
+	searchPolls: async (bot, server, query) => {
+		return new Promise(async res => {
+			var polls = await bot.utils.getPolls(bot, server);
+			if(!polls) res(undefined);
+
+			polls = polls.filter(p => p.title.includes(query) || p.choices.find(c => c.option.includes(query)));
+			if(polls[0]) res(polls);
+			else res(undefined);
+		})	
+	},
+	editPoll: async (bot, server, channel, message, key, val) => {
+		return new Promise(res => {
+			bot.db.query(`UPDATE polls SET ?=? WHERE server_id = ? AND channel_id = ? AND message_id = ?`,
+				[key, val, server, channel, message], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else {
+					res(true)
+				}
+			})
+		})
+	},
+	deletePoll: async (bot, server, channel, message) => {
+		return new Promise(res => {
+			bot.db.query(`DELETE FROM polls WHERE server_id = ? AND channel_id = ? AND message_id = ?`, [server, channel, message],
+				(err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else {
+					res(true)
+				}
+			})
+		})
+	},
+	deletePollsByID: async (bot, server, ids) => {
+		return new Promise(res => {
+			bot.db.query(`DELETE FROM polls WHERE server_id = ? AND message_id IN (${ids.join(",")})`, [server],
+				(err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else {
+					res(true)
+				}
+			})
+		})
+	},
+	deletePollsByChannel: async (bot, server, channel) => {
+		return new Promise(res => {
+			bot.db.query(`DELETE FROM polls WHERE server_id = ? AND channel_id = ?`, [server, channel],
+				(err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else {
+					res(true)
+				}
+			})
+		})
+	},
+	deletePollsByServer: async (bot, server) => {
+		return new Promise(res => {
+			bot.db.query(`DELETE FROM polls WHERE server_id = ?`, [server],
+				(err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else {
+					res(true)
+				}
+			})
+		})
+	},
+	deletePollByHID: async (bot, server, hid) => {
+		return new Promise(res => {
+			bot.db.query(`DELETE FROM polls WHERE server_id = ? AND hid = ?`, [server, hid],
+				(err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else {
+					res(true)
+				}
+			})
+		})
+	},
+	endPoll: async (bot, server, hid, time) => {
+		return new Promise(res => {
+			bot.db.query(`UPDATE polls SET active=?,end=? WHERE server_id = ? AND hid = ?`,
+				[0, time, server, hid], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else {
+					res(true)
+				}
+			})
 		})
 	}
 };

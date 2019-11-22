@@ -67,7 +67,7 @@ try{
 	process.exit(1);
 }
 
-const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+bot.AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 
 /***********************************
 SETUP
@@ -224,12 +224,27 @@ const setup = async () => {
 	)`)
 
 	bot.db.query(`CREATE TABLE IF NOT EXISTS commands (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
 		server_id 	BIGINT,
 		name 		TEXT,
 		actions 	TEXT,
 		target 		TEXT,
 		del 		INTEGER
+	)`)
+
+	bot.db.query(`CREATE TABLE IF NOT EXISTS polls (
+		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
+		hid 		TEXT,
+		server_id 	TEXT,
+		channel_id  TEXT,
+		message_id  TEXT,
+		user_id 	TEXT,
+		title 		TEXT,
+		description	TEXT,
+		choices 	TEXT,
+		active 		INTEGER,
+		start 		TEXT,
+		end 		TEXT
 	)`)
 
 	var files = bot.fs.readdirSync("./commands");
@@ -270,6 +285,12 @@ const writeLog = (bot, type, msg) => {
 	} catch(e) {
 		console.log(`Error while attempting to write log ${ndt}\n${e.stack}`)	
 	}
+}
+
+bot.formatTime = (date) => {
+	if(typeof date == "string") date = new Date(date);
+
+	return `${(date.getMonth()+1) < 10 ? "0"+(date.getMonth()+1) : (date.getMonth()+1)}.${(date.getDate()) < 10 ? "0"+(date.getDate()) : (date.getDate())}.${date.getFullYear()} at ${date.getHours() < 10 ? "0"+date.getHours() : date.getHours()}:${date.getMinutes() < 10 ? "0"+date.getMinutes() : date.getMinutes()}`
 }
 
 bot.parseCommand = async (bot, msg, args, command) =>{
@@ -344,7 +365,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 							condition = condition.replace(n, ca.replace)
 							ac = ac.replace(n, ca.replace);
 						})
-						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+						cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
 							`if(${condition}) ${ac};`
 						), action.success, action.fail]);
 						break;
@@ -359,7 +380,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 							fls = fls.replace(n, ca.replace);
 						})
 
-						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+						cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
 							`if(${condition}) ${tr};
 							 else ${fls}`
 						), action.success, action.fail]);
@@ -370,18 +391,17 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 							var n = ca.regex ? new RegExp(ca.name) : ca.name;
 							ac = ac.replace(n, ca.replace);
 						})
-						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+						cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
 							`${ac}`
 						), action.success, action.fail]);
 						break;
 					case "ar":
-						console.log("got to ar");
 						var ac = action.action;
 						bot.customActions.forEach(ca => {
 							var n = ca.regex ? new RegExp(ca.name) : ca.name;
 							ac = ac.replace(n, ca.replace);
 						})
-						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+						cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
 							`${ac}`
 						), action.success, action.fail]);
 						break;
@@ -391,7 +411,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 							var n = ca.regex ? new RegExp(ca.name) : ca.name;
 							ac = ac.replace(n, ca.replace);
 						})
-						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+						cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
 							`${ac}`
 						), action.success, action.fail]);
 						break;
@@ -406,7 +426,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 							condition = condition.replace(n, ca.replace)
 							ac = ac.replace(n, ca.replace);
 						})
-						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+						cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
 							`if(${condition}) ${ac};`
 						), action.success, action.fail]);
 						break;
@@ -421,7 +441,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 							fls = fls.replace(n, ca.replace);
 						})
 
-						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+						cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
 							`if(${condition}) ${tr};
 							 else ${fls}`
 						), action.success, action.fail]);
@@ -433,7 +453,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 								var n = ca.regex ? new RegExp(ca.name) : ca.name;
 								ac = ac.replace(n, typeof ca.replace == "function" ? ca.replace(arg) : ca.replace);
 							})
-							cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+							cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
 								`${ac}`
 							), action.success, action.fail]);
 						})
@@ -445,7 +465,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 								var n = ca.regex ? new RegExp(ca.name) : ca.name;
 								ac = ac.replace(n, typeof ca.replace == "function" ? ca.replace(arg) : ca.replace);
 							})
-							cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+							cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
 								`${ac}`
 							), action.success, action.fail]);
 						})
@@ -457,7 +477,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 								var n = ca.regex ? new RegExp(ca.name) : ca.name;
 								ac = ac.replace(n, typeof ca.replace == "function" ? ca.replace(arg) : ca.replace);
 							})
-							cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+							cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
 								`${ac}`
 							), action.success, action.fail]);
 						})
@@ -876,6 +896,161 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 			}
 		}
 	}
+
+	var poll = await bot.utils.getPoll(bot, msg.channel.guild.id, msg.channel.id, msg.id);
+	if(poll && poll.active) {
+		var embed = message.embeds[0];
+		if(bot.strings.pollnumbers.includes(emoji.name)) {
+			var ind = bot.strings.pollnumbers.indexOf(emoji.name)-1;
+			if(poll.choices[ind]) {
+				var choice = poll.choices[ind];
+				if(!choice.voters) choice.voters = [];
+				if(choice.voters.includes(user)) {
+					choice.count -= 1;
+					choice.voters = choice.voters.filter(v => v != user);
+					embed.fields[ind].value = choice.count + " votes";
+				} else if(poll.choices.find(c => c.voters && c.voters.includes(user))) {
+					var ind2 = poll.choices.indexOf(poll.choices.find(c => c.voters && c.voters.includes(user)));
+					poll.choices[ind2].voters = poll.choices[ind2].voters.filter(v => v != user);
+					poll.choices[ind2].count -= 1;
+					choice.count += 1;
+					choice.voters.push(user);
+					embed.fields[ind].value = choice.count + " votes";
+					embed.fields[ind2].value = poll.choices[ind2].count + " votes";
+				} else {
+					choice.count += 1;
+					choice.voters.push(user);
+					embed.fields[ind].value = choice.count + " votes";
+				}
+				poll.choices[ind] = choice;
+				await bot.utils.editPoll(bot, poll.server_id, poll.channel_id, poll.message_id, "choices", poll.choices);
+				
+				await bot.editMessage(poll.channel_id, poll.message_id, {embed: embed});
+				await bot.removeMessageReaction(poll.channel_id, poll.message_id, emoji.name, user);
+			}
+		} else {
+			switch(emoji.name) {
+				case "✅":
+					await bot.removeMessageReaction(poll.channel_id, poll.message_id, emoji.name, user);
+					if(poll.user_id == user) {
+						var date = new Date();
+						await bot.utils.endPoll(bot, poll.server_id, poll.hid, date.toISOString());
+					
+						embed.title += " (ENDED)";
+						embed.color = parseInt("aa5555", 16);
+						embed.footer.text += " | Ended: "+bot.formatTime(date);
+						embed.timestamp = date.toISOString();
+						await bot.editMessage(poll.channel_id, poll.message_id, {embed: embed});
+						await message.removeReactions();
+					}
+					break;
+				case "\u270f":
+					await bot.removeMessageReaction(poll.channel_id, poll.message_id, emoji.name, user);
+					if(poll.user_id == user) {
+						var resp;
+						var m2;
+						m2 = await msg.channel.createMessage([
+							"What would you like to edit?",
+							"```",
+							"1 - title",
+							"2 - description",
+							"3 - choices",
+							"```"
+						].join("\n"));
+						resp = await msg.channel.awaitMessages(m => m.author.id == user, {time: 30000, maxMatches: 1});
+						if(!resp || !resp[0]) {
+							var errmsg = msg.channel.createMessage("ERR: timed out. Aborting");
+							setTimeout(()=> errmsg.delete(), 15000);
+							return;
+						}
+
+						await resp[0].delete();
+						switch(resp[0].content.toLowerCase()) {
+							case "1":
+								await m2.edit("Enter the new title. You have a minute to do this, or you can type `cancel` to cancel");
+								resp = await msg.channel.awaitMessages(m => m.author.id == user, {time: 60000, maxMatches: 1});
+								if(!resp || !resp[0]) { 
+									var errmsg = msg.channel.createMessage("ERR: timed out. Aborting");
+									setTimeout(()=> errmsg.delete(), 15000);
+									return;
+								}
+								if(resp[0].content.toLowerCase() == "cancel") {
+									await m2.delete();
+									await resp[0].delete();
+									return
+								}
+								embed.title = resp[0].content;
+								await bot.utils.editPoll(bot, poll.server_id, poll.channel_id, poll.message_id, "title", resp[0].content);
+								await bot.editMessage(poll.channel_id, poll.message_id, {embed: embed});
+								await m2.delete();
+								await resp[0].delete();
+								break;
+							case "2":
+								await m2.edit("Enter the new description. You have two minutes to do this, or you can type `cancel` to cancel");
+								resp = await msg.channel.awaitMessages(m => m.author.id == user, {time: 120000, maxMatches: 1});
+								if(!resp || !resp[0]) { 
+									var errmsg = msg.channel.createMessage("ERR: timed out. Aborting");
+									setTimeout(()=> errmsg.delete(), 15000);
+									return;
+								}
+								if(resp[0].content.toLowerCase() == "cancel") {
+									await m2.delete();
+									await resp[0].delete();
+									return
+								}
+								embed.description = resp[0].content;
+								await bot.utils.editPoll(bot, poll.server_id, poll.channel_id, poll.message_id, "description", resp[0].content);
+								await bot.editMessage(poll.channel_id, poll.message_id, {embed: embed});
+								await m2.delete();
+								await resp[0].delete();
+								break;
+							case "3":
+								await m2.edit("Enter the new choices. These should be separated by new lines. You have five minutes to do this, or you can type `cancel` to cancel\nNOTE: This will clear current votes");
+								resp = await msg.channel.awaitMessages(m => m.author.id == user, {time: 300000, maxMatches: 1});
+								if(!resp || !resp[0]) { 
+									var errmsg = msg.channel.createMessage("ERR: timed out. Aborting");
+									setTimeout(()=> errmsg.delete(), 15000);
+									return;
+								}
+								if(resp[0].content.toLowerCase() == "cancel") {
+									await m2.delete();
+									await resp[0].delete();
+									return
+								}
+
+								var choices = resp[0].content.split("\n").map(c => {
+									return {option: c, count: 0}
+								});
+
+								embed.fields = choices.map((c, i) => {
+									return {name: `:${bot.strings.numbers[i+1]}: ${c.option}`, value: `${c.count} votes`}
+								})
+								await bot.utils.editPoll(bot, poll.server_id, poll.channel_id, poll.message_id, "choices", choices);
+								await bot.editMessage(poll.channel_id, poll.message_id, {embed: embed});
+								await m2.delete();
+								await resp[0].delete();
+								break;
+							default:
+								var errmsg = msg.channel.createMessage("ERR: timed out. Aborting")
+								break;
+						}
+					}
+					break;
+				case "❓":
+				case "❔":
+					var ch = await bot.getDMChannel(user);
+					if(ch) {
+						if(!poll.choices.find(c => c.voters && c.voters.includes(user))) ch.createMessage("You haven't voted for that poll yet");
+						else {
+							var choice = poll.choices.find(c => c.voters && c.voters.includes(user));
+							ch.createMessage(`Your vote: **${choice.option}**`);
+						}
+					}
+					await bot.removeMessageReaction(poll.channel_id, poll.message_id, emoji.name, user);
+					break;
+			}
+		}
+	}
 })
 
 bot.on("messageReactionRemove", async (msg, emoji, user) => {
@@ -891,9 +1066,19 @@ bot.on("messageReactionRemove", async (msg, emoji, user) => {
 
 bot.on("messageDelete", async (msg) => {
 	await bot.utils.deleteReactPost(bot, msg.channel.guild.id, msg.id);
+	await bot.utils.deletePoll(bot, msg.channel.guild.id, msg.channel.id, msg.id);
 	bot.db.query(`DELETE FROM starboard WHERE server_id=? AND message_id=?`,[msg.channel.guild.id, msg.id]);
 
 })
+
+bot.on("messageDeleteBulk", async (msgs) => {
+	await bot.utils.deletePollsByID(bot, msg.channel.guild.id, msgs.map(msg => msg.id));
+})
+
+bot.on("channelDelete", async (channel) => {
+	await bot.utils.deletePollsByChannel(bot, channel.guild.id, channel.id);
+})
+
 
 
 //----------------------------------------------------------------------------------------------------//
