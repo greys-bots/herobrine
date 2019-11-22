@@ -578,12 +578,8 @@ bot.commands.help = {
 				}
 			} else {
 				let dat;
-				try {
-					dat = await bot.parseCommand(bot, msg, args);
-				} catch(e) {
-					console.log(e);
-					return msg.channel.createMessage('Command not found.');
-				}
+				dat = await bot.parseCommand(bot, msg, args);
+				if(!dat) return msg.channel.createMessage("Command not found");
 				cmd = dat[0];
 				names = dat[2].split(" ");
 				embed = {
@@ -596,10 +592,13 @@ bot.commands.help = {
 							Object.keys(cmd.subcommands).map(sc => `**${bot.cfg.prefix[0]}${names.join(" ")} ${sc}** - ${cmd.subcommands[sc].help()}`).join("\n") : 
 							"(none)"}`
 					].join(""),
+					color: dat[0].module ? parseInt(bot.modules[dat[0].module].color, 16) : parseInt("555555", 16),
 					footer: {
 						text: "[required] <optional>"
 					}
 				}
+
+				msg.channel.createMessage({embed: embed});
 			}
 		} else {
 			var embeds = [];
