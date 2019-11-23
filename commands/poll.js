@@ -2,8 +2,9 @@ module.exports = {
 	help: ()=> "Create and manage polls",
 	usage: ()=> [" [pollID] - Get info on a particular poll",
 				 " create [title] - Sets up a new poll in the given channel",
-				 " list - Lists all polls started in the server (mods only)",
-				 " active - Lists active polls (mods only)"],
+				 " list - Lists polls started in the server (mods only)",
+				 " list active - Lists currently active polls (mods only)",
+				 " find [query] - Finds polls that match a specific query (mod only)"],
 	desc: ()=> ["Users need the `manageMessages` permission in order to list polls.",
 				"A poll is only deleted from the database if its message (or the channel it's in) is deleted. If this doesn't happen, you'll be able to view all polls started in the server with `hh!poll list` and pull up old polls using `hh!poll [id]`"],
 	execute: async (bot, msg, args) => {
@@ -43,7 +44,10 @@ module.exports.subcommands.create = {
 		message = await msg.channel.createMessage("Please enter a description for your poll. If you don't need one, you can type `skip` to skip it. You have two (2) minutes to do this");
 		resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {maxMatches: 1, time: 120000});
 		if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
-		else desc = resp[0].content;
+		else {
+			if(resp[0].content.toLowerCase() == "skip") desc = "*(no description provided)*"
+			else desc = resp[0].content;
+		}
 		await resp[0].delete()
 
 		await message.edit("Please provide the options for your poll. These should be separated by new lines, and you can do a max of 10. You have five (5) minutes to do this");
@@ -83,6 +87,114 @@ module.exports.subcommands.create = {
 		if(errmsg) setTimeout(()=> errmsg.delete(), 15000);
 
 	},
-	alias: ["add", "new", "+"],
+	alias: ["add", "new", "+", "n", "c"],
 	guildOnly: true
+}
+
+module.exports.subcommands.list = {
+	help: ()=> "List the server's polls",
+	usage: ()=> [" - Opens a paginated menu of all the past and currently active polls in the server",
+				 " active - Lists only the server's active polls"],
+	execute: async (bot, msg, args) => {
+		var polls = await bot.utils.getPolls(bot, msg.guild.id);
+		if(args[0] && args[0].toLowerCase() == "active") polls = polls.filter(p => p.active);
+
+		var embeds = polls.map((p,i) => {
+			return {embed: {
+				title: `${p.title} (poll ${i+1}/${polls.length})`,
+				description: p.description,
+				color: p.active ? parseInt("55aa55", 16) : parseInt("aa5555", 16),
+				fields: p.choices.map((c,i) => {
+					return {name: `:${bot.strings.numbers[i+1]}: ${c.option}`, value: `${c.count} votes`}
+				}),
+				footer: {
+					text: `ID: ${p.hid} | Started: ${bot.formatTime(new Date(p.start))}${!p.active ? " | Ended: "+bot.formatTime(new Date(p.end)) : ""}`
+				}
+			}}
+		})
+
+		var message = await msg.channel.createMessage(embeds[0]);
+
+		if(!bot.menus) bot.menus = {};
+		bot.menus[message.id] = {
+			user: msg.author.id,
+			index: 0,
+			data: embeds,
+			timeout: setTimeout(()=> {
+				if(!bot.menus[message.id]) return;
+				message.removeReaction("\u2b05");
+				message.removeReaction("\u27a1");
+				message.removeReaction("\u23f9");
+				delete bot.menus[message.id];
+			}, 900000),
+			execute: bot.utils.paginateEmbeds
+		}
+		message.addReaction("\u2b05");
+		message.addReaction("\u27a1");
+		message.addReaction("\u23f9");
+	},
+	alias: ["view", "ls", "l"],
+	guildOnly: true,
+	permissions: ["manageMessages"]
+}
+
+module.exports.subcommands.find = {
+	help: ()=> "Find polls that match a specific query",
+	usage: ()=> [" [words to search] - Find polls with certain words",
+				 " from:[userID] - Find polls from a certain user",
+				 " from:[userID] [words to search] - Find polls from a certain user that also contain certain words"],
+	execute: async (bot, msg, args) => {
+		if(!args[0]) return msg.channel.createMessage("Please provide a search query.")
+		var query;
+		var user;
+		var polls;
+		if(args[0].toLowerCase().startsWith('from:')) {
+			user = args[0].toLowerCase().replace('from:','');
+			query = args[1] ? args.slice(1).join(" ").toLowerCase() : undefined;
+		} else {
+			query = args[0] ? args.join(" ").toLowerCase() : undefined;
+		}
+		if(!user && !query) return msg.channel.createMessage("Please provide a search query");
+
+		polls = await bot.utils.searchPolls(bot, msg.guild.id, user, query);
+
+		if(!polls) return msg.channel.createMessage("No polls found that match that query");
+
+		var embeds = polls.map((p,i) => {
+			return {embed: {
+				title: `${p.title} (poll ${i+1}/${polls.length})`,
+				description: p.description,
+				color: p.active ? parseInt("55aa55", 16) : parseInt("aa5555", 16),
+				fields: p.choices.map((c,i) => {
+					return {name: `:${bot.strings.numbers[i+1]}: ${c.option}`, value: `${c.count} votes`}
+				}),
+				footer: {
+					text: `ID: ${p.hid} | Started: ${bot.formatTime(new Date(p.start))}${!p.active ? " | Ended: "+bot.formatTime(new Date(p.end)) : ""}`
+				}
+			}}
+		})
+
+		var message = await msg.channel.createMessage(embeds[0]);
+
+		if(!bot.menus) bot.menus = {};
+		bot.menus[message.id] = {
+			user: msg.author.id,
+			index: 0,
+			data: embeds,
+			timeout: setTimeout(()=> {
+				if(!bot.menus[message.id]) return;
+				message.removeReaction("\u2b05");
+				message.removeReaction("\u27a1");
+				message.removeReaction("\u23f9");
+				delete bot.menus[message.id];
+			}, 900000),
+			execute: bot.utils.paginateEmbeds
+		}
+		message.addReaction("\u2b05");
+		message.addReaction("\u27a1");
+		message.addReaction("\u23f9");
+	},
+	alias: ["search", "f"],
+	guildOnly: true,
+	permissions: ["manageMessages"]
 }

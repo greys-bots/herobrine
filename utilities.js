@@ -1425,12 +1425,17 @@ module.exports = {
 			})
 		})
 	},
-	searchPolls: async (bot, server, query) => {
+	searchPolls: async (bot, server, user, query) => {
 		return new Promise(async res => {
 			var polls = await bot.utils.getPolls(bot, server);
 			if(!polls) res(undefined);
-
-			polls = polls.filter(p => p.title.includes(query) || p.choices.find(c => c.option.includes(query)));
+			if(user) polls = polls.filter(p => p.user_id == user);
+			if(query) {
+				query = query.toLowerCase()
+				polls = polls.filter(p => p.title.toLowerCase().includes(query) || 
+												p.description.toLowerCase().includes(query) || 
+												p.choices.find(c => c.option.toLowerCase().includes(query)));
+			}
 			if(polls[0]) res(polls);
 			else res(undefined);
 		})	

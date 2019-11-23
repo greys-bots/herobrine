@@ -23,7 +23,7 @@ module.exports = {
 
 			msg.channel.createMessage(embeds[0]).then(message => {
 				if(!bot.menus) bot.menus = {};
-					bot.menus[message.id] = {
+				bot.menus[message.id] = {
 					user: msg.author.id,
 					index: 0,
 					data: embeds,
