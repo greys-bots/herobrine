@@ -25,7 +25,7 @@ module.exports = {
 					message.removeReactions()
 					delete bot.menus[message.id];
 				}, 900000),
-				execute: async function (m, emoji) {
+				execute: async function (bot, m, emoji) {
 					switch(emoji.name) {
 						case '\u2705':
 							var color = this.data;
@@ -33,7 +33,7 @@ module.exports = {
 							try {
 								role = m.channel.guild.roles.find(r => r.name == this.user);
 								if(!role) role = await bot.createRole(msg.channel.guild.id, {name: this.user, color: parseInt(color.toHex(),16)});
-								else role = await bot.editRole(msg.channel.guild.id, role, {color: parseInt(color.toHex(), 16)});
+								else role = await bot.editRole(msg.channel.guild.id, role.id, {color: parseInt(color.toHex(), 16)});
 								await bot.addGuildMemberRole(msg.channel.guild.id, msg.author.id, role.id);
 								await bot.editMessage(m.channel.id, m.id, {content: "Color successfully changed to "+color.toHexString(), embed: {}});
 								await bot.removeMessageReactions(m.channel.id, m.id);
