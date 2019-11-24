@@ -1,0 +1,200 @@
+html {
+  height: 100vh;
+}
+body, .App, #root {
+  height: 100%;
+  background-color: #112;
+  color: white;
+  font-size: 20px;
+}
+
+h1 {
+  margin: 20px 0;
+}
+
+.App {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  height: 100%;
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App nav {
+  min-height: 50px;
+  width: 100%;
+  background-color: #223;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.App nav ul {
+  margin: 0;
+}
+
+.App-navlinks {
+  float: left;
+}
+
+.App-navbuttons {
+  float: right;
+  padding-right: 40px;
+}
+
+.App-navlinks > * {
+  float: left;
+  color: white;
+  text-decoration: none;
+  margin-right: 10px;
+}
+
+.App-navlinks > *:hover {
+  color: #0fa;
+}
+
+.App-navbuttons a {
+  float: right;
+  text-decoration: none;
+  color: white;
+  background-color: #366;
+  padding: 10px;
+  border-radius: 10px;
+  margin-left: 10px;
+}
+
+.App-navbuttons a:hover {
+  background-color: #489;
+}
+
+.App-commands {
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  padding: 20px;
+}
+
+.App-commands > * {
+  flex: 1 1 auto;
+}
+
+.App-sidebar {
+  position: absolute;
+  width: 0;
+  height: calc(100% - 70px);
+  -webkit-transition: .25s linear;
+  -webkit-transition: .1s linear;
+  transition: .1s linear;
+  left: -25%;
+  top: 50px;
+  background-color: grey;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  padding: 0 20px 20px;
+  background-color: #223;
+  overflow-x: hidden;
+}
+
+.App-commands .App-sidebar {
+  display: block;
+  position: static;
+  max-width: 25%;
+  width: 25%;
+  border-radius: 10px;
+}
+
+.App-menutoggle {
+  border: none;
+  background-color: transparent;
+  color: white;
+  display: none;
+  margin-left: 20px;
+  position: relative;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+}
+
+.App-sidebar .App-link {
+  color: white;
+  text-decoration: none;
+  background-color: #255;
+  width: calc(100% - 10px);
+  display: block;
+  padding-left: 10px;
+  height: 50px;
+  line-height: 50px;
+  font-size: 20px;
+  font-weight: 500;
+  border-bottom: 2px solid #033;
+}
+
+.App-sidebar .App-link:hover {
+  background-color: #366;
+}
+
+.App-command h1:first-child {
+  text-align: center;
+}
+
+.App-command {
+  text-align: left;
+  padding: 20px;
+}
+
+*::-webkit-scrollbar {
+    width: 5px;
+    background-color: #255;
+    border-radius: 2px;
+}
+
+*::-webkit-scrollbar-thumb {
+    width: 5px;
+    border-radius: 2px;
+    background-color: #489;
+}
+
+@media(max-width:700px) {
+  .App-menutoggle {
+    display: block;
+  }
+
+  .App-sidebar.show {
+    left: 0;
+    width: 30%;
+  }
+
+  .App-commands .App-sidebar {
+    display: none;
+    position: static;
+  }
+
+  /*.App nav {
+    justify-content: flex-end;
+  }*/
+
+  .App-navlinks {
+    display: none;
+  }
+  /*.App-commands {
+    flex-direction: column;
+  }*/
+
+  /*.App-sidebar {
+    max-width: 100%;
+    padding-bottom: 10px;
+  }*/
+}
