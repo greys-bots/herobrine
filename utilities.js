@@ -1530,5 +1530,92 @@ module.exports = {
 				}
 			})
 		})
+	},
+
+	//notes
+	createNote: async (bot, user, hid, title, body) => {
+		return new Promise(res => {
+			bot.db.query(`INSERT INTO notes (hid, user_id, title, body) VALUES (?,?,?,?)`,[hid, user, title, body], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false);
+				} else res(true);
+			})
+		})
+	},
+	getNoteCount: async (bot, user) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT COUNT(*) as count FROM notes WHERE user_id=?`,[user],(err, rows) => {
+				if(err) {
+					console.log(err);
+					res(undefined);
+				} else {
+					console.log(rows);
+					res(rows[0].count)
+				}
+			})
+		})
+	},
+	getNote: async (bot, user, hid) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT * FROM notes WHERE user_id=? AND hid=?`,[user, hid], {
+				id: Number,
+				hid: String,
+				user_id: String,
+				title: String,
+				body: String
+			}, (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(undefined);
+				} else res(rows[0])
+			})
+		})
+	},
+	getNotes: async (bot, user) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT * FROM notes WHERE user_id=?`,[user], {
+				id: Number,
+				hid: String,
+				user_id: String,
+				title: String,
+				body: String
+			}, (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(undefined);
+				} else res(rows)
+			})
+		})
+	},
+	editNote: async (bot, user, hid, key, val) => {
+		return new Promise(res => {
+			bot.db.query(`UPDATE notes SET ?=? WHERE user_id=? AND hid=?`,[key, val, user, hid], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else res(true);
+			})
+		})
+	},
+	deleteNote: async (bot, user, hid) => {
+		return new Promise(res => {
+			bot.db.query(`DELETE FROM notes WHERE user_id=? AND hid=?`,[user, hid], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else res(true);
+			})
+		})
+	},
+	deleteNotes: async (bot, user) => {
+		return new Promise(res => {
+			bot.db.query(`DELETE FROM notes WHERE user_id=?`,[user], (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(false)
+				} else res(true);
+			})
+		})
 	}
 };

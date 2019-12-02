@@ -5,7 +5,7 @@ module.exports = {
 	execute: async (bot, msg, args)=> {
 		var color;
 		if(!args[0]) color = bot.tc(Math.floor(Math.random()*16777215).toString(16))
-		else color = bot.tc(args.join(''));
+		else color = bot.tc(['000000','black'].includes(args.join('').toLowerCase()) ? '000001' : args.join(''));
 		if(!color.isValid()) return msg.channel.createMessage('That is not a valid color.');
 		var crgb = color.toRgb();
 		var text = (crgb.r * 0.299) + (crgb.g * 0.587) + (crgb.b * 0.114) > 186 ? '000000' : 'ffffff';

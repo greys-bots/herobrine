@@ -62,7 +62,7 @@ try{
 		"You may need to set sqlite's location in config",
 		"and uncomment the dblite.bin line in bot.js (line 32).",
 		"This can be fixed by adding sqlite3.exe to your path,",
-		"iff applicable."
+		"if applicable."
 		].join("\n") + "\nError:\n"+e);
 	process.exit(1);
 }
@@ -245,6 +245,14 @@ const setup = async () => {
 		active 		INTEGER,
 		start 		TEXT,
 		end 		TEXT
+	)`)
+
+	bot.db.query(`CREATE TABLE IF NOT EXISTS notes (
+		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
+		hid 		TEXT,
+		user_id 	TEXT,
+		title 		TEXT,
+		body 		TEXT
 	)`)
 
 	var files = bot.fs.readdirSync("./commands");
@@ -1072,7 +1080,7 @@ bot.on("messageDelete", async (msg) => {
 })
 
 bot.on("messageDeleteBulk", async (msgs) => {
-	await bot.utils.deletePollsByID(bot, msg.channel.guild.id, msgs.map(msg => msg.id));
+	await bot.utils.deletePollsByID(bot, msgs[0].channel.guild.id, msgs.map(msg => msg.id));
 })
 
 bot.on("channelDelete", async (channel) => {
