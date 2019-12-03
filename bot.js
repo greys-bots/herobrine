@@ -839,7 +839,21 @@ bot.on("guildMemberAdd", async (guild, member)=>{
 })
 
 bot.on("messageReactionAdd",async (msg, emoji, user) => {
-	var cfg = await bot.utils.getConfig(bot, msg.channel.guild.id);
+	if(bot.menus && bot.menus[msg.id] && bot.menus[msg.id].user == user) {
+		try {
+			await bot.menus[msg.id].execute(bot, msg, emoji);	
+		} catch(e) {
+			console.log(e);
+			msg.channel.createMessage("ERR:\n"+e.message);
+		}
+		return;
+	}
+
+	if(!msg.channel.guild) return;
+
+	var cfg;
+	if(msg.channel.guild) cfg = await bot.utils.getConfig(bot, msg.channel.guild.id);
+	else cfg = undefined;
 	if(cfg && cfg.autopin && cfg.autopin.boards) {
 		var em;
 		if(emoji.id) em = `:${emoji.name}:${emoji.id}`;
@@ -862,16 +876,6 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 	}
 
 	if(user == bot.user.id) return;
-
-	if(bot.menus && bot.menus[msg.id] && bot.menus[msg.id].user == user) {
-		try {
-			await bot.menus[msg.id].execute(bot, msg, emoji);	
-		} catch(e) {
-			console.log(e);
-			msg.channel.createMessage("ERR:\n"+e.message);
-		}
-		return;
-	}
 
 	var post = await bot.utils.getReactPost(bot, msg.channel.guild.id, msg.id);
 	var message = await bot.getMessage(msg.channel.id, msg.id);
@@ -1063,16 +1067,18 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 
 bot.on("messageReactionRemove", async (msg, emoji, user) => {
 	if(bot.user.id == user) return;
+	if(msg.channel.guild) {
+		var em;
+		if(emoji.id) em = `:${emoji.name}:${emoji.id}`;
+		else em = emoji.name;
 
-	var em;
-	if(emoji.id) em = `:${emoji.name}:${emoji.id}`;
-	else em = emoji.name;
-
-	var message = await bot.getMessage(msg.channel.id, msg.id);
-	await bot.utils.updateStarPost(bot, msg.channel.guild.id, msg.id, {emoji: em, count: message.reactions[em.replace(/^:/,"")] ? message.reactions[em.replace(/^:/,"")].count : 0})
+		var message = await bot.getMessage(msg.channel.id, msg.id);
+		await bot.utils.updateStarPost(bot, msg.channel.guild.id, msg.id, {emoji: em, count: message.reactions[em.replace(/^:/,"")] ? message.reactions[em.replace(/^:/,"")].count : 0})
+	}
 })
 
 bot.on("messageDelete", async (msg) => {
+	if(!msg.channel.guild) return;
 	await bot.utils.deleteReactPost(bot, msg.channel.guild.id, msg.id);
 	await bot.utils.deletePoll(bot, msg.channel.guild.id, msg.channel.id, msg.id);
 	bot.db.query(`DELETE FROM starboard WHERE server_id=? AND message_id=?`,[msg.channel.guild.id, msg.id]);
@@ -1080,10 +1086,12 @@ bot.on("messageDelete", async (msg) => {
 })
 
 bot.on("messageDeleteBulk", async (msgs) => {
+	if(!msg.channel.guild) return;
 	await bot.utils.deletePollsByID(bot, msgs[0].channel.guild.id, msgs.map(msg => msg.id));
 })
 
 bot.on("channelDelete", async (channel) => {
+	if(!msg.channel.guild) return;
 	await bot.utils.deletePollsByChannel(bot, channel.guild.id, channel.id);
 })
 

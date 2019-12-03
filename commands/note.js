@@ -32,7 +32,14 @@ module.exports = {
 					data: note,
 					timeout: setTimeout(()=> {
 						if(!bot.menus[message.id]) return;
-						message.removeReactions();
+						if(message.channel.guild) {
+							try {
+								message.removeReactions();
+							} catch(e) {
+								console.log(e);
+								message.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
+							}
+						}
 						delete bot.menus[message.id];
 					}, 900000),
 					execute: async function(bot, m, e) {
@@ -65,7 +72,14 @@ module.exports = {
 											title: resp[0].content,
 											fields: m.embeds[0].fields
 										}})
-										await m.removeReactions()
+										if(m.channel.guild) {
+											try {
+												await m.removeReactions();
+											} catch(e) {
+												console.log(e);
+												m.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
+											}
+										}
 										delete bot.menus[m.id];
 										break;
 									case "2":
@@ -84,7 +98,14 @@ module.exports = {
 												}
 											})
 										}})
-										await m.removeReactions();
+										if(m.channel.guild) {
+											try {
+												await m.removeReactions();
+											} catch(e) {
+												console.log(e);
+												m.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
+											}
+										}
 										delete bot.menus[m.id];
 										break;
 									default:
@@ -100,7 +121,14 @@ module.exports = {
 								var scc = await bot.utils.deleteNote(bot, msg.author.id, this.data.hid);
 								if(scc) {
 									m.channel.createMessage("Note deleted!");
-									await m.removeReactions();
+									if(m.channel.guild) {
+										try {
+											await m.removeReactions();
+										} catch(e) {
+											console.log(e);
+											m.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
+										}
+									}
 									delete bot.menus[m.id];
 								}
 								else m.channel.createMessage("Something went wrong")
@@ -132,7 +160,14 @@ module.exports = {
 					data: embeds,
 					timeout: setTimeout(()=> {
 						if(!bot.menus[message.id]) return;
-						message.removeReactions();
+						if(message.channel.guild) {
+							try {
+								message.removeReactions();
+							} catch(e) {
+								console.log(e);
+								message.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
+							}
+						}
 						delete bot.menus[message.id];
 					}, 900000),
 					execute: bot.utils.paginateEmbeds
@@ -203,7 +238,14 @@ module.exports.subcommands.delete = {
 				index: 0,
 				timeout: setTimeout(()=> {
 					if(!bot.menus[message.id]) return;
-					message.removeReactions();
+					if(message.channel.guild) {
+						try {
+							message.removeReactions();
+						} catch(e) {
+							console.log(e);
+							message.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
+						}
+					}
 					delete bot.menus[message.id];
 				}, 900000),
 				execute: async function(bot, m, e){
@@ -232,7 +274,14 @@ module.exports.subcommands.delete = {
 				data: note.hid,
 				timeout: setTimeout(()=> {
 					if(!bot.menus[message.id]) return;
-					message.removeReactions();
+					if(message.channel.guild) {
+						try {
+							message.removeReactions();
+						} catch(e) {
+							console.log(e);
+							message.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
+						}
+					}
 					delete bot.menus[message.id];
 				}, 900000),
 				execute: async function(bot, m, e){
