@@ -15,15 +15,29 @@ module.exports = {
 			var reminder = await bot.utils.getReminder(bot, msg.author.id, args[0].toLowerCase());
 			if(!reminder) return msg.channel.createMessage("Reminder not found");
 
-			var message = await msg.channel.createMessage({embed: {
-				title: "Reminder",
-				description: reminder.note,
-				fields: [
-					{name: "Time left", value: bot.formatDiff(Date.now(), reminder.time)},
-					{name: "Recurring?", value: reminder.recurring ? "Yes" : "No"},
-					{name: "Interval", value: `${reminder.recurring ? reminder.interval : "*(not recurring)*"}`}
-				]
-			}})
+			var message;
+			if(!reminder.recurring) {
+				var message = await msg.channel.createMessage({embed: {
+					title: "Reminder",
+					description: reminder.note,
+					fields: [
+						{name: "Time left", value: bot.formatDiff(Date.now(), reminder.time)},
+						{name: "Recurring?", value: "No"}
+					]
+				}})
+			} else {
+				var recur = bot.utils.parseDate(Object.keys(reminder.interval).map(k => reminder.interval[k]+k).join(" "));
+				var message = await msg.channel.createMessage({embed: {
+					title: "Reminder",
+					description: reminder.note,
+					fields: [
+						{name: "Time left", value: bot.formatDiff(Date.now(), reminder.time)},
+						{name: "Recurring?", value: "Yes"},
+						{name: "Interval", value: bot.formatDiff(Date.now(), recur.date)}
+					]
+				}})
+			}
+			
 
 			if(!bot.menus) bot.menus = {};
 			bot.menus[message.id] = {
