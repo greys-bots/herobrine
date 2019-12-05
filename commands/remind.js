@@ -150,7 +150,7 @@ module.exports = {
 
 			var code = bot.utils.genCode(4, bot.strings.codestab);
 
-			var scc = await bot.utils.createReminder(bot, msg.author.id, code, rem, time.date ? time.date.toISOString() : time[0].date.toISOString(), type == "recurring", type == "recurring" ? (time.parsed ? time.parsed : time[0].parsed) : null );
+			var scc = await bot.utils.createReminder(bot, msg.author.id, code, rem, time.date ? time.date.toISOString() : time[0].date.toISOString(), type == "recurring", type == "recurring" ? (time.parsed ? time.parsed : time[1].parsed) : null );
 			if(!scc) return msg.channel.createMessage("ERR: Couldn't save data to database. Aborting...");
 
 			try {
