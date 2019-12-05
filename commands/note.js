@@ -190,7 +190,8 @@ module.exports = {
 		}
 	},
 	alias: ["notes"],
-	subcommands: {}
+	subcommands: {},
+	module: "utility"
 }
 
 module.exports.subcommands.add = {

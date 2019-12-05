@@ -32,7 +32,8 @@ module.exports = {
 	},
 	subcommands: {},
 	alias: ["polls", "vote", "votes", "census"],
-	guildOnly: true
+	guildOnly: true,
+	module: "utility"
 }
 
 module.exports.subcommands.create = {

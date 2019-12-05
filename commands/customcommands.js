@@ -59,7 +59,8 @@ module.exports = {
 	},
 	subcommands: {},
 	alias: ["cc", "custom"],
-	guildOnly: true
+	guildOnly: true,
+	module: "admin"
 }
 
 module.exports.subcommands.add = {

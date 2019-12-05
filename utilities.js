@@ -1786,7 +1786,7 @@ module.exports = {
 	},
 	parseDate: (input) => {
 		if(typeof input == "string") {
-			var match = input.match(/((?:\d+|\S+\s)\s?(?:w|d|h|m|s){1})/gi);
+			var match = input.match(/\b((?:\d+|\S+\s)?\s?(?:w|d|h|m|s){1})/gi);
 			if(!match || !match[0]) return null;
 			console.log(match);
 
@@ -1828,7 +1828,7 @@ module.exports = {
 			var err = false;
 
 			for(var i = 0; i<input.length; i++) {
-				var match = input[i].match(/((?:\d+|\S+\s)\s?(?:w|d|h|m|s){1})/gi);
+				var match = input[i].match(/\b((?:\d+|\S+\s)?\s?(?:w|d|h|m|s){1})/gi);
 				console.log(match);
 				if(!match || !match[0]) {
 					err = true;
@@ -1839,8 +1839,8 @@ module.exports = {
 
 				var matched = false
 				for(var j = 0; j < match.length; j++) {
-					var section = match[j].match(/[a-zA-Z]/)[0];
-					if(Object.keys(parsed).includes(section)) {
+					var section = match[j].match(/[a-z]/i)[0];
+					if(Object.keys(parsed[i].parsed).includes(section)) {
 						if(match[j].match(/[0-9]/)) {
 							parsed[i].parsed[section] = parseInt(match[j].match(/[0-9]/)[0]);
 						} else {
@@ -1849,7 +1849,7 @@ module.exports = {
 						matched = true;
 					}
 				}
-				if(!matched) return null;
+
 				parsed[i].date = new Date(Date.now() + 
 									(parsed[i].parsed.w*7*24*60*60*1000) +
 									(parsed[i].parsed.d*24*60*60*1000) +
