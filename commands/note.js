@@ -26,101 +26,52 @@ module.exports = {
 				}
 			}})
 			if(!bot.menus) bot.menus = {};
-				bot.menus[message.id] = {
-					user: msg.author.id,
-					index: 0,
-					data: note,
-					timeout: setTimeout(()=> {
-						if(!bot.menus[message.id]) return;
-						if(message.channel.guild) {
-							try {
-								message.removeReactions();
-							} catch(e) {
-								console.log(e);
-								message.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
-							}
+			bot.menus[message.id] = {
+				user: msg.author.id,
+				index: 0,
+				data: note,
+				timeout: setTimeout(()=> {
+					if(!bot.menus[message.id]) return;
+					if(message.channel.guild) {
+						try {
+							message.removeReactions();
+						} catch(e) {
+							console.log(e);
+							message.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
 						}
-						delete bot.menus[message.id];
-					}, 900000),
-					execute: async function(bot, m, e) {
-						switch(e.name) {
-							case '⏹️':
-								await m.delete();
-								delete bot.menus[m.id];
-								break;
-							case "\u270f":
-								var resp;
-								await m.channel.createMessage([
-									"What would you like to edit?",
-									"```",
-									"1 - Title",
-									"2 - Body",
-									"```"
-								].join("\n"));
-								resp = await m.channel.awaitMessages(ms => ms.author.id == this.user, {maxMatches: 1, time: 30000});
-								if(!resp || !resp[0]) return m.channel.createMessage("ERR: timed out");
-								switch(resp[0].content) {
-									case "1":
-										await m.channel.createMessage("Enter the new title. You have 1 minute to do this");
-										resp = await m.channel.awaitMessages(ms => ms.author.id == this.user, {maxMatches: 1, time: 60000});
-										if(!resp || !resp[0]) return m.channel.createMessage("ERR: timed out");
-										if(resp[0].content.length > 100) return m.channel.createMessage("ERR: title must be 100 characters or less");
-										var scc = await bot.utils.editNote(bot, this.user, this.data.hid, "title", resp[0].content);
-										if(scc) m.channel.createMessage("Note edited!");
-										else m.channel.createMessage("Something went wrong");
-										m.edit({embed: {
-											title: resp[0].content,
-											fields: m.embeds[0].fields
-										}})
-										if(m.channel.guild) {
-											try {
-												await m.removeReactions();
-											} catch(e) {
-												console.log(e);
-												m.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
-											}
-										}
-										delete bot.menus[m.id];
-										break;
-									case "2":
-										await m.channel.createMessage("Enter the new body. You have 5 minutes to do this");
-										resp = await m.channel.awaitMessages(ms => ms.author.id == this.user, {maxMatches: 1, time: 5*60000});
-										if(!resp || !resp[0]) return m.channel.createMessage("ERR: timed out");
-										var scc = await bot.utils.editNote(bot, this.user, this.data.hid, "body", resp[0].content);
-										if(scc) m.channel.createMessage("Note edited!");
-										else m.channel.createMessage("Something went wrong");
-										m.edit({embed: {
-											title: m.embeds[0].title,
-											fields: resp[0].content.match(/.{1,1024}/gs).map((s,i)=> {
-												return {
-													name: `Body${i>0 ? " (cont)" : ""}`,
-													value: s
-												}
-											})
-										}})
-										if(m.channel.guild) {
-											try {
-												await m.removeReactions();
-											} catch(e) {
-												console.log(e);
-												m.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
-											}
-										}
-										delete bot.menus[m.id];
-										break;
-									default:
-										return m.channel.createMessage("ERR: invalid input. Aborting...")
-										break;
-								}
-								break;
-							case "❌":
-								await m.channel.createMessage("Are you sure you want to delete this note? (y/n)");
-								var resp = await m.channel.awaitMessages(ms => ms.author.id == this.user, {maxMatches: 1, time: 30000});
-								if(!resp || !resp[0]) return m.channel.createMessage("ERR: timed out");
-								if(resp[0].content.toLowerCase() != "y") return m.channel.createMessage("Action cancelled");
-								var scc = await bot.utils.deleteNote(bot, msg.author.id, this.data.hid);
-								if(scc) {
-									m.channel.createMessage("Note deleted!");
+					}
+					delete bot.menus[message.id];
+				}, 900000),
+				execute: async function(bot, m, e) {
+					switch(e.name) {
+						case '⏹️':
+							await m.delete();
+							delete bot.menus[m.id];
+							break;
+						case "\u270f":
+							var resp;
+							await m.channel.createMessage([
+								"What would you like to edit?",
+								"```",
+								"1 - Title",
+								"2 - Body",
+								"```"
+							].join("\n"));
+							resp = await m.channel.awaitMessages(ms => ms.author.id == this.user, {maxMatches: 1, time: 30000});
+							if(!resp || !resp[0]) return m.channel.createMessage("ERR: timed out");
+							switch(resp[0].content) {
+								case "1":
+									await m.channel.createMessage("Enter the new title. You have 1 minute to do this");
+									resp = await m.channel.awaitMessages(ms => ms.author.id == this.user, {maxMatches: 1, time: 60000});
+									if(!resp || !resp[0]) return m.channel.createMessage("ERR: timed out");
+									if(resp[0].content.length > 100) return m.channel.createMessage("ERR: title must be 100 characters or less");
+									var scc = await bot.utils.editNote(bot, this.user, this.data.hid, "title", resp[0].content);
+									if(scc) m.channel.createMessage("Note edited!");
+									else m.channel.createMessage("Something went wrong");
+									m.edit({embed: {
+										title: resp[0].content,
+										fields: m.embeds[0].fields
+									}})
 									if(m.channel.guild) {
 										try {
 											await m.removeReactions();
@@ -130,13 +81,62 @@ module.exports = {
 										}
 									}
 									delete bot.menus[m.id];
+									break;
+								case "2":
+									await m.channel.createMessage("Enter the new body. You have 5 minutes to do this");
+									resp = await m.channel.awaitMessages(ms => ms.author.id == this.user, {maxMatches: 1, time: 5*60000});
+									if(!resp || !resp[0]) return m.channel.createMessage("ERR: timed out");
+									var scc = await bot.utils.editNote(bot, this.user, this.data.hid, "body", resp[0].content);
+									if(scc) m.channel.createMessage("Note edited!");
+									else m.channel.createMessage("Something went wrong");
+									m.edit({embed: {
+										title: m.embeds[0].title,
+										fields: resp[0].content.match(/.{1,1024}/gs).map((s,i)=> {
+											return {
+												name: `Body${i>0 ? " (cont)" : ""}`,
+												value: s
+											}
+										})
+									}})
+									if(m.channel.guild) {
+										try {
+											await m.removeReactions();
+										} catch(e) {
+											console.log(e);
+											m.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
+										}
+									}
+									delete bot.menus[m.id];
+									break;
+								default:
+									return m.channel.createMessage("ERR: invalid input. Aborting...")
+									break;
+							}
+							break;
+						case "❌":
+							await m.channel.createMessage("Are you sure you want to delete this note? (y/n)");
+							var resp = await m.channel.awaitMessages(ms => ms.author.id == this.user, {maxMatches: 1, time: 30000});
+							if(!resp || !resp[0]) return m.channel.createMessage("ERR: timed out");
+							if(resp[0].content.toLowerCase() != "y") return m.channel.createMessage("Action cancelled");
+							var scc = await bot.utils.deleteNote(bot, msg.author.id, this.data.hid);
+							if(scc) {
+								m.channel.createMessage("Note deleted!");
+								if(m.channel.guild) {
+									try {
+										await m.removeReactions();
+									} catch(e) {
+										console.log(e);
+										m.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
+									}
 								}
-								else m.channel.createMessage("Something went wrong")
-								break;
-						}
+								delete bot.menus[m.id];
+							}
+							else m.channel.createMessage("Something went wrong")
+							break;
 					}
-				};
-				["⏹️","\u270f","❌"].forEach(r => message.addReaction(r));
+				}
+			};
+			["⏹️","\u270f","❌"].forEach(r => message.addReaction(r));
 		} else {
 			var notes = await bot.utils.getNotes(bot, msg.author.id);
 			if(!notes || !notes[0]) return msg.channel.createMessage("You don't have any notes");
@@ -187,7 +187,7 @@ module.exports = {
 					color: parseInt("5555aa",16)
 				}})
 			}
-		}	
+		}
 	},
 	alias: ["notes"],
 	subcommands: {}

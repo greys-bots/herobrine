@@ -8,18 +8,25 @@ module.exports = {
 	desc: ()=> ["Users need the `manageMessages` permission in order to list polls.",
 				"A poll is only deleted from the database if its message (or the channel it's in) is deleted. If this doesn't happen, you'll be able to view all polls started in the server with `hh!poll list` and pull up old polls using `hh!poll [id]`"],
 	execute: async (bot, msg, args) => {
+		if(!args[0]) return msg.channel.createMessage("Please provide a poll to look up");
 		var poll = await bot.utils.getPollByHid(bot, msg.guild.id, args[0].toLowerCase());
 		if(!poll) return msg.channel.createMessage("Poll not found");
+		var member = msg.guild.members.find(m => m.id == poll.user_id);
+		if(!member) member = {username: "Uncached Member", discriminator: "0000", avatarURL: null};
 
 		msg.channel.createMessage({embed: {
 			title: poll.title,
 			description: poll.description,
 			color: poll.active ? parseInt("55aa55", 16) : parseInt("aa5555", 16),
 			fields: poll.choices.map((c,i) => {
-				return {name: `:${bot.strings.numbers[i+1]}: ${c.option}`, value: `${c.count} votes`}
+				return {name: `:${i+1 == 10 ? "keycap_10" : bot.strings.numbers[i+1]}: ${c.option}`, value: `${c.count} ${c.count != 1 ? "votes" : "vote"}`}
 			}),
 			footer: {
 				text: `ID: ${poll.hid} | Started: ${bot.formatTime(new Date(poll.start))}${!poll.active ? " | Ended: "+bot.formatTime(new Date(poll.end)) : ""}`
+			},
+			author: {
+				name: `${member.username}#${member.discriminator}`,
+				icon_url: `${member.avatarURL}`
 			}
 		}})
 	},
@@ -66,10 +73,14 @@ module.exports.subcommands.create = {
 			description: desc,
 			color: parseInt("55aa55", 16),
 			fields: choices.map((c, i) => {
-				return {name: `:${bot.strings.numbers[i+1]}: ${c.option}`, value: `${c.count} votes`}
+				return {name: `:${i+1 == 10 ? "keycap_10" : bot.strings.numbers[i+1]}: ${c.option}`, value: `${c.count} votes`}
 			}),
 			footer: {
 				text: `ID: ${hid} | Started: ${bot.formatTime(date)}`
+			},
+			author: {
+				name: `${msg.author.username}#${msg.author.discriminator}`,
+				icon_url: `${msg.author.avatarURL}`
 			},
 			timestamp: date.toISOString()
 		}});

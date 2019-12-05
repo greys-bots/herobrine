@@ -12,6 +12,7 @@ const {Client} =	require("pg"); //postgres, for data things
 const dblite =		require("dblite").withSQLite('3.8.6+'); //dblite, also for data things
 const exec =		require("child_process").exec; //self-updating code! woo!
 const config = 		require ("./config.json");
+const chrono = 		require('chrono-node');
 
 var status = 		0;
 
@@ -24,8 +25,12 @@ bot.fetch = require('node-fetch');
 bot.duri = require('datauri');
 bot.tc = require('tinycolor2');
 bot.fs = require('fs');
+bot.moment = require('moment')
+bot.chrono = new chrono.Chrono();
+bot.scheduler = require('node-schedule');
 
 bot.modules = {};
+bot.reminders = {};
 
 bot.paused = false;
 
@@ -255,6 +260,16 @@ const setup = async () => {
 		body 		TEXT
 	)`)
 
+	bot.db.query(`CREATE TABLE IF NOT EXISTS reminders (
+		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
+		hid 		TEXT,
+		user_id 	TEXT,
+		note 		TEXT,
+		time 		TEXT,
+		recurring 	INTEGER,
+		interval	TEXT
+	)`)
+
 	var files = bot.fs.readdirSync("./commands");
 	await Promise.all(files.map(f => {
 		bot.commands[f.slice(0,-3)] = require("./commands/"+f);
@@ -299,6 +314,29 @@ bot.formatTime = (date) => {
 	if(typeof date == "string") date = new Date(date);
 
 	return `${(date.getMonth()+1) < 10 ? "0"+(date.getMonth()+1) : (date.getMonth()+1)}.${(date.getDate()) < 10 ? "0"+(date.getDate()) : (date.getDate())}.${date.getFullYear()} at ${date.getHours() < 10 ? "0"+date.getHours() : date.getHours()}:${date.getMinutes() < 10 ? "0"+date.getMinutes() : date.getMinutes()}`
+}
+
+bot.formatDiff = (date1, date2, shorthand = false) => {
+	date1 = new bot.moment(date1);
+	date2 = new bot.moment(date2);
+	var duration = bot.moment.duration(Math.abs(date1.diff(date2))).add(1, "s");
+
+	var parsed = [
+		`${duration.days() > 0 ? duration.days()+(shorthand ? " d" : (duration.days() > 1 ? " days" : " day")) : ""}`,
+		`${duration.hours() > 0 ? duration.hours()+(shorthand ? " h" : (duration.hours() > 1 ? " hours" : " hour")) : ""}`,
+		`${duration.minutes() > 0 ? duration.minutes()+(shorthand ? " m" : (duration.minutes() > 1 ? " minutes" : " minute")) : ""}`,
+		`${duration.seconds() > 1 ? duration.seconds()+(shorthand ? " s" : " seconds") : ""}`
+	].filter(x => x!="").map((v,i,a) => {
+		if(a.length > 1) {
+			if(i != a.length-1) {
+				return v+(a.length > 2 ? ", " : " ");
+			} else return "and "+v
+		} else {
+			return v
+		}
+	}).join("");
+
+	return parsed;
 }
 
 bot.parseCommand = async (bot, msg, args, command) =>{
@@ -726,10 +764,21 @@ bot.commands.reload = {
 //======================================================================================================
 //------------------------------------------------------------------------------------------------------
 
-bot.on("ready",()=>{
+bot.on("ready",async ()=>{
 	console.log("Ready.");
 	writeLog(bot, "startup");
 	updateStatus();
+
+	var today = new Date();
+	var reminders = await bot.utils.getAllReminders(bot);
+	await Promise.all(reminders.map(async r => {
+		var time = new Date(r.time);
+		if(time < today) {
+			await bot.utils.sendReminder(bot, r.user_id, r.hid);
+		} else {
+			bot.reminders[r.user_id+"-"+r.hid] = bot.scheduler.scheduleJob(time, ()=> bot.utils.sendReminder(bot, r.user_id, r.hid))
+		}
+	}))
 })
 
 //- - - - - - - - - - MessageCreate - - - - - - - - - -
@@ -759,12 +808,15 @@ bot.on("messageCreate", async (msg)=>{
 		return;
 	}
 
-	var lvlup = await bot.utils.handleBonus(bot, msg);
-	if(lvlup.success) {
-		if(lvlup.msg && !(cfg && cfg.disabled && cfg.disabled.levels)) msg.channel.createMessage(lvlup.msg);
-	} else {
-		console.log("Couldn't handle cash/exp");
+	if(msg.guild) {
+		var lvlup = await bot.utils.handleBonus(bot, msg);
+		if(lvlup.success) {
+			if(lvlup.msg && !(cfg && cfg.disabled && cfg.disabled.levels)) msg.channel.createMessage(lvlup.msg);
+		} else {
+			console.log("Couldn't handle cash/exp");
+		}
 	}
+	
 
 	if(msg.guild && !cfg) await bot.utils.createConfig(bot, msg.guild.id);
 
@@ -1035,8 +1087,15 @@ bot.on("messageReactionAdd",async (msg, emoji, user) => {
 								});
 
 								embed.fields = choices.map((c, i) => {
-									return {name: `:${bot.strings.numbers[i+1]}: ${c.option}`, value: `${c.count} votes`}
+									return {name: `:${bot.strings.numbers[i+1]}: ${c.option}`, value: `${c.count} ${c.count != 1 ? "votes" : "vote"}`}
 								})
+								try {
+									await bot.removeMessageReactions(poll.channel_id, poll.message_id);
+								} catch(e) {
+									msg.channel.createMessage("The poll has been edited internally, but I can't remove extra reactions. Make sure I have the permission to `manageMessages`");
+								}
+								choices.forEach((c,i) =>  bot.addMessageReaction(poll.channel_id, poll.message_id,`${bot.strings.pollnumbers[i+1]}`));
+								["✅","✏","❓"].forEach(r => bot.addMessageReaction(poll.channel_id, poll.message_id, r));
 								await bot.utils.editPoll(bot, poll.server_id, poll.channel_id, poll.message_id, "choices", choices);
 								await bot.editMessage(poll.channel_id, poll.message_id, {embed: embed});
 								await m2.delete();

@@ -31,7 +31,8 @@ module.exports = {
 	},
 	subcommands: {},
 	alias: ["srv"],
-	guildOnly: true
+	guildOnly: true,
+	module: "utility"
 }
 
 module.exports.subcommands.roles = {
