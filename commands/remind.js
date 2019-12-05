@@ -127,7 +127,7 @@ module.exports = {
 					type = "recurring";
 					rem = args.slice(0, every).join(" ");
 					if(bot.strings.weekdays.includes(args[args.length-1].toLowerCase())) {
-						time_input = [6-bot.strings.weekdays.indexOf(args[args.length-1].toLowerCase())%7+"d","1w"];
+						time_input = [(6-today.getDay() + bot.strings.weekdays.indexOf(args[args.length-1].toLowerCase())%7+1)+"d","1w"];
 					} else if(args[args.length-1].toLowerCase() == "week") {
 						time_input = "1w";
 					} else {
