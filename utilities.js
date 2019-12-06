@@ -1786,7 +1786,8 @@ module.exports = {
 	},
 	parseDate: (input) => {
 		if(typeof input == "string") {
-			var match = input.match(/\b((?:\d+|\S+\s)?\s?(?:w|d|h|m|s){1})/gi);
+			var match = input.match(/((?:\d+?|\b\w+\s)\s?(?:w|d|h|m|s))/gi);
+			if(!match || !match[0]) match = input.match(/\b(w|d|h|m|s)/gi);
 			if(!match || !match[0]) return null;
 			console.log(match);
 
@@ -1799,7 +1800,7 @@ module.exports = {
 			}
 			var matched = false
 			for(var i = 0; i < match.length; i++) {
-				var section = match[i].match(/[a-z]/i)[0];
+				var section = match[i].match(/[a-z]$/i)[0];
 				console.log(section);
 				if(Object.keys(parsed).includes(section)) {
 					if(match[i].match(/[0-9]+/gi)) {

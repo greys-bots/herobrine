@@ -141,9 +141,12 @@ module.exports = {
 					type = "recurring";
 					rem = args.slice(0, every).join(" ");
 					if(bot.strings.weekdays.includes(args[args.length-1].toLowerCase())) {
-						time_input = [(6-today.getDay() + bot.strings.weekdays.indexOf(args[args.length-1].toLowerCase())%7+1)+"d","1w"];
+						time_input = [(6-today.getDay() + bot.strings.weekdays.indexOf(args[args.length-1].toLowerCase())%7+1)+"d",
+									  (args[args.length-2].toLowerCase() == "other" ? "2w" : "1w")];
 					} else if(args[args.length-1].toLowerCase() == "week") {
 						time_input = "1w";
+					} else if(args.slice(args.length-2).join(" ").toLowerCase() == "other day") {
+						time_input = "2d";
 					} else {
 						time_input = args.slice(every+1, args.length).join(" ");
 					}		
