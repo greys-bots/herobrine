@@ -56,7 +56,7 @@ module.exports = {
 	},
 	addStarboard: async (bot, server, channel, emoji) => {
 		return new Promise(res => {
-			bot.db.query(`INSERT INTO starboards (server_id, channel_id, emoji) VALUES (?,?,?)`, [server, emoji, channel], (err, rows) => {
+			bot.db.query(`INSERT INTO starboards (server_id, channel_id, emoji) VALUES (?,?,?)`, [server, channel, emoji], (err, rows) => {
 				if(err) {
 					console.log(err);
 					res(false);
@@ -165,7 +165,7 @@ module.exports = {
 			var tolerance = board.tolerance ? board.tolerance : cfg.autopin || 2;
 			var member = msg.guild.members.find(m => m.id == user);
 			if(!member) return;
-			
+
 			if(reaction.count < tolerance && 
 			  (!board.override || (board.override && !member.permission.has("manageMessages")))) 
 				return;

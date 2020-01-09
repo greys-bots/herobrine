@@ -58,7 +58,7 @@ module.exports = {
 					],
 					color: parseInt("5555aa", 16)
 				}})
-			} else remove.push({id: c.channel});
+			} else remove.push({id: boards[i].channel});
 		}
 
 		if(embeds[0]) {
