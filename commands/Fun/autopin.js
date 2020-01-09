@@ -116,7 +116,7 @@ module.exports.subcommands.add = {
 		if(!board) board = await bot.utils.getStarboardByEmoji(bot, msg.guild.id, emoji);
 		if(board) return msg.channel.createMessage("A board registered with that channel or emoji already exists");
 
-		var scc = await bot.utils.addStarBoard(bot, msg.guild.id, channel.id, emoji);
+		var scc = await bot.utils.addStarboard(bot, msg.guild.id, channel.id, emoji);
 		if(scc) msg.channel.createMessage("Board registered!");
 		else msg.channel.createMessage("Something went wrong");
 	},
