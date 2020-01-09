@@ -161,6 +161,14 @@ module.exports = {
 			var reaction = msg.reactions[emoji.name.replace(/^:/,"")];
 			var board = await bot.utils.getStarboardByEmoji(bot, msg.guild.id, emoji.name);
 			if(!board) return;
+			var cfg = await bot.utils.getConfig(bot, msg.guild.id);
+			var tolerance = board.tolerance ? board.tolerance : cfg.autopin || 2;
+			var member = msg.guild.members.find(m => m.id == user);
+			if(!member) return;
+			
+			if(reaction.count < tolerance && 
+			  (!board.override || (board.override && !member.permission.has("manageMessages")))) 
+				return;
 			
 			var post = await bot.utils.getStarPost(bot, msg.guild.id, msg.id, emoji.name);
 			var scc;
