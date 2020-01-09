@@ -16,8 +16,10 @@ module.exports = {
 		var config = await bot.utils.getConfig(bot, msg.guild.id);
 		if(!config) config = {autopin: 2};
 		if(args[0]) {
-			var board = await bot.utils.getStarboardByChannel(bot, msg.guild.id, args[0].replace(/[<#>]/g,""));
-			if(!board) board = await bot.utils.getStarboardByEmoji(bot, msg.guild.id, args[0].replace(/[<>]/g,""));
+			var channel = msg.guild.channels.find(ch => ch.name == args[0].toLowerCase() || ch.id == args[0].replace(/[<#>]/g,""));
+			var board;
+			if(channel) board = await bot.utils.getStarboardByChannel(bot, msg.guild.id, channel.id);
+			else board = await bot.utils.getStarboardByEmoji(bot, msg.guild.id, args[0].replace(/[<>]/g,""));
 			if(!board) return msg.channel.createMessage("Board not found");
 
 			var channel = msg.guild.channels.find(ch => ch.id == board.channel_id);
