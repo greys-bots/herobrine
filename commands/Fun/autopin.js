@@ -226,7 +226,7 @@ module.exports.subcommands.override = {
 
 		if(!["true", "1", "false", "0"].includes(args[1])) return msg.channel.createMessage("Please provide a valid value to set the override to")
 
-		var scc = await bot.utils.updateStarboard(bot, msg.guild.id, channel.id, {override: args[1]});
+		var scc = await bot.utils.updateStarboard(bot, msg.guild.id, channel.id, {override: ["true", "1"].includes(args[1]) ? true : false});
 		if(scc) msg.channel.createMessage("Override set!")
 		else msg.channel.createMessage("Something went wrong")
 	}
