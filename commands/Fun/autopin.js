@@ -189,10 +189,10 @@ module.exports.subcommands.tolerance = {
 			scc = await bot.utils.updateConfig(bot, msg.guild.id, {autopin: 2});
 			if(scc) return msg.channel.createMessage("Global tolerance reset!");
 			else return msg.channel.createMessage("Something went wrong");
-		} else if(args[0]) {
+		} else {
 			var channel = msg.guild.channels.find(c => c.id == args[0].replace(/[<#>]/g,"") || c.name == args[0].toLowerCase());
 			if(!channel && parseInt(args[0]) == NaN) return msg.channel.createMessage("Channel not found");
-			else if(parseInt(args[0]) != NaN) {
+			else if(!channel && parseInt(args[0]) != NaN) {
 				var scc = await bot.utils.updateConfig(bot, msg.guild.id, {autopin: args[0]});
 				if(scc) return msg.channel.createMessage("Global tolerance set!");
 				else return msg.channel.createMessage("Something went wrong");
