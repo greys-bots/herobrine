@@ -3,10 +3,24 @@ module.exports = {
 	usage: ()=> [" [userID] - Bans member with that ID."],
 	execute: async (bot, msg, args)=>{
 		args = args.join(" ").split(/(,?\s)/);
-		var ind = args.findIndex(a => !a.replace(/[<@!>]/g,"").match(/^(?:<@)?!?\d{17,}$>?/) && !a.match(/\s/));
-		var membs = args.slice(0, ind).filter(x => !x.match(/\s/));
-		var reason = args.slice(ind-1).join("");
-
+		var ind;
+		var membs;
+		var reason;
+		if(args.length > 1) {
+			ind = args.findIndex(a => !a.replace(/[<@!>]/g,"").match(/^(?:<@)?!?\d{17,}$>?/) && !a.match(/\s/));
+			if(ind > -1) {
+				membs = args.slice(0, ind).filter(x => !x.match(/\s/));
+				reason = args.slice(ind-1).join("");
+			} else {
+				membs = args.filter(x => !x.match(/\s/));
+				reason = "Banned through command";
+			}
+		} else {
+			membs = args.filter(x => !x.match(/\s/));
+			reason = "Banned through command";
+		}
+		
+		console.log(membs);
 		var b = await msg.guild.getBans()
 
 		var succ = [];
