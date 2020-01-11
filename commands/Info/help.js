@@ -98,7 +98,7 @@ module.exports = {
 
 		let {command} = await bot.parseCommand(bot, msg, args);
 		if(command) {
-			return msg.channel.createMessage({embed: {
+			var embed = {embed: {
 				title: `Help | ${command.name.toLowerCase()}`,
 				description: command.help(),
 				fields: [
@@ -113,7 +113,11 @@ module.exports = {
 					icon_url: bot.user.avatarURL,
 					text: "Arguments like [this] are required, arguments like <this> are optional"
 				}
-			}});
+			}};
+			if(command.desc) embed.fields.push({name: "**Extra**", value: command.desc()});
+			if(command.permissions) embed.fields.push({name: "**Permissions**", value: command.permissions.join(", ")});
+
+			return msg.channel.createMessage(embed);
 		} else {
 			let module = bot.modules.get(args[0].toLowerCase());
 			if(!module) return "Command/module not found";

@@ -209,6 +209,21 @@ const setup = async () => {
 		anon 		BOOLEAN
 	)`);
 
+	// not ready yet
+	// bot.db.query(`CREATE TABLE IF NOT EXISTS invites (
+	// 	id 			INTEGER PRIMARY KEY AUTOINCREMENT,
+	// 	server_id 	TEXT,
+	// 	invite_id 	TEXT,
+	// 	name 		TEXT
+	// )`);
+
+	// bot.db.query(`CREATE TABLE IF NOT EXISTS logging_configs (
+	// 	id 			INTEGER PRIMARY KEY AUTOINCREMENT,
+	// 	server_id 	TEXT,
+	// 	channel_id	TEXT,
+	// 	events	 	TEXT
+	// )`);
+
 	bot.db.query(`CREATE TABLE IF NOT EXISTS notes (
 		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
 		hid 		TEXT,
@@ -235,12 +250,14 @@ const setup = async () => {
 	bot.db.query(`CREATE TABLE IF NOT EXISTS profiles (
 		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
 		user_id 	TEXT,
-		info 		TEXT,
+		title 		TEXT,
+		bio 		TEXT,
+		color 		TEXT,
 		badges 		TEXT,
-		lvl 		TEXT,
-		exp 		TEXT,
-		cash 		TEXT,
-		daily 		TEXT,
+		lvl 		INTEGER,
+		exp 		INTEGER,
+		cash 		INTEGER,
+		daily 		INTEGER,
 		disabled 	INTEGER
 	)`);
 

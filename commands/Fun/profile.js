@@ -1,18 +1,26 @@
 module.exports = {
-	help: ()=> "Shows your profile.",
-	usage: ()=> [" - views your profile",
+	help: ()=> "Shows your profile",
+	usage: ()=> [" - Views your profile",
 				" [member ID/mention] - views another user's profile",
 				" edit - opens a menu for profile editing",
 				" enable/disable - enables/disables level-up messages"],
 	execute: async (bot, msg, args)=>{
 		if(args[0] && !msg.guild) return msg.channel.createMessage("You can only view others' profiles in guilds");
-		var id = (msg.mentions[0] ? msg.mentions[0].id : (args[0] ? msg.guild.members.find(m => m.id == args[0]).id : msg.author.id));
+		var id = args[0] ? args[0].replace(/[<@!>]/g,"") : msg.author.id;
 		var member = msg.guild ? msg.guild.members.find(m => m.id == id) : msg.author;
 		var profile = await bot.utils.getProfile(bot, id);
 
 		if(!profile) return msg.channel.createMessage("Profile not found");
 
 		msg.channel.createMessage({embed:{
+			title: profile.title,
+			description: profile.bio,
+			fields: [
+				{name: "Level", value: profile.lvl, inline: true},
+				{name: "EXP", value: profile.exp, inline: true},
+				{name: "Cash", value: profile.cash}
+			],
+			color: profile.color || parseInt("aaaaaa", 16),
 			author: {
 				name: member.username,
 				icon_url: member.avatarURL
@@ -20,13 +28,9 @@ module.exports = {
 			thumbnail: {
 				url: member.avatarURL
 			},
-			color: profile.info.color || 0,
-			title: profile.info.title,
-			description: profile.info.bio +
-			"\n**LEVEL:** "+profile.lvl +
-			"\n**EXP:** "+profile.exp +
-			"\n**CASH:** "+profile.cash +
-			(profile.disabled ? "\n\n*Level up messages are disabled for this user.*" : "")
+			footer: {
+				text: `Level up messages ${profile.disabled ? "are" : "are not"} disabled for this user`
+			}
 		}})
 	},
 	alias: ["p","prof"],
@@ -75,22 +79,19 @@ module.exports.subcommands.edit = {
 		switch(args[0]){
 			case "bio":
 				var b = (args[1] ? args.slice(1).join(" ") : "Beep Boop!");
-				profile.info.bio = b;
-				var scc = await bot.utils.updateProfile(bot, msg.author.id, "info", profile.info);
+				var scc = await bot.utils.updateProfile(bot, msg.author.id, "bio", b);
 				if(scc) msg.channel.createMessage("Profile updated");
 				else msg.channel.createMessage("Something went wrong");
 				break;
 			case "title":
 				var t = (args[1] ? args.slice(1).join(" ") : "Title Here");
-				profile.info.title = t;
-				var scc = await bot.utils.updateProfile(bot, msg.author.id, "info", profile.info);
+				var scc = await bot.utils.updateProfile(bot, msg.author.id, "title", t);
 				if(scc) msg.channel.createMessage("Profile updated");
 				else msg.channel.createMessage("Something went wrong");
 				break;
 			case "color":
 				var c = (args[1] ? parseInt(args[1].replace("#",""),16) : 0);
-				profile.info.color = c;
-				var scc = await bot.utils.updateProfile(bot, msg.author.id, "info", profile.info);
+				var scc = await bot.utils.updateProfile(bot, msg.author.id, "color", c);
 				if(scc) msg.channel.createMessage("Profile updated");
 				else msg.channel.createMessage("Something went wrong");
 				break;
@@ -104,8 +105,8 @@ module.exports.subcommands.edit = {
 							msg.channel.createMessage("Write what you want the new title to be.");
 							resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id,{time: 20000, maxMatches: 1});
 							if(resp[0]){
-								profile.info.title = resp[0].content;
-								var scc = await bot.utils.updateProfile(bot, msg.author.id, "info", profile.info);
+								profile.title = resp[0].content;
+								var scc = await bot.utils.updateProfile(bot, msg.author.id, "title", profile.title);
 								if(scc) msg.channel.createMessage("Profile updated");
 								else msg.channel.createMessage("Something went wrong");
 							} else {
@@ -116,8 +117,8 @@ module.exports.subcommands.edit = {
 							msg.channel.createMessage("Write what you want the new bio to be.");
 							resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id,{time: 20000, maxMatches: 1});
 							if(resp[0]){
-								profile.info.bio = resp[0].content;
-								var scc = await bot.utils.updateProfile(bot, msg.author.id, "info", profile.info);
+								profile.bio = resp[0].content;
+								var scc = await bot.utils.updateProfile(bot, msg.author.id, "bio", profile.bio);
 								if(scc) msg.channel.createMessage("Profile updated");
 								else msg.channel.createMessage("Something went wrong");
 							} else {
@@ -128,8 +129,8 @@ module.exports.subcommands.edit = {
 							msg.channel.createMessage("Write what you want the new color to be.");
 							resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id,{time: 20000, maxMatches: 1});
 							if(resp[0]){
-								profile.info.color = parseInt(resp[0].content.replace("#",""), 16);
-								var scc = await bot.utils.updateProfile(bot, msg.author.id, "info", profile.info);
+								profile.color = parseInt(resp[0].content.replace("#",""), 16);
+								var scc = await bot.utils.updateProfile(bot, msg.author.id, "color", profile.color);
 								if(scc) msg.channel.createMessage("Profile updated");
 								else msg.channel.createMessage("Something went wrong");
 							} else {

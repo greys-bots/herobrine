@@ -20,7 +20,6 @@ module.exports = {
 			reason = "Banned through command";
 		}
 		
-		console.log(membs);
 		var b = await msg.guild.getBans()
 
 		var succ = [];
