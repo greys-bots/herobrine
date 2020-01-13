@@ -23,7 +23,7 @@ module.exports = {
 		return new Promise(res => {
 			bot.db.query(`INSERT INTO configs (server_id, prefix, welcome, autoroles,
 						  disabled, opped, feedback, logged, autopin)
-						  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+						  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 						 [server, data.prefix || "", data.welcome || {}, data.autoroles || "",
 						 data.disabled || {}, data.opped || "", data.feedback || {},
 						 data.logged || [], data.autopin || 2],
