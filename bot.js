@@ -37,14 +37,14 @@ bot.paused = false;
 bot.cur_logs = "";
 
 bot.customActions = [
-	{name: "member.hr", replace: "msg.member.hasRole"},
-	{name: "member.rr", replace: "await msg.member.removeRole"},
-	{name: "member.ar", replace: "await msg.member.addRole"},
-	{name: "member.bl", replace: "await bot.commands.blacklist.execute(bot, msg, [msg.member.id])"},
-	{name: "args.hr", replace: (arg) => "msg.guild.members.find(m => m.id == "+arg+").hasRole"},
-	{name: "args.rr", replace: (arg) => "await msg.guild.members.find(m => m.id == "+arg+").removeRole"},
-	{name: "args.ar", replace: (arg) => "await msg.guild.members.find(m => m.id == "+arg+").addRole"},
-	{name: "args.bl", replace: (arg) => "await bot.commands.blacklist.subcommands.add.execute(bot, msg, [msg.guild.members.find(m => m.id == "+arg+").id])"},
+	{name: "member.hr", 	 replace: "msg.member.hasRole"},
+	{name: "member.rr", 	 replace: "await msg.member.removeRole"},
+	{name: "member.ar", 	 replace: "await msg.member.addRole"},
+	{name: "member.bl", 	 replace: "await bot.commands.blacklist.execute(bot, msg, [msg.member.id])"},
+	{name: "args.hr", 		 replace: (arg) => "msg.guild.members.find(m => m.id == "+arg+").hasRole"},
+	{name: "args.rr", 		 replace: (arg) => "await msg.guild.members.find(m => m.id == "+arg+").removeRole"},
+	{name: "args.ar", 		 replace: (arg) => "await msg.guild.members.find(m => m.id == "+arg+").addRole"},
+	{name: "args.bl", 		 replace: (arg) => "await bot.commands.blacklist.subcommands.add.execute(bot, msg, [msg.guild.members.find(m => m.id == "+arg+").id])"},
 	{name: "rf\\(('.*')\\)", replace: "msg.guild.roles.find(r => r.name.toLowerCase() == $1.toLowerCase()).id", regex: true}
 ]
 

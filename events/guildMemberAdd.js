@@ -5,7 +5,7 @@ module.exports = async (guild, member, bot)=>{
 		if(cfg.welcome.enabled && cfg.welcome.msg){
 			var msg = cfg.welcome.msg;
 			for(var i = 0; i < Object.keys(bot.strings.welc_strings).length; i++) {
-				msg = msg.replace(s,eval("`"+bot.strings.welc_strings[Object.keys(bot.strings.welc_strings)[i]]+"`"),"g");
+				msg = msg.replace(Object.keys(bot.strings.welc_strings)[i], eval("`"+bot.strings.welc_strings[Object.keys(bot.strings.welc_strings)[i]]+"`"),"g");
 			}
 
 			bot.createMessage(cfg.welcome.channel, msg);
