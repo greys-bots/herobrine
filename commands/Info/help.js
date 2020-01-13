@@ -114,8 +114,8 @@ module.exports = {
 					text: "Arguments like [this] are required, arguments like <this> are optional"
 				}
 			}};
-			if(command.desc) embed.fields.push({name: "**Extra**", value: command.desc()});
-			if(command.permissions) embed.fields.push({name: "**Permissions**", value: command.permissions.join(", ")});
+			if(command.desc) embed.embed.fields.push({name: "**Extra**", value: command.desc()});
+			if(command.permissions) embed.embed.fields.push({name: "**Permissions**", value: command.permissions.join(", ")});
 
 			return msg.channel.createMessage(embed);
 		} else {
@@ -136,7 +136,7 @@ module.exports = {
 			}, 10, {addition: ""});
 
 			for(let i=0; i<embeds.length; i++) {
-				if(embeds.length > 1) embeds[i].embed.title += ` (page ${i+1}/${embeds.length}, ${Object.keys(bot.commands).length} commands total)`;
+				if(embeds.length > 1) embeds[i].embed.title += ` (page ${i+1}/${embeds.length}, ${module.commands.length} commands total)`;
 			}
 
 			var message = await msg.channel.createMessage(embeds[0]);

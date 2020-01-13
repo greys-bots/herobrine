@@ -96,6 +96,7 @@ module.exports.subcommands.create = {
 			if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
 			else title = resp[0].content;
 		}
+		await resp[0].delete();
 
 		try {
 			await msg.delete();

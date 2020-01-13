@@ -29,4 +29,6 @@ module.exports = async (msg, emoji, user, bot) => {
 
 	bot.utils.handleReactPostReactions(bot, msg, emoji, user);
 
+	bot.utils.handlePollReactions(bot, msg, emoji, user);
+
 }

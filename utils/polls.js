@@ -224,8 +224,8 @@ module.exports = {
 	handlePollReactions: async (bot, msg, emoji, user) => {
 		var poll = await bot.utils.getPoll(bot, msg.guild.id, msg.channel.id, msg.id);
 		if(!poll) return;
-		var user = bot.users.find(u => u.id == user);
-		if(!user) return;
+		var owner = bot.users.find(u => u.id == poll.user_id);
+		if(!owner) owner = {username: "(user not cached)", discriminator: "0000", avatarURL: "https://discordapp.com/assets/6debd47ed13483642cf09e832ed0bc1b.png"};
 		var embed = msg.embeds[0];
 		if(!embed) embed = {
 			title: poll.title,
@@ -238,8 +238,8 @@ module.exports = {
 				text: `ID: ${poll.hid} | Started: ${bot.formatTime(poll.timestamp)}`
 			},
 			author: {
-				name: `${user.username}#${user.discriminator}`,
-				icon_url: `${user.avatarURL}`
+				name: `${owner.username}#${owner.discriminator}`,
+				icon_url: `${owner.avatarURL}`
 			},
 			timestamp: poll.timestamp
 		}
@@ -291,7 +291,7 @@ module.exports = {
 						embed.footer.text += " | Ended: "+bot.formatTime(date);
 						embed.timestamp = date.toISOString();
 						await bot.editMessage(poll.channel_id, poll.message_id, {embed: embed});
-						await message.removeReactions();
+						await msg.removeReactions();
 					}
 					break;
 				case "\u270f":
