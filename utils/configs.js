@@ -1,8 +1,7 @@
 module.exports = {
 	getConfig: async function(bot, server){
 		return new Promise((res)=> {
-			bot.db.query(`SELECT * FROM configs WHERE server_id=?`,[server],
-			{
+			bot.db.query(`SELECT * FROM configs WHERE server_id=?`,[server], {
 				server_id: String,
 				prefix: String,
 				welcome: val => val ? JSON.parse(val) : null,
@@ -22,10 +21,12 @@ module.exports = {
 	},
 	createConfig: async (bot, server, data = {}) => {
 		return new Promise(res => {
-			bot.db.query(`INSERT INTO configs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			bot.db.query(`INSERT INTO configs (server_id, prefix, welcome, autoroles,
+						  disabled, opped, feedback, logged, autopin)
+						  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 						 [server, data.prefix || "", data.welcome || {}, data.autoroles || "",
 						 data.disabled || {}, data.opped || "", data.feedback || {},
-						 data.logged || [], data.autopin || 2, data.aliases || []],
+						 data.logged || [], data.autopin || 2],
 			(err,rows)=>{
 				if(err) {
 					console.log(err);
