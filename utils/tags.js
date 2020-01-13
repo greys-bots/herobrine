@@ -29,10 +29,10 @@ module.exports = {
 					console.log(val);
 					if(val && val.startsWith("[") && val.endsWith("]")) return JSON.parse(val);
 					else if(val) return val;
-					else return undefined;
+					else return null;
 				}
 			}, (err, rows) => {
-				if(rows[0]) {
+				if(rows && rows[0]) {
 					console.log(rows[0].value)
 					res(rows[0]);
 				} else {
