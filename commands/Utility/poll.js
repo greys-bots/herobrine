@@ -159,18 +159,6 @@ module.exports.subcommands.create = {
 	guildOnly: true
 }
 
-module.exports.subcommands.list = {
-	help: ()=> "List the server's polls",
-	usage: ()=> [" - Opens a paginated menu of all the past and currently active polls in the server",
-				 " active - Lists only the server's active polls"],
-	execute: async (bot, msg, args) => {
-		
-	},
-	alias: ["view", "ls", "l"],
-	guildOnly: true,
-	permissions: ["manageMessages"]
-}
-
 module.exports.subcommands.find = {
 	help: ()=> "Find polls that match a specific query",
 	usage: ()=> [" [words to search] - Find polls with certain words",
