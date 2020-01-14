@@ -218,7 +218,7 @@ module.exports.subcommands.add = {
 
 			if(category.rawroles.indexOf(rr.id) > -1) {
 				result.push({succ: false, name: role.name, reason: "React role already in category"});
-			} else if(category.roles.find(r => r.emoji == rr.emoji)) {
+			} else if(category.roles && category.roles.find(r => r.emoji == rr.emoji)) {
 				result.push({succ: true, name: role.name, reason: "React role with that emoji already in category"});
 			} else {
 				result.push({succ: true, name: role.name});

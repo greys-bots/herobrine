@@ -37,8 +37,8 @@ module.exports = {
 	},
 	createProfile: async (bot, user) => {
 		return new Promise(res => {
-			bot.db.query(`INSERT INTO profiles (user_id, title, bio, color, badges, level, exp, cash, daily, disabled) 
-						  VALUES (?,?,?,?,?,?,?,?)`,
+			bot.db.query(`INSERT INTO profiles (user_id, title, bio, color, badges, lvl, exp, cash, daily, disabled) 
+						  VALUES (?,?,?,?,?,?,?,?,?,?)`,
 						 [user,"Title Here","Beep boop!",parseInt("aaaaaa", 16),{},1,5,5,0,0],
 			(err,rows)=>{
 				if(err){
