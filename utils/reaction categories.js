@@ -9,24 +9,23 @@ module.exports = {
 				description: String,
 				roles: JSON.parse,
 				posts: JSON.parse
-			}, (err, rows)=>{
+			}, async (err, rows) => {
 				if(err) {
 					console.log(err);
 					res(undefined);
 				} else {
-					res(rows);
+					if(rows[0]) {
+						var categories = [];
+						for(row of rows) {
+							row.rawroles = row.roles;
+							var roles = await bot.utils.getReactionRolesByCategory(bot, server, row.hid);
+							if(roles) row.roles = roles;
+							else row.roles = [];
+							categories.push(row);
+						}
+						res(categories);
+					} else res([])
 				}
-			})
-		})
-	},
-	createReactionCategory: async (bot, hid, server, name, description) => {
-		return new Promise(res => {
-			bot.db.query(`INSERT INTO reactcategories (hid, server_id, name, description, roles, posts) VALUES (?,?,?,?,?,?)`,
-				[hid, server, name, description, [], []], (err, rows)=> {
-				if(err) {
-					console.log(err);
-					res(false);
-				} else res(true);
 			})
 		})
 	},
@@ -40,23 +39,39 @@ module.exports = {
 				description: String,
 				roles: JSON.parse,
 				posts: JSON.parse
-			}, (err, rows)=>{
+			}, async (err, rows)=>{
 				if(err) {
 					console.log(err);
 					res(undefined);
 				} else {
-					res(rows[0]);
+					if(rows[0]) {
+						rows[0].rawroles = rows[0].roles;
+						var roles = await bot.utils.getReactionRolesByCategory(bot, server, rows[0].hid);
+						if(roles) rows[0].roles = roles;
+						else row.roles = [];
+						res(rows[0]);
+					} else res(undefined);
 				}
 			})
 		})
 	},
 	getReactionCategorieswithRole: async (bot, server, role) => {
-		console.log("grabbing categories...")
 		return new Promise(async res => {
 			var categories = await bot.utils.getReactionCategories(bot, server);
-			if(categories) categories = categories.filter(c => c.roles.includes(role));
+			if(categories) categories = categories.filter(c => c.rawroles.includes(role));
 			if(categories) res(categories);
 			else res(undefined);
+		})
+	},
+	createReactionCategory: async (bot, hid, server, name, description) => {
+		return new Promise(res => {
+			bot.db.query(`INSERT INTO reactcategories (hid, server_id, name, description, roles, posts) VALUES (?,?,?,?,?,?)`,
+				[hid, server, name, description, [], []], (err, rows)=> {
+				if(err) {
+					console.log(err);
+					res(false);
+				} else res(true);
+			})
 		})
 	},
 	updateReactionCategory: async (bot, server, hid, key, val) => {

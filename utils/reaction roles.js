@@ -23,8 +23,19 @@ module.exports = {
 			})
 		})
 	},
+	getReactionRoleByID: async (bot, id) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT * FROM reactroles WHERE id=?`,[id],(err, rows)=>{
+				if(err) {
+					console.log(err);
+					res(undefined);
+				} else {
+					res(rows[0]);
+				}
+			})
+		})
+	},
 	getReactionRolesByCategory: async (bot, server, category) => {
-		var category = await bot.utils.getReactionCategory(bot, server, category);
 		return new Promise(res => {
 			bot.db.query(`SELECT * FROM reactcategories WHERE server_id=? AND hid=?`,[server, category], {
 				id: Number,
@@ -32,7 +43,8 @@ module.exports = {
 				server_id: String,
 				name: String,
 				description: String,
-				roles: JSON.parse
+				roles: JSON.parse,
+				posts: JSON.parse
 			}, async (err, rows)=>{
 				if(err) {
 					console.log(err);
@@ -41,16 +53,13 @@ module.exports = {
 					if(rows[0] && rows[0].roles) {
 						var roles = [];
 						for(var i = 0; i < rows[0].roles.length; i++) {
-							bot.db.query(`SELECT * FROM reactroles WHERE id=?`,[r], (err, rls)=> {
-								roles[i] = rls[0]
-							});
+							var role = await bot.utils.getReactionRoleByID(bot, rows[0].roles[i]);
+							roles[i] = role; 
 						}
-						
 						res(roles)
 					} else {
 						res(undefined);
 					}
-
 				}
 			})
 		})
