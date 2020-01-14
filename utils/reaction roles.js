@@ -38,7 +38,7 @@ module.exports = {
 					console.log(err);
 					res(undefined);
 				} else {
-					if(rows[0].roles) {
+					if(rows[0] && rows[0].roles) {
 						var roles = [];
 						for(var i = 0; i < rows[0].roles.length; i++) {
 							bot.db.query(`SELECT * FROM reactroles WHERE id=?`,[r], (err, rls)=> {
