@@ -277,7 +277,7 @@ module.exports.subcommands.remove = {
 			}
 
 			result.push({succ: true, name: role.name});
-			category.rawroles = category.roles.filter(x => x != rr.id);
+			category.rawroles = category.rawroles.filter(x => x != rr.id);
 		}
 
 		var scc = await bot.utils.updateReactionCategory(bot, msg.guild.id, category.hid, "roles", category.rawroles);
