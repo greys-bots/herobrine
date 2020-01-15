@@ -307,7 +307,7 @@ module.exports = {
 	handleReactPostReactions: async (bot, msg, emoji, user) => {
 		var post = await bot.utils.getReactPost(bot, msg.guild.id, msg.id);
 		if(!post) return;
-		var role = post.roles.find(r => [emoji.name, "a"+emoji.name].includes(r));
+		var role = post.roles.find(r => [emoji.name, "a"+emoji.name].includes(r.emoji));
 		if(!role) return;
 		role = msg.guild.roles.find(r => r.id == role.role_id);
 		if(!role) return;

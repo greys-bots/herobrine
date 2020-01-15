@@ -37,8 +37,8 @@ module.exports.subcommands.add = {
 		var resp = await bot.fetch(url);
 		var img = Buffer.from(await resp.buffer());
 		if(img.length > 256000) return msg.channel.createMessage("Image is too big, must be below 256kb");
-		bot.fs.writeFileSync(__dirname+`/../${msg.guild.id}.emoji`,img);
-		var uri = new bot.duri(__dirname+`/../${msg.guild.id}.emoji`);
+		bot.fs.writeFileSync(__dirname+`/../../${msg.guild.id}.emoji`,img);
+		var uri = new bot.duri(__dirname+`/../../${msg.guild.id}.emoji`);
 
 		try {
 			await msg.guild.createEmoji({name: args[0], image: uri.content});
@@ -47,7 +47,7 @@ module.exports.subcommands.add = {
 			return msg.channel.createMessage("ERR: "+e.message);
 		}
 		msg.channel.createMessage("Emoji added!");
-		bot.fs.unlinkSync(__dirname+`/../${msg.guild.id}.emoji`);
+		bot.fs.unlinkSync(__dirname+`/../../${msg.guild.id}.emoji`);
 	},
 	permissions: ['manageEmojis'],
 	guildOnly: true,
