@@ -31,7 +31,8 @@ module.exports = {
 					console.log(err);
 					res(undefined);
 				} else {
-					res(rows[0]);
+					if(rows[0]) res(rows);
+					else res(undefined);
 				}
 			})
 		})
