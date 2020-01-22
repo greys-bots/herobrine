@@ -1,4 +1,3 @@
-
 module.exports = {
 	help: ()=> "Sets, views, or edits reaction roles for the server",
 	usage: ()=> [" - Views available reaction role configs",
@@ -11,31 +10,30 @@ module.exports = {
 		var roles = await bot.utils.getReactionRoles(bot, msg.guild.id);
 		if(roles.length == 0 || !roles) return msg.channel.createMessage('No reaction roles available');
 		var invalid = [];
-		if(roles.length > 10) {
-			var embeds = await bot.utils.genEmbeds(bot, roles, async dat => {
-				var rl = msg.guild.roles.find(x => x.id == dat.role_id);
-				 if(rl) {
-				 	return {name: `${rl.name} (${dat.emoji.includes(":") ? `<${dat.emoji}>` : dat.emoji})`, value: dat.description || "*(no description provided)*"}
-				 } else {
-				 	return {name: dat.role_id, value: '*Role not found. Removing after list.*'}
-				 }
-			}, {
-				title: "Server Reaction Roles",
-				description: "All available roles for the server",
-			}, 10);
 
-			embeds.forEach(e => {
-				console.log(e)
-				if(e.embed.fields) {
-					console.log(e.fields)
-					e.embed.fields.forEach(f => {
-						if(f.value == '*Role not found. Removing after list.*')
-						invalid.push(f.name);
-					})
-				}
-			})
-			var message = await msg.channel.createMessage(embeds[0]);
+		var embeds = await bot.utils.genEmbeds(bot, roles, async dat => {
+			var rl = msg.guild.roles.find(x => x.id == dat.role_id);
+			 if(rl) {
+			 	return {name: `${rl.name} (${dat.emoji.includes(":") ? `<${dat.emoji}>` : dat.emoji})`, value: dat.description || "*(no description provided)*"}
+			 } else {
+			 	return {name: dat.role_id, value: '*Role not found. Removing after list.*'}
+			 }
+		}, {
+			title: "Server Reaction Roles",
+			description: "All available roles for the server",
+		}, 10);
 
+		embeds.forEach(e => {
+			if(e.embed.fields) {
+				e.embed.fields.forEach(f => {
+					if(f.value == '*Role not found. Removing after list.*')
+					invalid.push(f.name);
+				})
+			}
+		})
+		
+		var message = await msg.channel.createMessage(embeds[0]);
+		if(embeds[1]) {
 			if(!bot.menus) bot.menus = {};
 			bot.menus[message.id] = {
 				user: msg.author.id,
@@ -53,22 +51,8 @@ module.exports = {
 			message.addReaction("\u2b05");
 			message.addReaction("\u27a1");
 			message.addReaction("\u23f9");
-		} else {
-			msg.channel.createMessage({ embed: {
-				title: "Server Reaction Roles",
-				description: "All available roles for the server",
-				fields: roles.map(r => {
-					var rl = msg.guild.roles.find(x => x.id == r.role_id);
-					 if(rl) {
-					 	return {name: `${rl.name} (${r.emoji.includes(":") ? `<${r.emoji}>` : r.emoji})`, value: r.description || "*(no description provided)*"}
-					 } else {
-					 	invalid.push(r.role_id);
-					 	return {name: r.role_id, value: '*Role not found. Removing after list.*'}
-					 }
-				})
-			}})
 		}
-
+			
 		if(invalid.length > 0) {
 			console.log(invalid);
 			await bot.utils.asyncForEach(invalid, async r => {

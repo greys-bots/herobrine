@@ -28,8 +28,7 @@ bot.moment 		= require('moment')
 bot.chrono 		= new chrono.Chrono();
 bot.scheduler 	= require('node-schedule');
 
-bot.commands 	= {};
-bot.modules 	= {};
+bot.utils 		= {};
 bot.reminders 	= {};
 
 bot.paused = false;
@@ -352,7 +351,6 @@ const setup = async () => {
 		bot.on(f.slice(0,-3), (...args) => require("./events/"+f)(...args,bot));
 	});
 
-	bot.utils = {};
 	files = bot.fs.readdirSync("./utils");
 	files.forEach(f => Object.assign(bot.utils, require("./utils/"+f)));
 

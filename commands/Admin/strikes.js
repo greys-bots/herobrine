@@ -1,52 +1,116 @@
 module.exports = {
 	help: ()=> "Add, remove, and list strikes given to people",
-	usage: ()=> [" [user] - Lists all the user's current strikes and their IDs",
+	usage: ()=> [" - Lists all strikes that have been given in the server",
+				 " [user] - Lists all the user's current strikes and their IDs",
+				 " [hid] - Gets a specific strike",
 				 " add [user] <reason> - Add a strike to a user. If no reason is given, will default to 'No reason'",
 				 " remove [user] [strikeID | all] - Removes the given strike from the user, or all strikes if 'all' is given as an argument"],
 	execute: async (bot, msg, args) => {
-		if(!args[0]) return msg.channel.createMessage("Please provide a user to list strikes on");
+		if(!args[0]) {
+			var strikes = await bot.utils.getAllStrikes(bot, msg.guild.id);
+			if(!strikes || !strikes[0]) return msg.channel.createMessage("No strikes found for this server");
+			var users = [...new Set(strikes.map(s => s.user_id))];
+			console.log(users);
 
-		var user = msg.guild.members.find(m => m.id == args[0].replace(/[<@!>]/g, "") || (m.username + "#" + m.discriminator).toLowerCase() == args[0].toLowerCase());
-		if(!user) return msg.channel.createMessage("Couldn't find that user");
-		
-		var strikes = await bot.utils.getStrikes(bot, msg.guild.id, user.id);
-		if(!strikes || !strikes[0]) return msg.channel.createMessage("That user has no strikes");
+			var embeds = [];
+			for(var i = 0; i < users.length; i++) {
+				var user = await bot.utils.fetchUser(bot, users[i]);
+				if(!user) user = {username: "Non-cached User", discriminator: "#0000", id: users[i]};
+				var userstrikes = strikes.filter(x => x.user_id == users[i]);
 
-		if(strikes.length <= 10) {
-			msg.channel.createMessage({embed: {
-				title: `Strikes for ${user.username}#${user.discriminator}`,
-				description: `Current strike count: ${strikes.length}`,
-				fields: strikes.map(s => {
+				var tmp = await bot.utils.genEmbeds(bot, userstrikes, async s => {
 					return {name: s.hid, value: s.reason}
-				})
-			}})
+				}, {
+					title: `Strikes for ${user.username}#${user.discriminator} (${user.id})`,
+					description: `Current strike count: ${userstrikes.length}`
+				}, 10);
+
+				embeds = embeds.concat(tmp);
+			}
+
+			if(embeds[1]) {
+				for(let i=0; i<embeds.length; i++) {
+					embeds[i].embed.title += ` (page ${i+1}/${embeds.length}, ${strikes.length} strikes total)`;
+				}
+			}
+
+			var message = await msg.channel.createMessage(embeds[0]);
+			if(embeds[1]) {
+				if(!bot.menus) bot.menus = {};
+				bot.menus[message.id] = {
+					user: msg.author.id,
+					data: embeds,
+					index: 0,
+					timeout: setTimeout(()=> {
+						if(!bot.menus[message.id]) return;
+						try {
+							message.removeReactions();
+						} catch(e) {
+							console.log(e);
+						}
+						delete bot.menus[msg.author.id];
+					}, 900000),
+					execute: bot.utils.paginateEmbeds
+				};
+				["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
+			}
+
+			return;
+		}
+
+		if(Number.isNaN(parseInt(args[0].replace(/[<@!>]/g,"")))) {
+			var strike = await bot.utils.getStrike(bot, msg.guild.id, args[0].toLowerCase());
+			if(!strike) return msg.channel.createMessage("Strike not found");
+
+			var user = await bot.utils.fetchUser(bot, strike.user_id);
+			if(!user) user = {
+				username: "Non-cached User",
+				discriminator: "#0000",
+				id: strike.user_id
+			};
+
+			msg.channel.createMessage({embed: {
+				title: `Strike ${strike.hid}`,
+				description: [
+				`**User:**\n${user.username}#${user.discriminator} (${user.id})\n\n`,
+				`**Reason:**\n${strike.reason}`
+				].join(""),
+
+			}});
 		} else {
+			var user = await bot.utils.fetchUser(bot, args[0].replace(/[<@!>]/g,""))
+			if(!user) return msg.channel.createMessage("Couldn't find that user");
+			
+			var strikes = await bot.utils.getStrikes(bot, msg.guild.id, user.id);
+			if(!strikes || !strikes[0]) return msg.channel.createMessage("That user has no strikes");
+
 			var embeds = await bot.utils.genEmbeds(bot, strikes, async s => {
 				return {name: s.hid, value: s.reason}
 			}, {
-				title: `Strikes for ${user.username}#${user.discriminator}`,
+				title: `Strikes for ${user.username}#${user.discriminator} (${user.id})`,
 				description: `Current strike count: ${strikes.length}`
 			}, 10);
 
 			var message = await msg.channel.createMessage(embeds[0]);
-
-			if(!bot.menus) bot.menus = {};
-			bot.menus[message.id] = {
-				user: msg.author.id,
-				index: 0,
-				data: embeds,
-				timeout: setTimeout(()=> {
-					if(!bot.menus[message.id]) return;
-					message.removeReaction("\u2b05");
-					message.removeReaction("\u27a1");
-					message.removeReaction("\u23f9");
-					delete bot.menus[message.id];
-				}, 900000),
-				execute: bot.utils.paginateEmbeds
-			};
-			message.addReaction("\u2b05");
-			message.addReaction("\u27a1");
-			message.addReaction("\u23f9");
+			if(embeds[1]) {
+				if(!bot.menus) bot.menus = {};
+				bot.menus[message.id] = {
+					user: msg.author.id,
+					index: 0,
+					data: embeds,
+					timeout: setTimeout(()=> {
+						if(!bot.menus[message.id]) return;
+						try {
+							message.removeReactions();
+						} catch(e) {
+							console.log(e);
+						}
+						delete bot.menus[message.id];
+					}, 900000),
+					execute: bot.utils.paginateEmbeds
+				};
+				["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
+			}
 		}
 	},
 	subcommands: {},

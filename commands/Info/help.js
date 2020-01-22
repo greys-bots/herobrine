@@ -69,9 +69,11 @@ module.exports = {
 				embeds = embeds.concat(tmp_embeds);
 			}
 
-			for(let i=0; i<embeds.length; i++) {
-				if(embeds.length > 1) embeds[i].embed.title += ` (page ${i+1}/${embeds.length}, ${bot.commands.size} commands total)`;
-			}
+			if(embeds[1]) {
+				for(let i=0; i<embeds.length; i++) {
+					embeds[i].embed.title += ` (page ${i+1}/${embeds.length}, ${bot.commands.size} commands total)`;
+				}
+			}	
 
 			var message = await msg.channel.createMessage(embeds[0]);
 			if(embeds[1]) {
@@ -96,30 +98,8 @@ module.exports = {
 			return;
 		}
 
-		let {command} = await bot.parseCommand(bot, msg, args);
-		if(command) {
-			var embed = {embed: {
-				title: `Help | ${command.name.toLowerCase()}`,
-				description: command.help(),
-				fields: [
-					{name: "**Usage**", value: `${command.usage().map(c => `**${bot.cfg.prefix[0] + command.name}**${c}`).join("\n")}`},
-					{name: "**Aliases**", value: `${command.alias ? command.alias.join(", ") : "(none)"}`},
-					{name: "**Subcommands**", value: `${command.subcommands ?
-							command.subcommands.map(sc => `**${bot.cfg.prefix[0]}${sc.name}** - ${sc.help()}`).join("\n") : 
-							"(none)"}`}
-				],
-				color: parseInt(command.module.color, 16) || parseInt("555555", 16),
-				footer: {
-					icon_url: bot.user.avatarURL,
-					text: "Arguments like [this] are required, arguments like <this> are optional"
-				}
-			}};
-			if(command.desc) embed.embed.fields.push({name: "**Extra**", value: command.desc()});
-			if(command.permissions) embed.embed.fields.push({name: "**Permissions**", value: command.permissions.join(", ")});
-
-			return msg.channel.createMessage(embed);
-		} else {
-			let module = bot.modules.get(args[0].toLowerCase());
+		if(bot.modules.get(args.join(" ").toLowerCase())) {
+			let module = bot.modules.get(args.join(" ").toLowerCase());
 			if(!module) return "Command/module not found";
 			module.commands = module.commands.map(c => c);
 
@@ -159,8 +139,29 @@ module.exports = {
 				};
 				["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
 			}
-			return;
-		}
+		} else if(bot.commands.get(bot.aliases.get(args[0].toLowerCase()))) {
+			let {command} = await bot.parseCommand(bot, msg, args);
+			var embed = {embed: {
+				title: `Help | ${command.name.toLowerCase()}`,
+				description: command.help(),
+				fields: [
+					{name: "**Usage**", value: `${command.usage().map(c => `**${bot.cfg.prefix[0] + command.name}**${c}`).join("\n")}`},
+					{name: "**Aliases**", value: `${command.alias ? command.alias.join(", ") : "(none)"}`},
+					{name: "**Subcommands**", value: `${command.subcommands ?
+							command.subcommands.map(sc => `**${bot.cfg.prefix[0]}${sc.name}** - ${sc.help()}`).join("\n") : 
+							"(none)"}`}
+				],
+				color: parseInt(command.module.color, 16) || parseInt("555555", 16),
+				footer: {
+					icon_url: bot.user.avatarURL,
+					text: "Arguments like [this] are required, arguments like <this> are optional"
+				}
+			}};
+			if(command.desc) embed.embed.fields.push({name: "**Extra**", value: command.desc()});
+			if(command.permissions) embed.embed.fields.push({name: "**Permissions**", value: command.permissions.join(", ")});
+
+			return msg.channel.createMessage(embed);
+		} else msg.channel.createMessage("Command/module not found");
 	},
 	alias: ["h", "halp", "?"]
 }

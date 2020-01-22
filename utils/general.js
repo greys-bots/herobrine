@@ -156,5 +156,19 @@ module.exports = {
 				res(true);
 			}
 		})
+	},
+
+	fetchUser: async (bot, id) => {
+		return new Promise(async res => {
+			var user = bot.users.find(u => u.id == id);
+			try {
+				if(!user) user = await bot.getRESTUser(id);
+			} catch(e) {
+				console.log(e);
+				user = undefined;
+			}
+
+			res(user);
+		})
 	}
 }

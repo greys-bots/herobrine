@@ -162,7 +162,7 @@ module.exports = {
 			var board = await bot.utils.getStarboardByEmoji(bot, msg.guild.id, emoji.name);
 			if(!board) return;
 			var cfg = await bot.utils.getConfig(bot, msg.guild.id);
-			var tolerance = board.tolerance ? board.tolerance : cfg.autopin || 2;
+			var tolerance = board.tolerance ? board.tolerance : cfg.starboard || 2;
 			var member = msg.guild.members.find(m => m.id == user);
 			if(!member) return;
 

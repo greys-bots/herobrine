@@ -18,6 +18,42 @@ module.exports = {
 			})
 		})
 	},
+	getAllStrikes: async (bot, server) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT * FROM strikes WHERE server_id = ?`, [server], {
+				id: Number,
+				hid: String,
+				server_id: String,
+				user_id: String,
+				reason: String
+			}, (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(undefined);
+				} else {
+					res(rows[0]);
+				}
+			})
+		})
+	},
+	getStrike: async (bot, server, hid) => {
+		return new Promise(res => {
+			bot.db.query(`SELECT * FROM strikes WHERE server_id = ? AND hid = ?`, [server, hid], {
+				id: Number,
+				hid: String,
+				server_id: String,
+				user_id: String,
+				reason: String
+			}, (err, rows) => {
+				if(err) {
+					console.log(err);
+					res(undefined);
+				} else {
+					res(rows[0]);
+				}
+			})
+		})
+	},
 	addStrike: async (bot, server, user, reason) => {
 		return new Promise(res => {
 			bot.db.query(`INSERT INTO strikes (hid, server_id, user_id, reason) VALUES (?,?,?,?)`,
