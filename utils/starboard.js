@@ -124,7 +124,7 @@ module.exports = {
 		return new Promise(async res => {
 			var attach = [];
 			if(msg.attachments && msg.attachments[0]) {
-				for(var i = 0; i < msg.attachments.length; i++) {
+				for(var f of msg.attachments) {
 					var att = await bot.fetch(f.url);
 					attach.push({file: Buffer.from(await att.buffer()), name: f.filename});
 				}
