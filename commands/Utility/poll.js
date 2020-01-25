@@ -89,6 +89,13 @@ module.exports.subcommands.create = {
 		var desc;
 		var choices;
 
+		try {
+			await msg.delete();
+		} catch(e) {
+			console.log(e);
+			return msg.channel.createMessage("ERR: can't delete messages. Make sure I have the `manageMessages` permission and then try again");
+		}
+
 		if(args[0]) title = args.join(" ");
 		else {
 			message = await msg.channel.createMessage("Please enter a title for your poll. You have two minutes to do this");
@@ -98,14 +105,8 @@ module.exports.subcommands.create = {
 		}
 		await resp[0].delete();
 
-		try {
-			await msg.delete();
-		} catch(e) {
-			console.log(e);
-			return msg.channel.createMessage("ERR: can't delete messages. Make sure I have the `manageMessages` permission and then try again");
-		}
-
-		message = await msg.channel.createMessage("Please enter a description for your poll. If you don't need one, you can type `skip` to skip it. You have two (2) minutes to do this");
+		if(!message) message = await msg.channel.createMessage("Please enter a description for your poll. If you don't need one, you can type `skip` to skip it. You have two (2) minutes to do this");
+		else await message.edit("Please enter a description for your poll. If you don't need one, you can type `skip` to skip it. You have two (2) minutes to do this");
 		resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {maxMatches: 1, time: 120000});
 		if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
 		else {
