@@ -12,7 +12,7 @@ module.exports = {
 				if(current.embed.fields.length < 10) {
 					var rl = msg.guild.roles.find(x => x.id == roles[i].role_id);
 					if(rl) {
-					 	current.embed.fields.push({name: `${rl.name} (${roles[i].emoji.includes(":") ? `<${roles[i].emoji}>` : roles[i].emoji})`, value: roles[i].description || "*(no description provided)*"});
+					 	current.embed.fields.push({name: `${rl.name} (${roles[i].emoji.includes(":") ? `<${roles[i].emoji}>` : roles[i].emoji})`, value: `Description: ${roles[i].description || "*(no description provided)*"}\nPreview: ${rl.mention}`});
 					 	current.roles.push({role_id: roles[i].role_id, emoji: roles[i].emoji});
 					 	current.emoji.push(roles[i].emoji);
 					}
@@ -25,7 +25,7 @@ module.exports = {
 					}, roles: [], emoji: []};
 					var rl = msg.guild.roles.find(x => x.id == roles[i].role_id);
 					if(rl) {
-					 	current.embed.fields.push({name: `${rl.name} (${roles[i].emoji.includes(":") ? `<${roles[i].emoji}>` : roles[i].emoji})`, value: roles[i].description || "*(no description provided)*"});
+					 	current.embed.fields.push({name: `${rl.name} (${roles[i].emoji.includes(":") ? `<${roles[i].emoji}>` : roles[i].emoji})`, value: `Description: ${roles[i].description || "*(no description provided)*"}\nPreview: ${rl.mention}`});
 					 	current.roles.push({role_id: roles[i].role_id, emoji: roles[i].emoji});
 					 	current.emoji.push(roles[i].emoji);
 					}
@@ -104,7 +104,7 @@ module.exports = {
 		return new Promise(async res => {
 			var cat = await bot.utils.getReactionCategory(bot, id, categoryid);
 			if(!cat) return res(false);
-			if(!cat.posts || !cat.posts[0]) return res(true);
+			if(!cat.posts || !cat.posts[0]) return res([{success: true}]);
 			var roles = await bot.utils.getReactionRolesByCategory(bot, msg.guild.id, cat.hid);
 			if(!roles) return res(false);
 			var result = [];
@@ -144,7 +144,7 @@ module.exports = {
 							description: cat.description,
 							fields: roles.map(r => {
 								var rl = msg.guild.roles.find(x => x.id == r.role_id);
-								return {name: `${rl.name} (${r.emoji.includes(":") ? `<${r.emoji}>` : r.emoji})`, value: r.description || "*(no description provided)*"}
+								return {name: `${rl.name} (${r.emoji.includes(":") ? `<${r.emoji}>` : r.emoji})`, value: `Description: ${r.description || "*(no description provided)*"}\nPreview: ${rl.mention}`}
 							})
 						}})
 						var emoji = roles.map(r => r.emoji);
@@ -153,6 +153,7 @@ module.exports = {
 					} catch(e) {
 						console.log(e);
 						result.push({...pst, success: false});
+						if(e.message.includes("Unknown Message")) await bot.utils.deleteReactPost(bot, pst.server_id, pst.message_id);
 						continue;
 					}
 
@@ -184,6 +185,7 @@ module.exports = {
 					} catch(e) {
 						console.log(e);
 						result.push({...pst, success: false});
+						if(e.message.includes("Unknown Message")) await bot.utils.deleteReactPost(bot, pst.server_id, pst.message_id);
 						continue;
 					}
 
@@ -196,6 +198,7 @@ module.exports = {
 					})
 				}
 			}
+			console.log(result)
 			res(result);
 		})
 	},
@@ -250,7 +253,7 @@ module.exports = {
 				for(var i = 0; i < post.roles.length; i++) {
 					var r = await bot.utils.getReactionRole(bot, server, post.roles[i].role_id);
 					var r2 = message.channel.guild.roles.find(x => x.id == post.roles[i].role_id);
-					roles.push({name: `${r2.name} (${r.emoji})`, description: r.description || "*(no description provided)*", emoji: r.emoji});
+					roles.push({name: `${r2.name} (${r.emoji})`, description: `Description: ${r.description || "*(no description provided)*"}\nPreview: ${r2.mention}`, emoji: r.emoji});
 				}
 
 				var message;

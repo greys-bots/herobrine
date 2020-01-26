@@ -20,7 +20,7 @@ module.exports = {
 			var embeds = await bot.utils.genEmbeds(bot, category.roles, rl => {
 				var role = msg.guild.roles.find(r => r.id == rl.role_id);
 				if(role) {
-					return {name: `${role.name} (${rl.emoji.includes(":") ? `<${rl.emoji}>` : rl.emoji})`, value: rl.description || "*(no description provided)*"}
+					return {name: `${role.name} (${rl.emoji.includes(":") ? `<${rl.emoji}>` : rl.emoji})`, value: `Description: ${rl.description || "*(no description provided)*"}\nPreview: ${role.mention}`}
 				} else {
 					invalid.push(rl.role_id);
 					return {name: rl.role_id, value: '*(invalid role)*'}
@@ -72,7 +72,7 @@ module.exports = {
 				tmp = await bot.utils.genEmbeds(bot, category.roles, rl => {
 					var role = msg.guild.roles.find(r => r.id == rl.role_id);
 					if(role) {
-						return {name: `${role.name} (${rl.emoji.includes(":") ? `<${rl.emoji}>` : rl.emoji})`, value: rl.description || "*(no description provided)*"}
+						return {name: `${role.name} (${rl.emoji.includes(":") ? `<${rl.emoji}>` : rl.emoji})`, value: `Description: ${rl.description || "*(no description provided)*"}\nPreview: ${role.mention}`}
 					} else {
 						invalid.push(rl.role_id);
 						return {name: rl.role_id, value: '*(invalid role)*'}
@@ -246,6 +246,7 @@ module.exports.subcommands.add = {
 			)
 		} else {
 			scc = await bot.utils.updateReactCategoryPosts(bot, msg.guild.id, msg, category.hid);
+			console.log(scc);
 			if(scc.filter(x => !x.success).length > 0) msg.channel.createMessage("Something went wrong while updating posts")
 		}
 	},
@@ -291,6 +292,7 @@ module.exports.subcommands.remove = {
 			]
 		}})
 		scc = await bot.utils.updateReactCategoryPosts(bot, msg.guild.id, msg, category.hid);
+		console.log(scc);
 		if(scc.filter(x => !x.success).length > 0) msg.channel.createMessage("Something went wrong while updating posts")
 		else if(category.roles.length == 0) msg.channel.createMessage("Category empty; posts have been deleted. This does not remove the category itself");
 		else if(Math.ceil(category.rawroles.length/10)-1 < max) msg.channel.createMessage("Extra posts have been deleted")
@@ -320,7 +322,7 @@ module.exports.subcommands.post = {
 					reacts.push(r.emoji);
 					pass.push(r.role_id);
 				 	return {name: `${role.name} (${r.emoji.includes(":") ? `<${r.emoji}>` : r.emoji})`,
-				 			value: r.description || "*(no description provided)*\n\n"};
+				 			value: `Description: ${r.description || "*(no description provided)*"}\nPreview: ${role.mention}`};
 				} else {
 				 	return undefined
 				}

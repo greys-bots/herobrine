@@ -14,7 +14,7 @@ module.exports = {
 		var embeds = await bot.utils.genEmbeds(bot, roles, async dat => {
 			var rl = msg.guild.roles.find(x => x.id == dat.role_id);
 			 if(rl) {
-			 	return {name: `${rl.name} (${dat.emoji.includes(":") ? `<${dat.emoji}>` : dat.emoji})`, value: dat.description || "*(no description provided)*"}
+			 	return {name: `${rl.name} (${dat.emoji.includes(":") ? `<${dat.emoji}>` : dat.emoji})`, value: `Description: ${dat.description || "*(no description provided)*"}\nPreview: ${rl.mention}`}
 			 } else {
 			 	return {name: dat.role_id, value: '*Role not found. Removing after list.*'}
 			 }
@@ -41,16 +41,17 @@ module.exports = {
 				data: embeds,
 				timeout: setTimeout(()=> {
 					if(!bot.menus[message.id]) return;
-					message.removeReaction("\u2b05");
-					message.removeReaction("\u27a1");
-					message.removeReaction("\u23f9");
+					try {
+						message.removeReactions();
+					} catch(e) {
+						console.log(e);
+					}
 					delete bot.menus[message.id];
 				}, 900000),
 				execute: bot.utils.paginateEmbeds
 			};
-			message.addReaction("\u2b05");
-			message.addReaction("\u27a1");
-			message.addReaction("\u23f9");
+
+			["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
 		}
 			
 		if(invalid.length > 0) {
