@@ -346,6 +346,16 @@ const setup = async () => {
 		private		INTEGER
 	)`);
 
+	bot.db.query(`CREATE TABLE IF NOT EXISTS welcome_configs (
+		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
+		server_id	TEXT,
+		preroles	TEXT,
+		postroles	TEXT,
+		channel 	TEXT,
+		message 	TEXT,
+		enabled		INTEGER
+	)`);
+
 	files = bot.fs.readdirSync("./events");
 	files.forEach(f => {
 		bot.on(f.slice(0,-3), (...args) => require("./events/"+f)(...args,bot));

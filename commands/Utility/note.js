@@ -80,9 +80,7 @@ module.exports = {
 					}, 900000),
 					execute: bot.utils.paginateEmbeds
 				};
-				message.addReaction("\u2b05");
-				message.addReaction("\u27a1");
-				message.addReaction("\u23f9");
+				["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
 			} else {
 				msg.channel.createMessage({embed: {
 					title: "Notes",

@@ -1,6 +1,6 @@
 module.exports = async (msg, emoji, user, bot) => {
 	try {
-		if(!msg.guild) msg = await bot.getMessage(msg.channel.id, msg.id);
+		if(!msg.reactions) msg = await bot.getMessage(msg.channel.id, msg.id);
 	} catch(e) {
 		//race condition: message reaction added, message immediately deleted?
 		//alternatively: reaction added, access revoked, or request times out
