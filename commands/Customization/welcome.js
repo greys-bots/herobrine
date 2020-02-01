@@ -352,7 +352,7 @@ module.exports.subcommands.preroles = {
 		cfg.preroles = [];
 		var results = [];
 		for(var i = 0; i < args.length; i++) {
-			var role = msg.guild.roles.find(r => r.id == args[i].replace(/[<#>]/g,"") || r.name == args[i].toLowerCase());
+			var role = msg.guild.roles.find(r => r.id == args[i].replace(/[<#>]/g,"") || r.name.toLowerCase() == args[i].toLowerCase());
 			if(role) {
 				cfg.preroles.push(role.id);
 				results.push({name: role.name})
@@ -434,7 +434,7 @@ module.exports.subcommands.postroles = {
 		cfg.postroles = [];
 		var results = [];
 		for(var i = 0; i < args.length; i++) {
-			var role = msg.guild.roles.find(r => r.id == args[i].replace(/[<#>]/g,"") || r.name == args[i].toLowerCase());
+			var role = msg.guild.roles.find(r => r.id == args[i].replace(/[<#>]/g,"") || r.name.toLowerCase() == args[i].toLowerCase());
 			if(role) {
 				cfg.postroles.push(role.id);
 				results.push({name: role.name})
