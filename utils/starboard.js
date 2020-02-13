@@ -166,17 +166,14 @@ module.exports = {
 			var member = msg.guild.members.find(m => m.id == user);
 			if(!member) return;
 
-			if(reaction.count < tolerance && 
-			  (!board.override || (board.override && !member.permission.has("manageMessages")))) 
-				return;
-			
 			var post = await bot.utils.getStarPost(bot, msg.guild.id, msg.id, emoji.name);
+
 			var scc;
-			if(post) {
-				scc = await bot.utils.updateStarPost(bot, msg.guild.id, msg.id, {emoji: emoji.name, count: reaction ? reaction.count : 0})
-			} else {
-				scc = await bot.utils.starMessage(bot, msg, board.channel_id, {emoji: emoji.name, count: reaction ? reaction.count : 0})
-			}
+			if(post)
+				scc = await bot.utils.updateStarPost(bot, msg.guild.id, msg.id, {emoji: emoji.name, count: reaction ? reaction.count : 0});
+			else if(reaction.count > tolerance || (board.override && member.permission.has("manageMessages")))
+				scc = await bot.utils.starMessage(bot, msg, board.channel_id, {emoji: emoji.name, count: reaction ? reaction.count : 0});
+			
 			res(scc);
 		})
 	}
