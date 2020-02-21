@@ -2,7 +2,7 @@ module.exports = {
 	help: ()=> "Prunes messages in a channel.",
 	usage: ()=> [" <number> - deletes [number] messages from the current channel, or 100 messages if not specified"],
 	execute: async (bot, msg, args)=>{
-		var del = (args[0] != NaN ? Number(args[0]) : 100);
+		var del = (!isNaN(args[0]) ? parseInt(args[0]) : 100);
 		await msg.channel.purge(del).then((n)=>{
 			msg.channel.createMessage(n + " messages deleted.").then(ms=>{
 				setTimeout(()=>{
