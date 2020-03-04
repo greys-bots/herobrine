@@ -171,7 +171,7 @@ module.exports = {
 			var scc;
 			if(post)
 				scc = await bot.utils.updateStarPost(bot, msg.guild.id, msg.id, {emoji: emoji.name, count: reaction ? reaction.count : 0});
-			else if(reaction.count > tolerance || (board.override && member.permission.has("manageMessages")))
+			else if(reaction.count >= tolerance || (board.override && member.permission.has("manageMessages")))
 				scc = await bot.utils.starMessage(bot, msg, board.channel_id, {emoji: emoji.name, count: reaction ? reaction.count : 0});
 			
 			res(scc);
