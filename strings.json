@@ -4,7 +4,7 @@
 "numbers": ["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","ninteen","twenty"],
 "pollnumbers": ["0️⃣","1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"],
 "codestab":["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","0","1","2","3","4","5","6","7","8","9"],
-"pressf": ["<:pressf:543851050864607242>","<a:fspin:543851155562954753>","<a:fspinfast:543851120511156224>"],
+"pressf": ["<:pressf:692902549183004673>","<a:fspin:543851155562954753>","<a:fspinfast:543851120511156224>"],
 "welc_strings": {
 	"$MEMBER.MENTION":"${member.mention}",
 	"$MEMBER.NAME":"${member.username + '#' + member.discriminator}",

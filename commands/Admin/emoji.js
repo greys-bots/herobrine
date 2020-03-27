@@ -28,10 +28,17 @@ module.exports = {
 module.exports.subcommands.add = {
 	help: ()=> "Add an emoji",
 	usage: ()=> [" [name] - Add an emoji using the name and an attached image",
-				 " [name] [url] - Add an emoji using the name and an image url"],
+				 " [name] [url] - Add an emoji using the name and an image url",
+				 " [name] [other emoji] - Add an emoji using the name and an existing emoji from another server"],
 	execute: async (bot, msg, args) => {
 		if(!args[0]) return msg.channel.createMessage("Please provide a name for the emoji");
-		var url = args[1] || (msg.attachments[0] ? msg.attachments[0].url : undefined);
+		var url;
+		if(args[1]) {
+			var match = args[1].match(/<a?\:(?:.*)\:([0-9]*)>/);
+			console.log(match);
+			if(match) url = `https://cdn.discordapp.com/emojis/${match[1]}.${args[1].startsWith("<a") ? "gif" : "png"}`;
+			else url = args[1];
+		} else url = msg.attachments[0] ? msg.attachments[0].url : undefined;
 		if(!url) return msg.channel.createMessage("Please provide a url or attach an image");
 
 		var resp = await bot.fetch(url);
