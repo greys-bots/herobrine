@@ -59,7 +59,7 @@ bot.customActionTypes = [
 // dblite.bin = bot.cfg.sqlite;
 
 try{
-	bot.db = dblite("./tmp.sqlite","-header");
+	bot.db = dblite("./data.sqlite","-header");
 } catch(e){
 	console.log(
 		[
