@@ -65,16 +65,22 @@ module.exports = {
 		var embeds = [];
 		var err = false;
 		for(category of categories) {
-			var invalid = [];
+			var invalid = {};
 
 			var tmp;
 			if(category.roles && category.roles[0]) {
-				tmp = await bot.utils.genEmbeds(bot, category.roles, rl => {
+				tmp = await bot.utils.genEmbeds(bot, category.roles, (rl, i) => {
+					if(!rl) {
+						if(!invalid[category.hid]) invalid[category.hid] = [];
+						invalid[category.hid].push(category.rawroles[i])
+						return {name: `(id invalid)`, value: `(*invalid role*)`};
+					}
 					var role = msg.guild.roles.find(r => r.id == rl.role_id);
 					if(role) {
 						return {name: `${role.name} (${rl.emoji.includes(":") ? `<${rl.emoji}>` : rl.emoji})`, value: `Description: ${rl.description || "*(no description provided)*"}\nPreview: ${role.mention}`}
 					} else {
-						invalid.push(rl.role_id);
+						if(!invalid[category.hid]) invalid[category.hid] = [];
+						invalid[category.hid].push(rl.id);
 						return {name: rl.role_id, value: '*(invalid role)*'}
 					}
 				}, {
@@ -93,9 +99,13 @@ module.exports = {
 			}
 			embeds = embeds.concat(tmp);
 
-			if(invalid[0]) {
-				var scc = await bot.utils.deleteReactionRoles(bot, msg.guild.id, invalid);
-				if(!scc) err = true;
+			if(Object.keys(invalid) > 0) {
+				for(var category of categories) {
+					if(!invalid[category.hid]) return;
+					await bot.utils.deleteReactionRoles(bot, invalid[category.hid]);
+					err = await bot.utils.updateReactionCategory(bot, msg.guild.id, category.hid,
+						"roles", category.roles.filter(x => x && !invalid[category.hid].includes(x.id)));
+				}
 			}
 		}
 

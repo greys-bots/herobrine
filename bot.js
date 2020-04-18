@@ -59,7 +59,7 @@ bot.customActionTypes = [
 // dblite.bin = bot.cfg.sqlite;
 
 try{
-	bot.db = dblite("./data.sqlite","-header");
+	bot.db = dblite("./tmp.sqlite","-header");
 } catch(e){
 	console.log(
 		[
@@ -435,6 +435,7 @@ bot.formatDiff = (date1, date2, shorthand = false) => {
 	var duration = bot.moment.duration(Math.abs(date1.diff(date2))).add(1, "s");
 
 	var parsed = [
+		`${duration.months() > 0 ? duration.months()+(shorthand ? " mo" : (duration.months() > 1 ? " months" : " month")) : ""}`,
 		`${duration.days() > 0 ? duration.days()+(shorthand ? " d" : (duration.days() > 1 ? " days" : " day")) : ""}`,
 		`${duration.hours() > 0 ? duration.hours()+(shorthand ? " h" : (duration.hours() > 1 ? " hours" : " hour")) : ""}`,
 		`${duration.minutes() > 0 ? duration.minutes()+(shorthand ? " m" : (duration.minutes() > 1 ? " minutes" : " minute")) : ""}`,

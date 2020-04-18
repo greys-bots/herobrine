@@ -103,7 +103,7 @@ module.exports = {
 			["⏹️","\u270f","❌"].forEach(r => message.addReaction(r));
 		} else if(args[1]) {
 			var today = new Date();
-			var limit = new Date(Date.now() + 14*24*60*60*1000);
+			var limit = new Date(Date.now() + 90*24*60*60*1000);
 			var min = new Date(Date.now() + 5*60*1000);
 			var min_recurring = new Date(Date.now() + 24*60*60*1000);
 			var type;
@@ -161,7 +161,7 @@ module.exports = {
 			var time;
 			time = bot.utils.parseDate(time_input);
 			if(!time) return msg.channel.createMessage("That time format is invalid, please try another. Example: `hh!remind stuff in 2 hours 10 minutes`");
-			if((time.date && time.date > limit) || (time[0] && time[0].date > limit)) return msg.channel.createMessage("That time is too far in the future. Reminders must be within two weeks of today, and will only execute after that if they're recurring");
+			if((time.date && time.date > limit) || (time[0] && time[0].date > limit)) return msg.channel.createMessage("That time is too far in the future. Reminders must be within 90 days of today, and will only execute after that if they're recurring");
 			if((type!="recurring" && time.date && time.date < min) || (type!="recurring" && time[0] && time[0].date < min) ||
 			   (type=="recurring" && time.date && time.date < min_recurring) || (type=="recurring" && time[0] && time[0].date < min_recurring)) return msg.channel.createMessage("That time is too close to now. Reminders must be set at least 5 minutes from now, or at least 1 day from now if they're recurring");
 

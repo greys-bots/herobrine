@@ -1,3 +1,58 @@
+//date parsing inspiration: chrono-node
+
+const KEYWORDS = [
+	'in',
+	'at',
+	'every'
+];
+
+const MONTHS = {
+	'jan\.?(?:uary)': 1,
+	'feb\.?(?:ruary)': 2,
+	'mar\.?(?:ch)': 3,
+	'apr\.?(?:il)': 4,
+	'may': 5,
+	'jun\.?(?:e)': 6,
+	'jul\.?(?:y)': 7,
+	'aug\.?(?:ust)': 8,
+	'sept?\.?(?:ember)': 9,
+	'oct\.?(?:ober)': 10,
+	'nov\.?(?:ember)': 11,
+	'dec\.?(?:ember)': 12
+}
+
+const MONTHS_REGEX = `(?:${Object.keys(MONTHS).join('|')})`;
+
+const NUMBERS = {
+	one: 1,
+	two: 2,
+	three: 3,
+	four: 4,
+	five: 5,
+	six: 6,
+	seven: 7,
+	eight: 8,
+	nine: 9,
+	ten: 10,
+	eleven: 11,
+	twelve: 12,
+	thirteen: 13,
+	fourteen: 14,
+	fifteen: 15,
+	sixteen: 16,
+	seventeen: 17,
+	eighteen: 18,
+	ninteen: 19,
+	twenty: 20,
+	thirty: 30,
+	forty: 40,
+	fifty: 50,
+	sixty: 60,
+	seventy: 70,
+	eighty: 80,
+	ninety: 90
+}
+
 module.exports = {
 	createReminder: async (bot, user, hid, note, time, recurring, interval) => {
 		return new Promise(res => {
@@ -132,6 +187,7 @@ module.exports = {
 			else {
 				var today = new Date();
 				var date = new Date(new Date(reminder.time).getTime() +
+								   (reminder.interval.mo*30*24*60*60*1000) +
 								   (reminder.interval.w*7*24*60*60*1000) +
 								   (reminder.interval.d*24*60*60*1000) +
 								   (reminder.interval.h*60*60*1000) +
@@ -144,6 +200,7 @@ module.exports = {
 				//catches it up to be current
 				while(date < today) {
 					date = new Date(date.getTime() +
+								   (reminder.interval.mo*30*24*60*60*1000) +
 								   (reminder.interval.w*7*24*60*60*1000) +
 								   (reminder.interval.d*24*60*60*1000) +
 								   (reminder.interval.h*60*60*1000) +
@@ -165,12 +222,13 @@ module.exports = {
 	},
 	parseDate: (input) => {
 		if(typeof input == "string") {
-			var match = input.match(/((?:\d+?|\b\w+\s)\s?(?:w|d|h|m|s))/gi);
-			if(!match || !match[0]) match = input.match(/\b(w|d|h|m|s)/gi);
+			var match = input.match(/((?:\d+?|\b\w+\s)\s?(?:mo|w|d|h|m|s))/gi);
+			if(!match || !match[0]) match = input.match(/\b(mo|w|d|h|m|s)/gi);
 			if(!match || !match[0]) return null;
 			console.log(match);
 
 			var parsed = {
+				mo: 0,
 				w: 0,
 				d: 0,
 				h: 0,
@@ -196,6 +254,7 @@ module.exports = {
 			if(!matched) return null;
 
 			var date = new Date(Date.now() + 
+								(parsed.mo*30*24*60*1000) +
 								(parsed.w*7*24*60*60*1000) +
 								(parsed.d*24*60*60*1000) +
 								(parsed.h*60*60*1000) +
@@ -208,14 +267,14 @@ module.exports = {
 			var err = false;
 
 			for(var i = 0; i<input.length; i++) {
-				var match = input[i].match(/\b((?:\d+|\S+\s)?\s?(?:w|d|h|m|s){1})/gi);
+				var match = input[i].match(/\b((?:\d+|\S+\s)?\s?(?:mo|w|d|h|m|s){1})/gi);
 				console.log(match);
 				if(!match || !match[0]) {
 					err = true;
 					break;
 				}
 
-				parsed.push({parsed: {w: 0, d: 0, h: 0, m: 0, s: 0}});
+				parsed.push({parsed: {mo: 0, w: 0, d: 0, h: 0, m: 0, s: 0}});
 
 				var matched = false
 				for(var j = 0; j < match.length; j++) {
@@ -231,6 +290,7 @@ module.exports = {
 				}
 
 				parsed[i].date = new Date(Date.now() + 
+									(parsed[i].parsed.mo*30*24*60*1000) +
 									(parsed[i].parsed.w*7*24*60*60*1000) +
 									(parsed[i].parsed.d*24*60*60*1000) +
 									(parsed[i].parsed.h*60*60*1000) +

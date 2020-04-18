@@ -102,9 +102,9 @@ module.exports = {
 			}
 		})
 	},
-	deleteReactionRoles: async (bot, server, roles) => {
+	deleteReactionRoles: async (bot, roles) => {
 		return new Promise(res => {
-			bot.db.query(`DELETE FROM reactroles WHERE server_id = ? AND role_id IN (${roles.join(",")})`,[server], (err, rows) => {
+			bot.db.query(`DELETE FROM reactroles WHERE server_id = ? AND id IN (${roles.join(",")})`,[server], (err, rows) => {
 				if(err) {
 					console.log(err);
 					res(false)

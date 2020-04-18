@@ -102,8 +102,8 @@ module.exports.subcommands.create = {
 			resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {maxMatches: 1, time: 120000});
 			if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
 			else title = resp[0].content;
+			await resp[0].delete();
 		}
-		await resp[0].delete();
 
 		if(!message) message = await msg.channel.createMessage("Please enter a description for your poll. If you don't need one, you can type `skip` to skip it. You have two (2) minutes to do this");
 		else await message.edit("Please enter a description for your poll. If you don't need one, you can type `skip` to skip it. You have two (2) minutes to do this");
