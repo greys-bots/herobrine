@@ -72,16 +72,12 @@ try{
 	process.exit(1);
 }
 
-bot.AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 
-/***********************************
-SETUP
-***********************************/
-
-//TODO: set up command stuff
+//for command setup
 const recursivelyReadDirectory = function(dir) {
 	var results = [];
-	var files = bot.fs.readdirSync(dir, {withFileTypes: true});
+	var files = fs.readdirSync(dir, {withFileTypes: true});
 	for(file of files) {
 		if(file.isDirectory()) {
 			results = results.concat(recursivelyReadDirectory(dir+"/"+file.name));
@@ -93,6 +89,7 @@ const recursivelyReadDirectory = function(dir) {
 	return results;
 }
 
+//for handling commands
 const registerCommand = function({command, module, name} = {}) {
 	if(!command) return;
 	command.module = module;
@@ -122,6 +119,18 @@ const registerCommand = function({command, module, name} = {}) {
 	return command;
 }
 
+bot.formatTime = (date) => {
+	if(typeof date == "string") date = new Date(date);
+
+	return `${(date.getMonth()+1) < 10 ? "0"+(date.getMonth()+1) : (date.getMonth()+1)}.${(date.getDate()) < 10 ? "0"+(date.getDate()) : (date.getDate())}.${date.getFullYear()} at ${date.getHours() < 10 ? "0"+date.getHours() : date.getHours()}:${date.getMinutes() < 10 ? "0"+date.getMinutes() : date.getMinutes()}`
+}
+
+bot.asyncForEach = async (arr, bot, msg, args, cb) => {
+	for (let i = 0; i < arr.length; i++) {
+	    await cb(bot, msg, args, arr[i], i, arr);
+	  }
+}
+
 const setup = async () => {
 	if(bot.cfg.update && bot.cfg.remote && bot.cfg.branch){
 		var git = exec(`git pull ${bot.cfg.remote} ${bot.cfg.branch}`,{cwd: __dirname}, (err, out, stderr)=>{
@@ -149,212 +158,6 @@ const setup = async () => {
 			})
 		})
 	}
-
-	bot.db.query(".databases");
-
-	//FINALLY alphabetized
-	bot.db.query(`CREATE TABLE IF NOT EXISTS aliases (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		server_id 	TEXT,
-		name 		TEXT,
-		command 	TEXT
-	)`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS bundles (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		server_id 	TEXT,
-		name 		TEXT,
-		description TEXT,
-		roles 		TEXT,
-		assignable 	INTEGER
-	)`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS commands (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		server_id 	BIGINT,
-		name 		TEXT,
-		actions 	TEXT,
-		target 		TEXT,
-		del 		INTEGER
-	)`);
-
-	//default config: {srv_id: "", prefix: "", welcome: {}, autoroles: "", disabled: {}, opped: "", feedback: {}, logged: [], autopin: 2}
-	bot.db.query(`CREATE TABLE IF NOT EXISTS configs (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		server_id 	TEXT,
-		prefix 		TEXT,
-		welcome 	TEXT,
-		autoroles 	TEXT,
-		disabled 	TEXT,
-		opped 		TEXT,
-		feedback 	TEXT,
-		logged 		TEXT,
-		autopin 	TEXT
-	)`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS feedback (
-		id			INTEGER PRIMARY KEY AUTOINCREMENT,
-		hid			TEXT,
-		server_id	TEXT,
-		sender_id 	TEXT,
-		message 	TEXT,
-		anon 		INTEGER
-	)`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS feedback_configs (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		server_id 	TEXT,
-		channel_id	TEXT,
-		anon 		BOOLEAN
-	)`);
-
-	// not ready yet
-	// bot.db.query(`CREATE TABLE IF NOT EXISTS invites (
-	// 	id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-	// 	server_id 	TEXT,
-	// 	invite_id 	TEXT,
-	// 	name 		TEXT
-	// )`);
-
-	// bot.db.query(`CREATE TABLE IF NOT EXISTS logging_configs (
-	// 	id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-	// 	server_id 	TEXT,
-	// 	channel_id	TEXT,
-	// 	events	 	TEXT
-	// )`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS notes (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		hid 		TEXT,
-		user_id 	TEXT,
-		title 		TEXT,
-		body 		TEXT
-	)`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS polls (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		hid 		TEXT,
-		server_id 	TEXT,
-		channel_id  TEXT,
-		message_id  TEXT,
-		user_id 	TEXT,
-		title 		TEXT,
-		description	TEXT,
-		choices 	TEXT,
-		active 		INTEGER,
-		start 		TEXT,
-		end 		TEXT
-	)`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS profiles (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		user_id 	TEXT,
-		title 		TEXT,
-		bio 		TEXT,
-		color 		TEXT,
-		badges 		TEXT,
-		lvl 		INTEGER,
-		exp 		INTEGER,
-		cash 		INTEGER,
-		daily 		INTEGER,
-		disabled 	INTEGER
-	)`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS reactcategories (
-    	id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-    	hid 		TEXT,
-    	server_id	BIGINT,
-    	name 		TEXT,
-    	description TEXT,
-    	roles 		TEXT,
-    	posts 		TEXT
-    )`);
-
-    bot.db.query(`CREATE TABLE IF NOT EXISTS reactposts (
-		id			INTEGER PRIMARY KEY AUTOINCREMENT,
-		server_id	TEXT,
-		channel_id	TEXT,
-		message_id	TEXT,
-		roles		TEXT
-	)`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS reactroles (
-    	id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-    	server_id	BIGINT,
-    	role_id 	BIGINT,
-    	emoji 		TEXT,
-    	description TEXT
-    )`);
-
-    bot.db.query(`CREATE TABLE IF NOT EXISTS reminders (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		hid 		TEXT,
-		user_id 	TEXT,
-		note 		TEXT,
-		time 		TEXT,
-		recurring 	INTEGER,
-		interval	TEXT
-	)`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS responses (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		server_id	TEXT,
-		name 		TEXT,
-		value 		TEXT
-	)`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS roles (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		server_id 	TEXT,
-		role_id 	TEXT,
-		description TEXT,
-		assignable 	INTEGER
-	)`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS starboards (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		server_id 	TEXT,
-		channel_id	TEXT,
-		emoji		TEXT,
-		override	INTEGER,
-		tolerance	INTEGER
-	)`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS starred_messages (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		server_id	TEXT,
-		channel_id	TEXT,
-		message_id 	TEXT,
-		original_id TEXT,
-		emoji 		TEXT
-	)`); //emoji is to keep track of posts from multiple boards
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS strikes (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		hid 		TEXT,
-		server_id 	TEXT,
-		user_id 	TEXT,
-		reason 		TEXT
-	)`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS triggers (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		hid 		TEXT,
-		user_id 	TEXT,
-		name 		TEXT,
-		list 		TEXT,
-		private		INTEGER
-	)`);
-
-	bot.db.query(`CREATE TABLE IF NOT EXISTS welcome_configs (
-		id 			INTEGER PRIMARY KEY AUTOINCREMENT,
-		server_id	TEXT,
-		preroles	TEXT,
-		postroles	TEXT,
-		channel 	TEXT,
-		message 	TEXT,
-		enabled		INTEGER
-	)`);
 
 	files = bot.fs.readdirSync("./events");
 	files.forEach(f => {
@@ -453,33 +256,34 @@ bot.formatDiff = (date1, date2, shorthand = false) => {
 	return parsed;
 }
 
-bot.parseCommand = async function(bot, msg, args) {
+bot.parseCommand = async function(bot, msg, args, command) {
 	if(!args[0]) return undefined;
 	
 	var command = bot.commands.get(bot.aliases.get(args[0].toLowerCase()));
-	if(!command) {
-		command = await bot.utils.getAlias(bot, msg.guild.id, args[0].toLowerCase());
-		if(!command) return {command, nargs: args};
-		return await bot.parseCommand(bot, msg, command.command.split(" ").concat(args.slice(1)));
-	}
+	if(!command) return {command, args};
 
 	args.shift();
+	var permcheck = true;
 
 	if(args[0] && command.subcommands && command.subcommands.get(command.sub_aliases.get(args[0].toLowerCase()))) {
 		command = command.subcommands.get(command.sub_aliases.get(args[0].toLowerCase()));
 		args.shift();
 	}
 
-	return {command, nargs: args};
+	//will erroneously give true in dms even though perms don't exist
+	//guildOnly check is done first in actual command execution though,
+	//so that doesn't matter
+	if(command.permissions && msg.guild) permcheck = command.permissions.filter(x => msg.member.permission.has(x)).length == command.permissions.length;
+	return {command, args, permcheck};
 }
 
 bot.parseCustomCommand = async function(bot, msg, args) {
 	return new Promise(async res => {
 		if(!args || !args[0]) return res(undefined);
 		if(!msg.guild) return res(undefined);
-		var name = args.shift().toLowerCase();
-		var cmd = await bot.utils.getCustomCommand(bot, msg.guild.id, name);
-		if(!cmd) return res(undefined);
+		var name = args.shift();
+		var cmd = await bot.stores.customCommands.get(msg.guild.id, name);
+		if(!cmd) return res({});
 
 		cmd.newActions = [];
 
@@ -494,7 +298,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 							condition = condition.replace(n, ca.replace)
 							ac = ac.replace(n, ca.replace);
 						})
-						cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
+						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
 							`if(${condition}) ${ac};`
 						), action.success, action.fail]);
 						break;
@@ -509,7 +313,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 							fls = fls.replace(n, ca.replace);
 						})
 
-						cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
+						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
 							`if(${condition}) ${tr};
 							 else ${fls}`
 						), action.success, action.fail]);
@@ -520,7 +324,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 							var n = ca.regex ? new RegExp(ca.name) : ca.name;
 							ac = ac.replace(n, ca.replace);
 						})
-						cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
+						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
 							`${ac}`
 						), action.success, action.fail]);
 						break;
@@ -530,7 +334,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 							var n = ca.regex ? new RegExp(ca.name) : ca.name;
 							ac = ac.replace(n, ca.replace);
 						})
-						cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
+						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
 							`${ac}`
 						), action.success, action.fail]);
 						break;
@@ -540,7 +344,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 							var n = ca.regex ? new RegExp(ca.name) : ca.name;
 							ac = ac.replace(n, ca.replace);
 						})
-						cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
+						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
 							`${ac}`
 						), action.success, action.fail]);
 						break;
@@ -555,7 +359,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 							condition = condition.replace(n, ca.replace)
 							ac = ac.replace(n, ca.replace);
 						})
-						cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
+						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
 							`if(${condition}) ${ac};`
 						), action.success, action.fail]);
 						break;
@@ -570,7 +374,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 							fls = fls.replace(n, ca.replace);
 						})
 
-						cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
+						cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
 							`if(${condition}) ${tr};
 							 else ${fls}`
 						), action.success, action.fail]);
@@ -582,7 +386,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 								var n = ca.regex ? new RegExp(ca.name) : ca.name;
 								ac = ac.replace(n, typeof ca.replace == "function" ? ca.replace(arg) : ca.replace);
 							})
-							cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
+							cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
 								`${ac}`
 							), action.success, action.fail]);
 						})
@@ -594,7 +398,7 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 								var n = ca.regex ? new RegExp(ca.name) : ca.name;
 								ac = ac.replace(n, typeof ca.replace == "function" ? ca.replace(arg) : ca.replace);
 							})
-							cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
+							cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
 								`${ac}`
 							), action.success, action.fail]);
 						})
@@ -606,19 +410,18 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 								var n = ca.regex ? new RegExp(ca.name) : ca.name;
 								ac = ac.replace(n, typeof ca.replace == "function" ? ca.replace(arg) : ca.replace);
 							})
-							cmd.newActions.push([new bot.AsyncFunction("bot", "msg", "args",
+							cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
 								`${ac}`
 							), action.success, action.fail]);
 						})
 						break;
 				}
-			}			
+			}
 		})
 
 		cmd.execute = async (bot, msg, args, cmd) => {
-			console.log("executing...");
 			let msgs = [];
-			await bot.utils.asyncForEach(cmd.newActions, async (a) => {
+			await bot.asyncForEach(cmd.newActions, bot, msg, args, async (bot, msg, args, a) => {
 				try {
 					await a[0].call(null, bot, msg, args);
 				} catch (e) {
@@ -637,10 +440,13 @@ bot.parseCustomCommand = async function(bot, msg, args) {
 						return new Promise(res => res(""))
 					}))
 				}, 2000)
+				
 			}
 		}
 
-		res({command: cmd, nargs: args, name})
+		cmd.name = name;
+
+		res({command: cmd, args})
 	})
 }
 

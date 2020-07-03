@@ -5,3 +5,4 @@ config.json
 *.sqlite
 Procfile
 run.bat
+.env

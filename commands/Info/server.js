@@ -8,8 +8,9 @@ module.exports = {
 		var categories = msg.guild.channels.filter(c => c.type == 4).length;
 		var humans = msg.guild.members.filter(m => !m.bot).length;
 		var bots = msg.guild.members.filter(m => m.bot).length;
-		var roles = msg.guild.roles.size <= 10 ? msg.guild.roles.map(r => `${r.name} (${r.id})`).join("\n") : "Use `hh!server roles` to view this server's roles";  
-		await msg.channel.createMessage({embed: {
+		var roles = msg.guild.roles.size <= 10 ? msg.guild.roles.map(r => `${r.name} (${r.id})`).join("\n") : "Use `hh!server roles` to view this server's roles";
+
+		return {embed: {
 			author: {
 				name: `Owned by: ${owner.username}#${owner.discriminator} (${owner.id})`,
 				icon_url: owner.avatarURL
@@ -27,7 +28,7 @@ module.exports = {
 			footer: {
 				text: `Created: ${bot.formatTime(new Date(msg.guild.createdAt))}`
 			}
-		}})
+		}}
 	},
 	subcommands: {},
 	alias: ["srv"],
@@ -41,9 +42,9 @@ module.exports.subcommands.roles = {
 	execute: async (bot, msg, args) => {
 		var embeds = [];
 		var roles = msg.guild.roles.map(r => r).sort((a, b) => a.name.toLowerCase() > b.name.toLowerCase() ? 1 : (b.name.toLowerCase() > a.name.toLowerCase() ? -1 : 0));
-		if(!roles || !roles[0]) return msg.channel.createMessage("No roles registered for this server");
+		if(!roles || !roles[0]) return"No roles have been created in this server.";
 		for(var i = 0; i < roles.length; i++) {
-			var selfrole = await bot.utils.getSelfRole(bot, msg.guild.id, roles[i].id);
+			var selfrole = await bot.stores.roles.get(msg.guild.id, roles[i].id);
 			var assignable;
 			if(selfrole) assignable = selfrole.assignable ? "Yes" : "No";
 			else assignable = "Not indexed";
@@ -65,24 +66,7 @@ module.exports.subcommands.roles = {
 			}});
 		}
 
-		var message = await msg.channel.createMessage(embeds[0])
-		if(embeds.length > 1) {
-			if(!bot.menus) bot.menus = {};
-				bot.menus[message.id] = {
-				user: msg.author.id,
-				index: 0,
-				data: embeds,
-				timeout: setTimeout(()=> {
-					if(!bot.menus[message.id]) return;
-					message.removeReaction("\u2b05");
-					message.removeReaction("\u27a1");
-					message.removeReaction("\u23f9");
-					delete bot.menus[message.id];
-				}, 900000),
-				execute: bot.utils.paginateEmbeds
-			};
-			["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
-		}
+		return embeds;
 	},
 	alias: ["rl", "r", "rls"],
 	guildOnly: true

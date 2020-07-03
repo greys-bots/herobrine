@@ -13,23 +13,27 @@ module.exports = {
 				"By default, this number is 2. The global tolerance will be used for boards without ",
 				"their own specified tolerance."].join(""),
 	execute: async (bot, msg, args)=> {
-		var config = await bot.utils.getConfig(bot, msg.guild.id);
+		var config = await bot.stores.configs.get(msg.guild.id);
 		if(!config) config = {autopin: 2};
 		if(args[0]) {
 			var channel = msg.guild.channels.find(ch => ch.name == args[0].toLowerCase() || ch.id == args[0].replace(/[<#>]/g,""));
 			var board;
-			if(channel) board = await bot.utils.getStarboardByChannel(bot, msg.guild.id, channel.id);
-			else board = await bot.utils.getStarboardByEmoji(bot, msg.guild.id, args[0].replace(/[<>]/g,""));
+			if(channel) board = await bot.stores.starboards.get(msg.guild.id, channel.id);
+			else board = await bot.stores.starboards.getByEmoji(msg.guild.id, args[0].replace(/[<>]/g,""));
 			if(!board) return msg.channel.createMessage("Board not found");
 
 			var channel = msg.guild.channels.find(ch => ch.id == board.channel_id);
 			if(!channel) {
-				var scc = await bot.utils.deleteStarboard(bot, msg.guild.id, board.channel_id);
-				if(scc) return msg.channel.createMessage("That starboard is not valid and has been deleted");
-				else return msg.channel.createMessage("That starboard is not valid, but could not be deleted");
+				try {
+					await bot.stores.starboards.delete(msg.guild.id, board.channel_id);
+				} catch(e) {
+					return "ERR while deleting invalid starboard: "+e;
+				}
+
+				return "That starboard is not valid and has been deleted.";
 			}
 
-			return msg.channel.createMessage({embed: {
+			return {embed: {
 				title: channel.name,
 				fields: [
 					{name: "Emoji", value: board.emoji.includes(":") ? `<${board.emoji}>` : board.emoji},
@@ -38,11 +42,11 @@ module.exports = {
 					{name: "Message Count", value: board.message_count}
 				],
 				color: parseInt("5555aa", 16)
-			}})
+			}}
 		}
 
-		var boards = await bot.utils.getStarboards(bot, msg.guild.id);
-		if(!boards || !boards[0]) return msg.channel.createMessage("No starboards registered for this server");
+		var boards = await bot.stores.starboards.getAll(msg.guild.id);
+		if(!boards || !boards[0]) return "No starboards registered for this server.";
 		
 		var embeds = []
 		var remove = [];
@@ -63,39 +67,22 @@ module.exports = {
 			} else remove.push({id: boards[i].channel});
 		}
 
-		if(embeds[0]) {
-			var message = await msg.channel.createMessage(embeds[0]);
-			if(embeds[1]) {
-				if(!bot.menus) bot.menus = {};
-				bot.menus[message.id] = {
-					user: msg.author.id,
-					index: 0,
-					data: embeds,
-					timeout: setTimeout(()=> {
-						if(!bot.menus[message.id]) return;
-						try {
-							message.removeReactions();
-						} catch(e) {
-							console.log(e);
-						}
-						delete bot.menus[message.id];
-					}, 900000),
-					execute: bot.utils.paginateEmbeds
-				};
-				["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
-			}
-		} else msg.channel.createMessage("No valid starboards exist");
-		
 		if(remove[0]) {
 			var err;
 			for(var i = 0; i < remove.length; i++) {
-				var scc = await bot.utils.deleteStarboard(bot, msg.guild.id, remove[i].id);
-				if(!scc) err = true;
+				try {
+					await bot.stores.starboards.delete(msg.guild.id, remove[i].id);
+				} catch(e) {
+					err = true;
+				}
 			}
 
-			if(err) msg.channel.createMessage("Some invalid boards couldn't be removed from the database");
+			if(err) msg.channel.createMessage("Some invalid boards couldn't be removed from the database.");
 			else msg.channel.createMessage("Invalid starboards have been deleted!");
 		}
+
+		if(embeds[0]) return embeds;
+		else return "No valid starboards exist.";
 	},
 	subcommands: {},
 	permissions: ["manageGuild"],
@@ -105,22 +92,27 @@ module.exports = {
 }
 
 module.exports.subcommands.add = {
-	help: ()=> "Adds a channel to the server's autopin config",
-	usage: ()=> [" [channel] [:emoji:] - Adds channel and reaction config for the server."],
+	help: ()=> "Adds a channel to the server's autopin config.",
+	usage: ()=> [" [channel] [:emoji:] <tolerance> - Adds channel and reaction config for the server. Tolerance is optional"],
 	desc: ()=> "The channel can be a channel ID, channel-name, or #mention. The emoji can be a custom one.",
 	execute: async (bot, msg, args)=> {
-		if(!args[1]) return msg.channel.createMessage("Please provide a channel and an emoji.");
+		if(!args[1]) return"Please provide a channel and an emoji.";
 		var channel = msg.guild.channels.find(ch => ch.name == args[0].toLowerCase() || ch.id == args[0].replace(/[<#>]/g,""));
-		if(!channel) return msg.channel.createMessage("Channel not found");
+		if(!channel) return "Channel not found.";
 		var emoji = args[1].replace(/[<>]/g,"");
 
-		var board = await bot.utils.getStarboardByChannel(bot, msg.guild.id, channel.id);
-		if(!board) board = await bot.utils.getStarboardByEmoji(bot, msg.guild.id, emoji);
-		if(board) return msg.channel.createMessage("A board registered with that channel or emoji already exists");
+		var board = await bot.stores.starboards.get(msg.guild.id, channel.id);
+		if(!board) board = await bot.stores.starboards.getByEmoji(msg.guild.id, emoji);
+		if(board) return "A board registered with that channel or emoji already exists.";
 
-		var scc = await bot.utils.addStarboard(bot, msg.guild.id, channel.id, emoji);
-		if(scc) msg.channel.createMessage("Board registered!");
-		else msg.channel.createMessage("Something went wrong");
+		try {
+			await bot.stores.starboards.create(msg.guild.id, channel.id, emoji,
+				{tolerance: args[2] && !isNaN(args[2]) ? parseInt(args[2]) : null});
+		} catch(e) {
+			return "ERR: "+e;
+		}
+
+		return "Board registered!";
 	},
 	permissions: ["manageGuild"],
 	guildOnly: true,
@@ -129,20 +121,25 @@ module.exports.subcommands.add = {
 }
 
 module.exports.subcommands.remove = {
-	help: ()=> "Removes a channel from the server's autopin config",
-	usage: ()=> [" [board] - Removes the channel's pin config."],
+	help: ()=> "Removes a channel from the server's autopin config.",
+	usage: ()=> [" [channel] - Removes the channel's pin config"],
 	desc: ()=> "The board can be a channel ID, channel-name, or #mention.",
 	execute: async (bot, msg, args)=> {
-		if(!args[0]) return msg.channel.createMessage("Please provide a channel to remove the config from");
+		if(!args[1]) return"Please provide a channel and an emoji.";
 		var channel = msg.guild.channels.find(ch => ch.name == args[0].toLowerCase() || ch.id == args[0].replace(/[<#>]/g,""));
-		if(!channel) return msg.channel.createMessage("Channel not found");
+		if(!channel) return "Channel not found.";
+		var emoji = args[1].replace(/[<>]/g,"");
 
-		var board = await bot.utils.getStarboardByChannel(bot, msg.guild.id, channel.id);
-		if(!board) return msg.channel.createMessage("Board not found");
+		var board = await bot.stores.starboards.get(msg.guild.id, channel.id);
+		if(!board) return "Board not found.";
 
-		var scc = await bot.utils.deleteStarboard(bot, msg.guild.id, channel.id);
-		if(scc) msg.channel.createMessage("Board deleted!");
-		else msg.channel.createMessage("Something went wrong");
+		try {
+			await bot.stores.starboards.delete(msg.guild.id, channel.id);
+		} catch(e) {
+			return "ERR: "+e;
+		}
+
+		return "Board deleted!";
 	},
 	permissions: ["manageGuild"],
 	guildOnly: true,
@@ -151,23 +148,23 @@ module.exports.subcommands.remove = {
 }
 
 module.exports.subcommands.pin = {
-	help: ()=> "Takes the pins in the current channel and pins them in the pinboard",
-	usage: ()=> [" [board] - Processes pins in the current channel."],
+	help: ()=> "Takes the pins in the current channel and pins them in the pinboard.",
+	usage: ()=> [" [board] - Processes pins in the current channel"],
 	desc: ()=> "The board can be a channel ID, channel-name, or #mention.",
 	execute: async (bot, msg, args)=> {
-		if(!args[0]) return msg.channel.createMessage("Please provide a board to send messsages to");
+		if(!args[0]) return "Please provide a board to send messsages to.";
 		var channel = msg.guild.channels.find(ch => ch.name == args[0].toLowerCase() || ch.id == args[0].replace(/[<#>]/g,""));
-		if(!channel) return msg.channel.createMessage("Channel not found");
+		if(!channel) return "Channel not found.";
 
-		var board = await bot.utils.getStarboardByChannel(bot, msg.guild.id, channel.id);
-		if(!board) return msg.channel.createMessage("Board not found");
+		var board = await bot.stores.starboards.get(msg.guild.id, channel.id);
+		if(!board) return "Board not found.";
 
-		msg.channel.createMessage("Starring messages; this may take a while...");
+		await msg.channel.createMessage("Starring messages; this may take a while...");
 		var messages = await msg.channel.getPins();
 		for(var i = 0; i < messages.length; i++) {
-			messages[i].addReaction(board.emoji.replace(/^:/,""));
+			await messages[i].addReaction(board.emoji.replace(/^:/,""));
 		}
-		msg.channel.createMessage("Done!");
+		return "Done!";
 	},
 	permissions: ["manageGuild"],
 	guildOnly: true,
@@ -182,27 +179,39 @@ module.exports.subcommands.tolerance = {
 				 " [board] - Reset specific tolerance",
 				 " [board] [number] - Set specific tolerance"],
 	execute: async (bot, msg, args) => {
-		var cfg = await bot.utils.getConfig(bot, msg.guild.id);
+		var cfg = await bot.stores.configs.get(msg.guild.id);
 		if(!cfg) cfg = {autopin: 2};
 		var scc;
 		if(!args[0]) {
-			scc = await bot.utils.updateConfig(bot, msg.guild.id, {autopin: 2});
-			if(scc) return msg.channel.createMessage("Global tolerance reset!");
-			else return msg.channel.createMessage("Something went wrong");
+			try {
+				await bot.stores.configs.update(msg.guild.id, {autopin: 2});
+			} catch(e) {
+				return "ERR: "+e;
+			}
+
+			return "Global tolerance reset!";
 		} else {
 			var channel = msg.guild.channels.find(c => c.id == args[0].replace(/[<#>]/g,"") || c.name == args[0].toLowerCase());
-			if(!channel && parseInt(args[0]) == NaN) return msg.channel.createMessage("Channel not found");
-			else if(!channel && parseInt(args[0]) != NaN) {
-				var scc = await bot.utils.updateConfig(bot, msg.guild.id, {autopin: args[0]});
-				if(scc) return msg.channel.createMessage("Global tolerance set!");
-				else return msg.channel.createMessage("Something went wrong");
+			if(!channel && isNaN(args[0])) return "Channel not found.";
+			else if(!channel && !isNaN(args[0])) {
+				try {
+					await bot.stores.configs.update(msg.guild.id, {autopin: parseInt(args[0])});
+				} catch(e) {
+					return "ERR: "+e;
+				}
+
+				return "Global tolerance set!";
 			}
-			var board = await bot.utils.getStarboardByChannel(bot, msg.guild.id, channel.id);
-			if(!board) return msg.channel.createMessage("Board not found");
-			
-			scc = await bot.utils.updateStarboard(bot, msg.guild.id, channel.id, {tolerance: args[1]});
-			if(scc) return msg.channel.createMessage(`Board tolerance ${args[1] ? "" : "re"}set!`);
-			else return msg.channel.createMessage("Something went wrong");
+			var board = await bot.stores.starboards.get(msg.guild.id, channel.id);
+			if(!board) return "Board not found.";
+
+			try {
+				await bot.stores.starboards.update(msg.guild.id, channel.id, {tolerance: args[1] ? parseInt(args[1] : null)});
+			} catch(e) {
+				return "ERR: "+e;
+			}
+
+			return `Board tolerance ${args[1] ? "" : "re"}set!`;
 		}
 	},
 	permissions: ["manageGuild"],
@@ -216,20 +225,24 @@ module.exports.subcommands.override = {
 	usage: ()=> [" [board] [(true|1) | (false|0)] - Sets the board's override"],
 	desc: ()=> ["A value resolving to TRUE will make it so that mods can ",
 				"react to a post to immediately put it on the starboard; ",
-				"a value of false will make mod reactions count the same as ",
-				"member reactions"].join(""),
+				"a value of FALSE will make mod reactions count the same as ",
+				"member reactions."].join(""),
 	execute: async (bot, msg, args) => {
-		if(!args[1]) return msg.channel.createMessage('Please provide a board and the value to set the override to');
+		if(!args[1]) return 'Please provide a board and the value to set the override to.';
 		var channel = msg.guild.channels.find(ch => ch.name == args[0].toLowerCase() || ch.id == args[0].replace(/[<#>]/g,""));
-		if(!channel) return msg.channel.createMessage("Channel not found");
+		if(!channel) return "Channel not found.";
 
-		var board = await bot.utils.getStarboardByChannel(bot, msg.guild.id, channel.id);
-		if(!board) return msg.channel.createMessage("Board not found");
+		var board = await bot.stores.starboards.get(msg.guild.id, channel.id);
+		if(!board) return "Board not found.";
 
-		if(!["true", "1", "false", "0"].includes(args[1])) return msg.channel.createMessage("Please provide a valid value to set the override to")
+		if(!["true", "1", "false", "0"].includes(args[1])) return "Please provide a valid value to set the override to.";
 
-		var scc = await bot.utils.updateStarboard(bot, msg.guild.id, channel.id, {override: ["true", "1"].includes(args[1]) ? true : false});
-		if(scc) msg.channel.createMessage("Override set!")
-		else msg.channel.createMessage("Something went wrong")
+		try {
+			await bot.stores.starboards.update(msg.guild.id, channel.id, {override: ["true", "1"].includes(args[1]) ? true : false});
+		} catch(e) {
+			return "ERR: "+e;
+		}
+		
+		return "Override set!";
 	}
 }

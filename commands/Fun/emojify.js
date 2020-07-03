@@ -17,8 +17,8 @@ module.exports = {
 			}
 		}
 
-		if(words.join("   ").length < 2000) msg.channel.createMessage(words.join("   "));
-		else msg.channel.createMessage("That message is too long to be emojified")
+		if(words.join("   ").length < 2000) return words.join("   ");
+		else return "That message is too long to be emojified";
 	},
 	module: "fun"
 }

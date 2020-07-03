@@ -13,14 +13,14 @@ module.exports = {
 	execute: async (bot, msg, args)=>{
 		if(args[0]) {
 			var role = msg.guild.roles.find(r => [r.name.toLowerCase(), r.id].includes(args.join(" ").toLowerCase()));
-			if(!role) return msg.channel.createMessage("Role not found");
-			var selfrole = await bot.utils.getSelfRole(bot, msg.guild.id, role.id);
+			if(!role) return "Role not found.";
+			var selfrole = await bot.stores.roles.get(msg.guild.id, role.id);
 			var assignable;
 			if(selfrole) assignable = selfrole.assignable ? "Yes" : "No";
 			else assignable = "Not indexed";
 			var perms = role.permissions.json;
 
-			return msg.channel.createMessage({embed: {
+			return {embed: {
 				title: "Role Info",
 				fields: [
 					{name: "Name", value: role.name},
@@ -33,11 +33,11 @@ module.exports = {
 					{name: "Disallowed Permissions", value: bot.strings.permission_nodes.filter(x => !perms[x]).join(", ") || "(none)"}
 				],
 				color: role.color
-			}});
+			}};
 		}
 
-		var roles = await bot.utils.getSelfRoles(bot, msg.guild.id);
-		if(!roles || !roles[0]) return msg.channel.createMessage("No roles registered for this server");
+		var roles = await bot.stores.roles.getAll(msg.guild.id);
+		if(!roles || !roles[0]) return "No roles registered for this server.";
 		var todelete = [];
 		for(var i = 0; i < roles.length; i++) {
 			var role = msg.guild.roles.find(r => r.id == roles[i].role_id);
@@ -71,32 +71,15 @@ module.exports = {
 			embeds = embeds.concat(modonly);
 		}
 
-		var message = await msg.channel.createMessage(embeds[0])
-		if(embeds.length > 1) {
-			if(!bot.menus) bot.menus = {};
-			bot.menus[message.id] = {
-				user: msg.author.id,
-				index: 0,
-				data: embeds,
-				timeout: setTimeout(()=> {
-					if(!bot.menus[message.id]) return;
-					try {
-						message.removeReactions();
-					} catch(e) {
-						console.log(e);
-					}
-					delete bot.menus[message.id];
-				}, 900000),
-				execute: bot.utils.paginateEmbeds
-			};
-			["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
-		}
-		
-
 		if(todelete[0]) {
-			var scc = await bot.utils.deleteSelfRoles(bot, msg.guild.id, todelete);
-			if(!scc) msg.channel.createMessage("Something went wrong while removing roles that no longer exist")
+			try {
+				await bot.stores.roles.deleteByIDs(msg.guild.id, todelete);
+			} catch(e) {
+				await msg.channel.createMessage("ERR while removing invalid roles: "+e);
+			}
 		}
+
+		return embeds;
 	},
 	module: "utility",
 	subcommands: {},
@@ -114,8 +97,8 @@ module.exports.subcommands.add = {
 		var names;
 		var targets;
 		if(msg.mentions.length > 0){
-			if(!msg.member.permission.has("manageRoles")) return msg.channel.createMessage("You don't have permission to add roles to other users");
-			if(msg.mentions.length > 5) return msg.channel.createMessage("This command can only be used to add roles to up to 5 members at once");
+			if(!msg.member.permission.has("manageRoles")) return "You don't have permission to add roles to other users.";
+			if(msg.mentions.length > 5) return "This command can only be used to add roles to up to 5 members at once.";
 
 			var l = msg.mentions.length;
 			targets = msg.mentions.map(u => {
@@ -139,7 +122,7 @@ module.exports.subcommands.add = {
 					results.push({name: names[j], reason: "Role not found"});
 					continue;
 				}
-				role = await bot.utils.getSelfRole(bot, msg.guild.id, role.id);
+				role = await bot.stores.roles.get(msg.guild.id, role.id);
 				if(!role) {
 					results.push({name: names[j], reason: "Self role not found"});
 					continue;
@@ -171,26 +154,7 @@ module.exports.subcommands.add = {
 			}})
 		}
 
-		var message = await msg.channel.createMessage(embeds[0]);
-
-		if(embeds.length > 1) {
-			if(!bot.menus) bot.menus = {};
-			bot.menus[message.id] = {
-				user: msg.author.id,
-				index: 0,
-				data: embeds,
-				timeout: setTimeout(()=> {
-					if(!bot.menus[message.id]) return;
-					message.removeReaction("\u2b05");
-					message.removeReaction("\u27a1");
-					message.removeReaction("\u23f9");
-					delete bot.menus[message.id];
-				}, 900000),
-				execute: bot.utils.paginateEmbeds
-			};
-
-			["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
-		}
+		return embeds;
 	},
 	guildOnly: true,
 	alias: ["a", "+"]
@@ -206,8 +170,8 @@ module.exports.subcommands.remove = {
 		var names;
 		var targets;
 		if(msg.mentions.length > 0){
-			if(!msg.member.permission.has("manageRoles")) return msg.channel.createMessage("You don't have permission to remove roles from other users");
-			if(msg.mentions.length > 5) return msg.channel.createMessage("This command can only be used to remove roles from up to 5 members at once");
+			if(!msg.member.permission.has("manageRoles")) return "You don't have permission to remove roles from other users.";
+			if(msg.mentions.length > 5) return "This command can only be used to remove roles from up to 5 members at once.";
 
 			var l = msg.mentions.length;
 			targets = msg.mentions.map(u => {
@@ -231,7 +195,7 @@ module.exports.subcommands.remove = {
 					results.push({name: names[j], reason: "Role not found"});
 					continue;
 				}
-				role = await bot.utils.getSelfRole(bot, msg.guild.id, role.id);
+				role = await bot.stores.roles.get(msg.guild.id, role.id);
 				if(!role) {
 					results.push({name: names[j], reason: "Self role not found"});
 					continue;
@@ -263,26 +227,7 @@ module.exports.subcommands.remove = {
 			}})
 		}
 
-		var message = await msg.channel.createMessage(embeds[0]);
-
-		if(embeds.length > 1) {
-			if(!bot.menus) bot.menus = {};
-			bot.menus[message.id] = {
-				user: msg.author.id,
-				index: 0,
-				data: embeds,
-				timeout: setTimeout(()=> {
-					if(!bot.menus[message.id]) return;
-					message.removeReaction("\u2b05");
-					message.removeReaction("\u27a1");
-					message.removeReaction("\u23f9");
-					delete bot.menus[message.id];
-				}, 900000),
-				execute: bot.utils.paginateEmbeds
-			};
-
-			["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
-		}
+		return embeds;
 	},
 	guildOnly: true,
 	alias: ["r", "rmv", "-"]
@@ -294,13 +239,17 @@ module.exports.subcommands.description = {
 	execute: async (bot, msg, args) => {
 		var nargs = args.join(" ").split("\n");
 		var role = msg.guild.roles.find(r => r.name.toLowerCase() == nargs[0].toLowerCase());
-		if(!role) return msg.channel.createMessage("Role not found");
-		var selfrole = await bot.utils.getSelfRole(bot, msg.guild.id, role.id);
-		if(!selfrole) return msg.channel.createMessage("Self role not found");
+		if(!role) return "Role not found.";
+		var selfrole = await bot.stores.roles.get(msg.guild.id, role.id);
+		if(!selfrole) return "Self role not found.";
 
-		var scc = await bot.utils.updateSelfRole(bot, msg.guild.id, role.id, {description: nargs.slice(1).join("\n")});
-		if(scc) msg.channel.createMessage("Role updated!");
-		else msg.channel.createMessage("Something went wrong");
+		try {
+			await bot.stores.roles.update(msg.guild.id, role.id, {description: nargs.slice(1).join("\n")});
+		} catch(e) {
+			return "ERR: "+e;
+		}
+
+		return "Role updated!";
 	},
 	alias: ["desc"],
 	permissions: ["manageRoles"],
@@ -312,7 +261,7 @@ module.exports.subcommands.index = {
 	usage: ()=> [" [role name] [1/0 | true/false | remove] (new line) <description> - Indexes new role, either self-roleable (1) or mod-roleable (0). NOTE: The description is optional, but needs to be on a new line"],
 	desc: ()=> "Use the `remove` keyword to remove a self role entirely",
 	execute: async (bot, msg, args)=>{
-		if(!args[1]) return msg.channel.createMessage("Please provide a role name and a value for self-assignability");
+		if(!args[1]) return "Please provide a role name and a value for self-assignability.";
 		var nargs = args.join(" ").split("\n");
 		var line1 = nargs[0].split(" ");
 		var name = line1.slice(0,-1).join(" ").toLowerCase();
@@ -321,26 +270,36 @@ module.exports.subcommands.index = {
 		if(!["0", "1", "false", "true", "remove"].includes(assignable)) return msg.channel.createMessage("Please provide a value for self-assignability");
 
 		var role = msg.guild.roles.find(r => r.name.toLowerCase() == name);
-		if(!role) return msg.channel.createMessage("Couldn't find that role");
+		if(!role) return "Couldn't find that role.";
 
-		var selfrole = await bot.utils.getSelfRole(bot, msg.guild.id, role.id);
-		var scc;
+		var selfrole = await bot.stores.roles.get(msg.guild.id, role.id);
 		if(selfrole) {
 			if(assignable == "remove") {
-				scc = await bot.utils.deleteSelfRole(bot, msg.guild.id, role.id);
-				if(scc) msg.channel.createMessage("Self role deleted");
-				else msg.channel.createMessage("Something went wrong");
+				try {
+					await bot.stores.roles.delete(msg.guild.id, role.id);
+				} catch(e) {
+					return "ERR: "+e;
+				}
+
+				return "Self role deleted!";
 			} else {
-				scc = await bot.utils.updateSelfRole(bot, msg.guild.id, role.id, {assignable: assignable, description: description || selfrole.description});
-				if(scc) msg.channel.createMessage("Self role updated!");
-				else msg.channel.createMessage("Something went wrong");
+				try {
+					await bot.stores.roles.update(msg.guild.id, role.id, {assignable: assignable, description: description || selfrole.description});
+				} catch(e) {
+					return "ERR: "+e;
+				}
+				return "Self role updated!"
 			}
 			
 		} else {
-			if(assignable == "remove") return msg.channel.createMessage("That role isn't registered as a self role");
-			scc = await bot.utils.addSelfRole(bot, msg.guild.id, role.id, assignable, description);
-			if(scc) msg.channel.createMessage("Self role indexed");
-			else msg.channel.createMessage("Something went wrong");
+			if(assignable == "remove") return "That role isn't registered as a self role.";
+			try {
+				await bot.stores.roles.create(msg.guild.id, role.id, {assignable, description});
+			} catch(e) {
+				return "ERR: "+e;
+			}
+			
+			return "Self role indexed!";
 		}
 	},
 	permissions: ["manageRoles"],
@@ -348,18 +307,19 @@ module.exports.subcommands.index = {
 }
 
 module.exports.subcommands.create = {
-	help: ()=> "Creates a role",
+	help: ()=> "Create a role.",
 	usage: ()=> [" [role name] - Creates a new role with the given name (mod only)"],
 	execute: async (bot, msg, args)=> {
+		if(!args[0]) return "Please provide a name for the role.";
 		var name = args.join(" ");
 		try {
 			await msg.guild.createRole({name: name});
 		} catch(e) {
 			console.log(e);
-			return msg.channel.createMessage("Something went wrong");
+			return "ERR: "+e.message;
 		}
 		
-		msg.channel.createMessage("Role created! Use `hh!role edit` to edit the role");
+		return "Role created! Use `hh!role edit` to edit the role";
 	},
 	alias: ["new", "+", "make"],
 	permissions: ["manageRoles"],
@@ -367,21 +327,21 @@ module.exports.subcommands.create = {
 }
 
 module.exports.subcommands.name = {
-	help: ()=> "Sets a role's name",
+	help: ()=> "Set a role's name.",
 	usage: ()=> " [role] (new line) [new name] - Sets the role's name",
 	execute: async (bot, msg, args) => {
 		var nargs = args.join(" ").split("\n");
 		var role = msg.guild.roles.find(r => r.name.toLowerCase() == nargs[0]);
-		if(!role) return msg.channel.createMessage("Role not found");
+		if(!role) return "Role not found.";
 
 		try {
 			role.edit({name: nargs[1]});
 		} catch(e) {
 			console.log(e);
-			return msg.channel.createMessage("Something went wrong");
+			return "ERR: "+e.message;
 		}
 
-		msg.channel.createMessage("Role edited!");
+		return "Role edited!";
 	},
 	alias: ["rename"],
 	permissions: ["manageRoles"],
@@ -389,20 +349,20 @@ module.exports.subcommands.name = {
 }
 
 module.exports.subcommands.color = {
-	help: ()=> "Sets a role's color",
+	help: ()=> "Sets a role's color.",
 	usage: ()=> " [role] (new line) [new color] - Sets the role's color",
 	execute: async (bot, msg, args) => {
 		var nargs = args.join(" ").split("\n");
 		var role = msg.guild.roles.find(r => r.name.toLowerCase() == nargs[0]);
-		if(!role) return msg.channel.createMessage("Role not found");
+		if(!role) return "Role not found.";
 		var color = bot.tc(nargs[1].split(" ").join(""));
-		if(!color.isValid()) return msg.channel.createMessage("That isn't a valid color");
+		if(!color.isValid()) return "That isn't a valid color.";
 
 		try {
 			role.edit({color: parseInt(color.toHex(), 16)});
 		} catch(e) {
 			console.log(e);
-			return msg.channel.createMessage("Something went wrong");
+			return "ERR: "+e.message;
 		}
 
 		msg.channel.createMessage("Role edited!");
@@ -412,20 +372,20 @@ module.exports.subcommands.color = {
 }
 
 module.exports.subcommands.delete = {
-	help: ()=> "Deletes a role",
+	help: ()=> "Deletes a role.",
 	usage: ()=> [" [role name/ID] - Deletes given role"],
 	execute: async (bot, msg, args)=> {
-		var role = msg.guild.roles.find(r => [r.name.toLowerCase(), r.id].includes(args.join(" ").toLowerCase()));
-		if(!role) return msg.channel.createMessage("Role not found");
+		var role = msg.guild.roles.find(r => [r.name.toLowerCase(), r.id].includes(args.join(" ").toLowerCase().replace(/<@&>/g, '')));
+		if(!role) return "Role not found";
 
 		try {
-			await role.delete("Deleted through command");
+			await role.delete(`Deleted by ${msg.author.username}#${msg.author.discriminator} through command`);
 		} catch(e) {
 			console.log(e);
-			return msg.channel.createMessage("Something went wrong")
+			return "ERR: "+e.message;
 		}
 
-		msg.channel.createMessage("Role deleted!");
+		return "Role deleted!";
 	},
 	permissions: ["manageRoles"],
 	guildOnly: true

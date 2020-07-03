@@ -6,7 +6,7 @@ module.exports = {
 		var num=Math.floor(Math.random() * max);
 		var nums=num.toString().split("");
 
-		msg.channel.createMessage("Your number:\n"+nums.map(n => ":"+bot.strings.numbers[eval(n)] + ":").join(""));
+		return "Your number:\n"+nums.map(n => ":"+bot.strings.numbers[eval(n)] + ":").join("");
 	},
 	module: "utility",
 	alias: ["rand", "rng"]

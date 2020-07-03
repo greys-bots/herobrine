@@ -2,15 +2,15 @@ module.exports = {
 	help: () => "Get a little bit of love from Herobrine!",
 	usage: () => [" - sends about 5 messages in a row that are meant to be affirming"],
 	execute: (bot, msg, args) =>{
-		var lb = -1000;
+		var lb = 0;
 		bot.strings.lovebombs.forEach(async t=>{
-			lb+=1000;
 			setTimeout(()=>{
 				msg.channel.sendTyping();
 			},lb)
 			setTimeout(()=>{
-				msg.channel.createMessage(t.replace("msg.author.username",msg.author.username));
+				return t.replace("msg.author.username", msg.author.username);
 			},lb+500)
+			lb+=1000;
 		});
 	},
 	module: "fun",

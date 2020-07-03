@@ -8,7 +8,7 @@ module.exports = {
 
 		var choice = bot.utils.randomText(nargs);
 		var rand = bot.utils.randomText(bot.strings.choices);
-		msg.channel.createMessage(`${bot.strings.thinkemote} | ${rand.replace("$CHOICE", `**${choice}**`)}`);
+		return `${bot.strings.thinkemote} | ${rand.replace("$CHOICE", `**${choice}**`)}`;
 	},
 	alias: ["choice", "chose", "pick"],
 	module: "fun"

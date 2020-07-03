@@ -73,29 +73,9 @@ module.exports = {
 				for(let i=0; i<embeds.length; i++) {
 					embeds[i].embed.title += ` (page ${i+1}/${embeds.length}, ${bot.commands.size} commands total)`;
 				}
-			}	
-
-			var message = await msg.channel.createMessage(embeds[0]);
-			if(embeds[1]) {
-				if(!bot.menus) bot.menus = {};
-				bot.menus[message.id] = {
-					user: msg.author.id,
-					data: embeds,
-					index: 0,
-					timeout: setTimeout(()=> {
-						if(!bot.menus[message.id]) return;
-						try {
-							message.removeReactions();
-						} catch(e) {
-							console.log(e);
-						}
-						delete bot.menus[msg.author.id];
-					}, 900000),
-					execute: bot.utils.paginateEmbeds
-				};
-				["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
 			}
-			return;
+
+			return embeds;
 		}
 
 		if(bot.modules.get(args.join(" ").toLowerCase())) {
@@ -119,26 +99,7 @@ module.exports = {
 				if(embeds.length > 1) embeds[i].embed.title += ` (page ${i+1}/${embeds.length}, ${module.commands.length} commands total)`;
 			}
 
-			var message = await msg.channel.createMessage(embeds[0]);
-			if(embeds[1]) {
-				if(!bot.menus) bot.menus = {};
-				bot.menus[message.id] = {
-					user: msg.author.id,
-					data: embeds,
-					index: 0,
-					timeout: setTimeout(()=> {
-						if(!bot.menus[message.id]) return;
-						try {
-							message.removeReactions();
-						} catch(e) {
-							console.log(e);
-						}
-						delete bot.menus[msg.author.id];
-					}, 900000),
-					execute: bot.utils.paginateEmbeds
-				};
-				["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
-			}
+			return embeds;
 		} else if(bot.commands.get(bot.aliases.get(args[0].toLowerCase()))) {
 			let {command} = await bot.parseCommand(bot, msg, args);
 			var embed = {embed: {
@@ -160,8 +121,8 @@ module.exports = {
 			if(command.desc) embed.embed.fields.push({name: "**Extra**", value: command.desc()});
 			if(command.permissions) embed.embed.fields.push({name: "**Permissions**", value: command.permissions.join(", ")});
 
-			return msg.channel.createMessage(embed);
-		} else msg.channel.createMessage("Command/module not found");
+			return embed;
+		} else "Command/module not found";
 	},
 	alias: ["h", "halp", "?"]
 }

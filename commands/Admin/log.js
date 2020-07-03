@@ -38,7 +38,7 @@ module.exports = {
 				 " invite [invite] [name] - Save an invite under a given name",
 				 " clear [channel] - Clear logging in a specific channel"],
 	execute: async (bot, msg, args) => {
-		msg.channel.createMessage("This command is a WIP!");
+		return "This command is a WIP!";
 		// if(args[0]) {
 		// 	var channel = msg.guild.channels.find(c => c.name == args[0].toLowerCase() ||
 		// 											   c.id == args[0].replace(/[<#>]/g,""));

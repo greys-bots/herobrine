@@ -7,18 +7,20 @@ module.exports = {
 				 " edit [tag name] - Runs a menu to edit a tag"],
 	desc: ()=> "If you're looking for custom commands, that's currently a work in progress.",
 	execute: async (bot, msg, args) => {
-		var tags = await bot.utils.getTags(bot, msg.guild.id);
-		if(tags) {
-			msg.channel.createMessage({embed: {
-				title: "Server Tags",
-				description: "Tags that have been registered for the server",
-				fields: tags.map(t => {
-					return {name: t.name, value: typeof t.value == "string" ? t.value.substring(0, 128)+(t.value.length > 128 ? "..." : "") : t.value.map(r => r.substring(0, 128)+(r.length > 128 ? "..." : "")).join("\n")}
-				})
-			}})
-		} else {
-			msg.channel.createMessage("No tags registered");
-		}
+		var tags = await bot.stores.responses.getAll(msg.guild.id);
+		if(!tags || !tags[0]) return "No tags registered.";
+
+		var embeds = await bot.utils.genEmbeds(bot, tags, tag => {
+			var val = typeof t.value == "string" ? 
+					  t.value.substring(0, 128)+(t.value.length > 128 ? "..." : "") :
+					  t.value.map(r => r.substring(0, 128)+(r.length > 128 ? "..." : "")).join("\n");
+			return {name: tag.name, value: val}
+		}, {
+			title: "Server Tags",
+			description: "Tags that have been registered for the server"
+		})
+		
+		return embeds;
 	},
 	guildOnly: true,
 	alias: ["tag","response","responses"],
@@ -30,16 +32,17 @@ module.exports.subcommands.add = {
 	help: ()=> "Add a custom response",
 	usage: ()=> [" - Run a set up menu to create a new tag and response"],
 	execute: async (bot, msg, args) => {
-		var tags = await bot.utils.getTags(bot, msg.guild.id);
+		var tags = await bot.stores.responses.getAll(msg.guild.id);
 
 		var name;
 		var val = [];
 
 		await msg.channel.createMessage("Enter a name for the tag. This is what will activate the response. Examples: `server rules`, `modinfo`, etc.\nThe bot's prefix doesn't need to be present for the response to work.");
 		var resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 60000, maxMatches: 1});
-		if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
+		if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
 		var cmd = await bot.parseCommand(bot, msg, resp[0].content.toLowerCase().split(" "));
-		if(tags && tags.find(t => t.name == resp[0].content.toLowerCase()) || cmd) return msg.channel.createMessage("ERR: another tag or command exists with that name. Aborting");
+		if(tags && tags.find(t => t.name == resp[0].content.toLowerCase()) || cmd)
+			return "ERR: another tag or command exists with that name. Aborting.";
 		name = resp[0].content.toLowerCase();
 
 		var done;
@@ -54,14 +57,18 @@ module.exports.subcommands.add = {
 			}
 		} catch(e) {
 			console.log(e);
-			return msg.channel.createMessage("ERR: timed out. Aborting");
+			return "ERR: timed out. Aborting.";
 		}
 
-		if(val.length == 0) return msg.channel.createMessage("ERR: No responses added. Aborting");
+		if(val.length == 0) return "ERR: No responses added. Aborting.";
 
-		var scc = await bot.utils.createTag(bot, msg.guild.id, name, val);
-		if(scc) msg.channel.createMessage("Tag registered!");
-		else msg.channel.createMessage("Something went wrong");
+		try {
+			await bot.stores.responses.create(msg.guild.id, name, val);
+		} catch(e) {
+			return "ERR: "+e;
+		}
+		
+		return "Tag registered!";
 	},
 	alias: ["create", "new", "+"],
 	guildOnly: true,
@@ -72,12 +79,16 @@ module.exports.subcommands.remove = {
 	help: ()=> "Delete a custom response tag",
 	usage: ()=> [" [tag name] - Deletes the given tag"],
 	execute: async (bot, msg, args) => {
-		var tag = await bot.utils.getTag(bot, msg.guild.id, args.join(" ").toLowerCase());
-		if(!tag) return msg.channel.createMessage("Tag not found");
+		var tag = await bot.stores.responses.get(msg.guild.id, args.join(" ").toLowerCase());
+		if(!tag) return "Tag not found.";
 
-		var scc = await bot.utils.deleteTag(bot, tag.server_id, tag.name);
-		if(scc) msg.channel.createMessage("Tag deleted!");
-		else msg.channel.createMessage("Something went wrong");
+		try {
+			await bot.stores.responses.delete(tag.server_id, tag.name);
+		} catch(e) {
+			return "ERR: "+e;
+		}
+		
+		return "Tag deleted!";
 	},
 	alias: ["delete", "-"],
 	guildOnly: true,
@@ -88,16 +99,16 @@ module.exports.subcommands.info = {
 	help: ()=> "Get info on a tag",
 	usage: ()=> [" [tag name] - Gets info on the given tag"],
 	execute: async(bot, msg, args) => {
-		var tag = await bot.utils.getTag(bot, msg.guild.id, args.join(" ").toLowerCase());
-		if(!tag) return msg.channel.createMessage("Tag not found");
+		var tag = await bot.stores.responses.get(msg.guild.id, args.join(" ").toLowerCase());
+		if(!tag) return "Tag not found.";
 
-		msg.channel.createMessage({embed: {
+		return {embed: {
 			title: "Tag: "+tag.name,
 			description: `Responses: ${tag.value.length}/5`,
 			fields: tag.value.map((t,i) => {
 				return {name: `Response ${i+1}`, value: t}
 			})
-		}})
+		}};
 	}
 }
 
@@ -105,21 +116,26 @@ module.exports.subcommands.edit = {
 	help: ()=> "Edit a tag name or response",
 	usage: ()=> [" [tag name] - Runs a menu to edit the given tag"],
 	execute: async (bot, msg, args) => {
-		var tag = await bot.utils.getTag(bot, msg.guild.id, args.join(" ").toLowerCase());
-		if(!tag) return msg.channel.createMessage("Tag not found");
+		if(!args[0]) return "Please provide a tag to edit.";
+		var tag = await bot.stores.responses.get(bot, args.join(" ").toLowerCase());
+		if(!tag) return "Tag not found.";
 
 		var resp;
 		var scc;
 		await msg.channel.createMessage("Enter what you'd like to edit. Options: name, response")
 		resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 60000, maxMatches: 1});
-		if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
+		if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
 
 		switch(resp[0].content.toLowerCase()) {
 			case "name":
 				await msg.channel.createMessage("Enter what you'd like the new name to be");
 				resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 60000, maxMatches: 1});
-				if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
-				var scc = await bot.utils.updateTag(bot, msg.guild.id, tag.name, "name", resp[0].content.toLowerCase());
+				if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
+				try {
+					await bot.stores.responses.update(msg.guild.id, tag.name, {name: resp[0].content.toLowerCase()});
+				} catch(e) {
+					return "ERR: "+e;
+				}
 				break;
 			case "response":
 			case "value":
@@ -136,17 +152,21 @@ module.exports.subcommands.edit = {
 					}
 				} catch(e) {
 					console.log(e);
-					return msg.channel.createMessage("ERR: timed out. Aborting");
+					return "ERR: timed out. Aborting.";
 				}
-				if(val.length == 0) return msg.channel.createMessage("ERR: No responses added. Aborting");
-				var scc = await bot.utils.updateTag(bot, msg.guild.id, tag.name, "value", val);
+				if(val.length == 0) return "ERR: No responses added. Aborting.";
+				try {
+					await bot.stores.responses.update(msg.guild.id, tag.name, {value: val});
+				} catch(e) {
+					return "ERR: "+e;
+				}
 				break;
 			default:
-				return msg.channel.createMessage("ERR: invalid input. Aborting");
+				return "ERR: invalid input. Aborting.";
 				break;
 		}
-		if(scc) msg.channel.createMessage("Successfully updated");
-		else msg.channel.createMessage("Something went wrong");
+		
+		return "Tag updated!";
 	},
 	alias: ["e", "change"],
 	guildOnly: true,

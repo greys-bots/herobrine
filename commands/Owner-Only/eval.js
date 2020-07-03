@@ -12,7 +12,7 @@ module.exports = {
 				evld=require("util").inspect(evld);
 			}
 
-			msg.channel.createMessage(bot.utils.cleanText(evld));
+			return bot.utils.cleanText(evld);
 		} catch (err) {
 			if(err){console.log(err)}
 		};
@@ -35,7 +35,7 @@ module.exports.subcommands.prm = {
 					evlp=require("util").inspect(evlp);
 				}
 
-				msg.channel.createMessage(bot.utils.cleanText(evlp));
+				return bot.utils.cleanText(evlp);
 			} catch (err) {
 				if(err){console.log(err)}
 			}

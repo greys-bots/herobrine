@@ -37,7 +37,7 @@ const trigger_categories = [
 ];
 
 module.exports= {
-	help: ()=> "View and manage trigger lists",
+	help: ()=> "View and manage trigger lists.",
 	usage: ()=> [" - List your trigger lists, if you have any",
 				 " [hid] - List triggers registered at that hid",
 				 " new - Creates a new list, using a handy menu",
@@ -50,10 +50,10 @@ module.exports= {
 				trigger.categories.map(c => `${c.name.toUpperCase()} - ${c.description}`).join("\n")],
 	execute: async (bot, msg, args) => {
 		if(args[0]) {
-			var triggers = await bot.utils.getTriggerList(bot, msg.author.id, args[0].toLowerCase());
-			if(!triggers) return msg.channel.createMessage("That trigger list does not exist");
-			if(triggers == "private") return msg.channel.createMessage("You do not have permission to view that list");
-			if(!Object.keys(triggers.list).find(k => triggers.list[k][0])) return msg.channel.createMessage("That list has no triggers reigstered on it");
+			var triggers = await bot.stores.triggers.get(msg.author.id, args[0].toLowerCase());
+			if(!triggers) return "That trigger list does not exist.";
+			if(triggers == "private") return "You do not have permission to view that list.";
+			if(!Object.keys(triggers.list).find(k => triggers.list[k][0])) return "That list has no triggers reigstered on it.";
 
 			var embeds = Object.keys(triggers.list).map(s => {
 				if(!triggers.list[s][0]) return null
@@ -79,7 +79,7 @@ module.exports= {
 						message.removeReactions();
 						delete bot.menus[message.id];
 					}, 900000),
-					execute: bot.utils.handleTriggerReactions
+					execute: bot.stores.triggers.handleReactions
 				};
 				if(embeds[1]) ["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
 				if(msg.author.id == triggers.user_id) ["\u270f","❌"].forEach(r => message.addReaction(r));
@@ -87,8 +87,8 @@ module.exports= {
 			return;
 		}
 		
-		var lists = await bot.utils.getTriggerLists(bot, msg.author.id);
-		if(!lists || !lists[0]) return msg.channel.createMessage("You don't have any trigger lists registered");
+		var lists = await bot.stores.triggers.getAll(msg.author.id);
+		if(!lists || !lists[0]) return "You don't have any trigger lists registered.";
 
 		var embeds = await bot.utils.genEmbeds(bot, lists, l => {
 			return {name: l.name, value: l.hid}
@@ -97,22 +97,7 @@ module.exports= {
 			color: parseInt("5555aa", 16)
 		})
 
-		var message = await msg.channel.createMessage(embeds[0]);
-		if(embeds[1]) {
-			if(!bot.menus) bot.menus = {};
-			bot.menus[message.id] = {
-				user: msg.author.id,
-				index: 0,
-				data: {embeds: embeds, list: triggers},
-				timeout: setTimeout(()=> {
-					if(!bot.menus[message.id]) return;
-					message.removeReactions()
-					delete bot.menus[message.id];
-				}, 900000),
-				execute: bot.utils.paginateEmbeds
-			};
-			["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
-		}
+		return embeds;
 	},
 	subcommands: {},
 	alias: ["trigs"]
@@ -144,64 +129,72 @@ module.exports.subcommands.new = {
 				].join(""));
 				resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 5*60000, maxMatches: 1});
 				if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
-				if(resp[0].content.toLowerCase() == "cancel") return msg.channel.createMessage("Action cancelled");
+				if(resp[0].content.toLowerCase() == "cancel") return "Action cancelled.";
 				if(resp[0].content.toLowerCase() != "skip") list[category.name] = resp[0].content.split("\n");
 			}
 
 			if(!Object.keys(list).find(x => list[x][0]) && attempt < 1) {
 				await msg.channel.createMessage("ERR: no triggers or squicks have been added. Would you like to cancel adding a list? (y/n)");
 				resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 5*60000, maxMatches: 1});
-				if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
-				if(["y", "yes"].includes(resp[0].content.toLowerCase())) return msg.channel.createMessage("Action cancelled");
+				if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
+				if(["y", "yes"].includes(resp[0].content.toLowerCase())) return "Action cancelled.";
 				else {
 					msg.channel.createMessage("Restarting trigger adding...");
 					attempt = 1
 				}
-			} else if(!Object.keys(list).find(x => list[x][0]) && attempt > 1) return msg.channel.createMessage("ERR: no triggers added. Aborting");
+			} else if(!Object.keys(list).find(x => list[x][0]) && attempt > 1) return "ERR: no triggers added. Aborting.";
 			else attempt = 2;
 		}
 
 		await msg.channel.createMessage("Would you like this list to be private? (y/n)");
 		resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 5*60000, maxMatches: 1});
-		if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
+		if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
 		if(["yes", "y"].includes(resp[0].content.toLowerCase())) private = true;
 		else private = false;
 
 		var hid = bot.utils.genCode(4, bot.strings.codestab);
-		var scc = await bot.utils.addTriggerList(bot, msg.author.id, hid, name, list, private);
-		if(scc) msg.channel.createMessage(`List created! ID: ${hid}`);
-		else msg.channel.createMessage("Something went wrong");
+		try {
+			await bot.stores.triggers.create(msg.author.id, hid, {name, list, private});
+		} catch(e) {
+			return "ERR: "+e;
+		}
+
+		return `List created! ID: ${hid}`
 	}
 }
 
 module.exports.subcommands.rename = {
-	help: ()=> "Rename a trigger list",
+	help: ()=> "Rename a trigger list.",
 	usage: ()=> [" [hid] [new name] - Sets the name of the list"],
-	desc: ()=> "Note that the name can only be between 1 and 100 characters",
+	desc: ()=> "Note that the name can only be between 1 and 100 characters.",
 	execute: async (bot, msg, args) => {
-		if(!args[1]) return msg.channel.createMessage("Please provide a list and the new name");
+		if(!args[1]) return "Please provide a list and the new name.";
 
-		var list = await bot.utils.getTriggerList(bot, msg.author.id, args[0].toLowerCase());
-		if(!list) return msg.channel.createMessage("List not found");
-		if(list == "private" || list.user_id != msg.author.id) return msg.channel.createMessage("You do not have permission to edit that list");
+		var list = await bot.stores.triggers.get(msg.author.id, args[0].toLowerCase());
+		if(!list) return "List not found.";
+		if(list == "private" || list.user_id != msg.author.id) return "You do not have permission to edit that list.";
 		args.shift();
-		if(args.join(" ").length > 100) return msg.channel.createMessage("That name is too long. Names must be between 1 and 100 characters in length");
+		if(args.join(" ").length > 100) return "That name is too long. Names must be between 1 and 100 characters in length.";
 
-		var scc = await bot.utils.updateTriggerList(bot, msg.author.id, list.hid, {name: args.join(" ")});
-		if(scc) msg.channel.createMessage("List updated!");
-		else msg.channel.createMessage("Something went wrong");
+		try {
+			await bot.stores.triggers.update(msg.author.id, list.hid, {name: args.join(" ")});
+		} catch(e) {
+			return "ERR: "+e;
+		}
+
+		return "List updated!";
 	}
 }
 
 module.exports.subcommands.set = {
-	help: ()=> "Set triggers on a list",
+	help: ()=> "Set triggers on a list.",
 	usage: ()=> [" [hid] <category> <triggers to set> - Sets triggers on a list, replacing existing ones. Uses a menu if triggers aren't specified"],
 	desc: ()=> "Triggers should be separated by new lines",
 	execute: async (bot, msg, args)=>{
-		if(!args[0]) return msg.channel.createMessage("Please provide a list to set");
-		var list = await bot.utils.getTriggerList(bot, msg.author.id, args[0].toLowerCase());
-		if(!list) return msg.channel.createMessage("List not found");
-		if(list == "private" || list.user_id != msg.author.id) return msg.channel.createMessage("You do not have permission to edit that list");
+		if(!args[0]) return "Please provide a list to set.";
+		var list = await bot.stores.triggers.get(msg.author.id, args[0].toLowerCase());
+		if(!list) return "List not found.";
+		if(list == "private" || list.user_id != msg.author.id) return "You do not have permission to edit that list.";
 		args.shift();
 
 		var category;
@@ -212,12 +205,12 @@ module.exports.subcommands.set = {
 		else {
 			await msg.channel.createMessage("What category do you want to set triggers on? Available categories: `extreme`, `bad`, `mild`, `squicks`, `all`");
 			resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 60000, maxMatches: 1});
-			if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
+			if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
 			category = resp[0].content.toLowerCase();
 		}
 
 		if(!["extreme", "bad", "mild", "squick", "squicks", "all"].includes(category.toLowerCase())) 
-			return msg.channel.createMessage("ERR: invalid category given. Aborting");
+			return "ERR: invalid category given. Aborting.";
 
 		if(category == "all") {
 			var attempt = 0;
@@ -257,22 +250,26 @@ module.exports.subcommands.set = {
 			
 			list.list[category] = list.list[category].concat(trigs);
 		}
+
+		try {
+			await bot.stores.triggers.update(msg.author.id, list.hid, {list: list.list});
+		} catch(e) {
+			return "ERR: "+e;
+		}
 		
-		var scc = await bot.utils.updateTriggerList(bot, msg.author.id, list.hid, {list: list.list});
-		if(scc) msg.channel.createMessage("List updated!");
-		else msg.channel.createMessage("Something went wrong");
+		return "List updated!";
 	}
 }
 
 module.exports.subcommands.add = {
-	help: ()=> "Add new triggers to a list",
+	help: ()=> "Add new triggers to a list.",
 	usage: ()=> [" [hid] <category> <triggers to add> - Adds triggers to a list. Uses a menu if triggers aren't specified"],
 	desc: ()=> "Triggers should be separated by new lines",
 	execute: async (bot, msg, args)=>{
-		if(!args[0]) return msg.channel.createMessage("Please provide a list to add to");
-		var list = await bot.utils.getTriggerList(bot, msg.author.id, args[0].toLowerCase());
-		if(!list) return msg.channel.createMessage("List not found");
-		if(list == "private" || list.user_id != msg.author.id) return msg.channel.createMessage("You do not have permission to edit that list");
+		if(!args[0]) return "Please provide a list to add to.";
+		var list = await bot.stores.triggers.get(msg.author.id, args[0].toLowerCase());
+		if(!list) return "List not found.";
+		if(list == "private" || list.user_id != msg.author.id) return "You do not have permission to edit that list.";
 		args.shift();
 
 		var category;
@@ -283,25 +280,29 @@ module.exports.subcommands.add = {
 		else {
 			await msg.channel.createMessage("What category do you want to add triggers to? Available categories: `extreme`, `bad`, `mild`, `squicks`");
 			resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 60000, maxMatches: 1});
-			if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
+			if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
 			category = resp[0].content.toLowerCase();
 		}
 
 		if(!["extreme", "bad", "mild", "squick", "squicks"].includes(category.toLowerCase())) 
-			return msg.channel.createMessage("ERR: invalid category given. Aborting");
+			return "ERR: invalid category given. Aborting.";
 
 		if(args[0]) trigs = args[0].split("\n");
 		else {
 			await msg.channel.createMessage("Enter the triggers you'd like to add, separated by new lines. You have 5 minutes to do this");
 			resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 5*60000, maxMatches: 1});
-			if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
+			if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
 			trigs = resp[0].content.split("\n");
 		}
 		
 		list.list[category] = list.list[category].concat(trigs);
-		var scc = await bot.utils.updateTriggerList(bot, msg.author.id, list.hid, {list: list.list});
-		if(scc) msg.channel.createMessage("List updated!");
-		else msg.channel.createMessage("Something went wrong");
+		try {
+			await bot.stores.triggers.update(msg.author.id, list.hid, {list: list.list});
+		} catch(e) {
+			return "ERR: "+e;
+		}
+		
+		return "List updated!";
 	}
 }
 
@@ -310,10 +311,10 @@ module.exports.subcommands.remove = {
 	usage: ()=> [" [hid] <category> <triggers to remove> - Removes triggers from a list. Uses a menu if triggers aren't specified"],
 	desc: ()=> "Triggers should be separated by new lines",
 	execute: async (bot, msg, args)=>{
-		if(!args[0]) return msg.channel.createMessage("Please provide a list to remove from");
-		var list = await bot.utils.getTriggerList(bot, msg.author.id, args[0].toLowerCase());
-		if(!list) return msg.channel.createMessage("List not found");
-		if(list == "private" || list.user_id != msg.author.id) return msg.channel.createMessage("You do not have permission to edit that list");
+		if(!args[0]) return "Please provide a list to remove from.";
+		var list = await bot.stores.triggers.get(msg.author.id, args[0].toLowerCase());
+		if(!list) return "List not found.";
+		if(list == "private" || list.user_id != msg.author.id) return "You do not have permission to edit that list.";
 		args.shift();
 
 		var category;
@@ -324,25 +325,29 @@ module.exports.subcommands.remove = {
 		else {
 			await msg.channel.createMessage("What category do you want to remove triggers from? Available categories: `extreme`, `bad`, `mild`, `squicks`");
 			resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 60000, maxMatches: 1});
-			if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
+			if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
 			category = resp[0].content.toLowerCase();
 		}
 
 		if(!["extreme", "bad", "mild", "squick", "squicks"].includes(category.toLowerCase())) 
-			return msg.channel.createMessage("ERR: invalid category given. Aborting");
+			return "ERR: invalid category given. Aborting.";
 
 		if(args[0]) trigs = args[0].split("\n");
 		else {
 			await msg.channel.createMessage("Enter the triggers you'd like to remove, separated by new lines. You have 5 minutes to do this");
 			resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 5*60000, maxMatches: 1});
-			if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
+			if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
 			trigs = resp[0].content.toLowerCase().split("\n");
 		}
 		
 		list.list[category] = list.list[category].filter(x => !trigs.includes(x.toLowerCase()));
-		var scc = await bot.utils.updateTriggerList(bot, msg.author.id, list.hid, {list: list.list});
-		if(scc) msg.channel.createMessage(`List updated!${!Object.keys(list.list).find(x => list.list[x][0]) ? " The list now has no triggers on it, but can still be edited" : ""}`);
-		else msg.channel.createMessage("Something went wrong");
+		try {
+			await bot.stores.triggers.update(msg.author.id, list.hid, {list: list.list});
+		} catch(e) {
+			return "ERR: "+e;
+		}
+		
+		return `List updated!${!Object.keys(list.list).find(x => list.list[x][0]) ? " The list now has no triggers on it, but can still be edited" : ""}`
 	}
 }
 
@@ -350,15 +355,19 @@ module.exports.subcommands.delete = {
 	help: ()=> "Delete a trigger list",
 	usage: ()=> [" [hid] - Delete a trigger list with the given hid"],
 	execute: async (bot, msg, args)=>{
-		if(!args[0]) return msg.channel.createMessage("Please provide a list to delete");
+		if(!args[0]) return "Please provide a list to delete.";
 
-		var list = await bot.utils.getTriggerList(bot, msg.author.id, args[0].toLowerCase());
-		if(!list) return msg.channel.createMessage("List not found");
-		if(list == "private" || list.user_id != msg.author.id) return msg.channel.createMessage("You do not have permission to delete that list");
+		var list = await bot.stores.triggers.get(msg.author.id, args[0].toLowerCase());
+		if(!list) return "List not found.";
+		if(list == "private" || list.user_id != msg.author.id) return "You do not have permission to delete that list.";
 
-		var scc = await bot.utils.deleteTriggerList(bot, msg.author.id, list.hid);
-		if(scc) msg.channel.createMessage("List deleted!");
-		else msg.channel.createMessage("Something went wrong");
+		try {
+			await bot.stores.triggers.delete(msg.author.id, list.hid);
+		} catch(e) {
+			return "ERR: "+e;
+		}
+		
+		return "List deleted!";
 	}
 }
 
@@ -366,27 +375,34 @@ module.exports.subcommands.private = {
 	help: ()=> "Set whether a trigger list is private or not",
 	usage: ()=> [" [hid] [(true | 1) | (false | 0)] - Sets the privacy value of the given list"],
 	execute: async (bot, msg, args) => {
-		if(!args[1]) return msg.channel.createMessage("Please provide a list and a value");
+		if(!args[1]) return "Please provide a list and a value.";
 		var list = await bot.utils.getTriggerList(bot, msg.author.id, args[0].toLowerCase());
-		if(!list) return msg.channel.createMessage("List not found");
-		if(list == "private" || list.user_id != msg.author.id) return msg.channel.createMessage("You do not have permission to edit that list");
+		if(!list) return "List not found.";
+		if(list == "private" || list.user_id != msg.author.id) return "You do not have permission to edit that list.";
 
 		var scc;
 		switch(args[1].toLowerCase()) {
 			case "1":
 			case "true":
-				scc = await bot.utils.updateTriggerList(bot, msg.author.id, list.hid, {private: true});
+				try {
+					 bot.stores.triggers.update(msg.author.id, list.hid, {private: true});
+				} catch(e) {
+					return "ERR: "+e;
+				}
 				break;
 			case "0":
 			case "false":
-				scc = await bot.utils.updateTriggerList(bot, msg.author.id, list.hid, {private: false});
+				try {
+					 bot.stores.triggers.update(msg.author.id, list.hid, {private: false});
+				} catch(e) {
+					return "ERR: "+e;
+				}
 				break;
 			default:
-				return msg.channel.createMessage("ERR: invalid value given. Please provide a 1/true or 0/false for privacy")
+				return "ERR: invalid value given. Please provide a 1/true or 0/false for privacy.";
 				break;
 		}
 
-		if(scc) msg.channel.createMessage("List updated!");
-		else msg.channel.createMessage("Something went wrong");
+		return "List updated!";
 	}
 }

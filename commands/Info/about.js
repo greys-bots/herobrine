@@ -2,7 +2,7 @@ module.exports = {
 	help: ()=> "A little about the bot",
 	usage: ()=> [" - Just what's on the tin"],
 	execute: async (bot, msg, args) => {
-		msg.channel.createMessage({embed: {
+		return {embed: {
 			title: '**About**',
 			fields:[
 				{name: "Prefixes", value: "`hh!command`, `heyhero command`, or `heyherobrine command`"},
@@ -15,7 +15,7 @@ module.exports = {
 				{name: "Guilds", value: bot.guilds.size},
 				{name: "Users", value: bot.users.size}
 			]
-		}})
+		}}
 	},
 	alias: ['abt', 'a'],
 	module: "utility"

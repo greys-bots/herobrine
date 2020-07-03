@@ -8,8 +8,8 @@ module.exports = {
 				 ],
 	execute: async (bot, msg, args) => {
 		if(args[0]) {
-			var note = await bot.utils.getNote(bot, msg.author.id, args[0].toLowerCase());
-			if(!note) return msg.channel.createMessage("Couldn't find a note with that id");
+			var note = await bot.stores.notes.get(msg.author.id, args[0].toLowerCase());
+			if(!note) return "Couldn't find a note with that id.";
 
 			var fields = note.body.match(/.{1,1024}/gs).map((s,i)=> {
 				return {
@@ -42,57 +42,25 @@ module.exports = {
 					}
 					delete bot.menus[message.id];
 				}, 900000),
-				execute: bot.utils.handleNoteReactions
+				execute: bot.stores.notes.handleReactions
 			};
-			["⏹️","\u270f","❌"].forEach(r => message.addReaction(r));
+			["⏹️","✏️","❌"].forEach(r => message.addReaction(r));
+			return;
 		} else {
-			var notes = await bot.utils.getNotes(bot, msg.author.id);
-			if(!notes || !notes[0]) return msg.channel.createMessage("You don't have any notes");
+			var notes = await bot.stores.notes.getAll(msg.author.id);
+			if(!notes || !notes[0]) return "You don't have any notes";
 
-			if(notes.length > 10) {
-				var embeds = await bot.utils.genEmbeds(bot, notes, async (n) => {
-					return {
-						name: `${n.title} (${n.hid})`,
-						value: n.body.length > 30 ? n.body.slice(0, 30) + "..." : n.body
-					}
-				}, {
-					title: "Notes",
-					color: parseInt("5555aa",16)
-				});
+			var embeds = await bot.utils.genEmbeds(bot, notes, async (n) => {
+				return {
+					name: `${n.title} (${n.hid})`,
+					value: n.body.length > 30 ? n.body.slice(0, 30) + "..." : n.body
+				}
+			}, {
+				title: "Notes",
+				color: parseInt("5555aa",16)
+			});
 
-				var message = await msg.channel.createMessage(embeds[0]);
-				if(!bot.menus) bot.menus = {};
-				bot.menus[message.id] = {
-					user: msg.author.id,
-					index: 0,
-					data: embeds,
-					timeout: setTimeout(()=> {
-						if(!bot.menus[message.id]) return;
-						if(message.channel.guild) {
-							try {
-								message.removeReactions();
-							} catch(e) {
-								console.log(e);
-								message.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
-							}
-						}
-						delete bot.menus[message.id];
-					}, 900000),
-					execute: bot.utils.paginateEmbeds
-				};
-				["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
-			} else {
-				msg.channel.createMessage({embed: {
-					title: "Notes",
-					fields: notes.map(n => {
-						return {
-							name: `${n.title} (${n.hid})`,
-							value: n.body.length > 30 ? n.body.slice(0, 30) + "..." : n.body
-						}
-					}),
-					color: parseInt("5555aa",16)
-				}})
-			}
+			return embeds;
 		}
 	},
 	alias: ["notes"],
@@ -105,27 +73,30 @@ module.exports.subcommands.add = {
 	usage: ()=> [" - Opens the note add menu"],
 	execute: async (bot, msg, args) => {
 		var count = await bot.utils.getNoteCount(bot, msg.author.id);
-		if(count >= 100) return msg.channel.createMessage("You already have 100 or more notes!")
+		if(count >= 100) return "You already have 100 or more notes!"
 		var resp;
 		var title;
 		var body;
 		await msg.channel.createMessage("Please enter a title for the note. You have 1 minute to do this");
 		resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {maxMatches: 1, time: 60000});
-		if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out");
+		if(!resp || !resp[0]) return "ERR: timed out";
 		if(resp[0].content.length > 100) return m.channel.createMessage("ERR: title must be 100 characters or less");
 		else title = resp[0].content;
 
 		await msg.channel.createMessage("Please enter a body for the note. You have 5 minutes to do this");
 		resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {maxMatches: 1, time: 5*60000});
-		if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out");
+		if(!resp || !resp[0]) return "ERR: timed out";
 		else body = resp[0].content;
 
 		var code = bot.utils.genCode(4, bot.strings.codestab);
 
-		var scc = await bot.utils.createNote(bot, msg.author.id, code, title, body);
-		if(scc) msg.channel.createMessage(`Note created! ID: ${code}`);
-		else msg.channel.createMessage("Something went wrong");
+		try {
+			await bot.stores.notes.create(msg.author.id, code, {title, body});
+		} catch(e) {
+			return "ERR: "+e;
+		}
 
+		return `Note created! ID: ${code}`
 	},
 	alias: ["+","new","create"]
 }
@@ -135,7 +106,7 @@ module.exports.subcommands.delete = {
 	usage: ()=> [" [hid] - Deletes the given note",
 				 " * - Deletes all notes"],
 	execute: async (bot, msg, args) => {
-		if(!args) return msg.channel.createMessage("Please provide a note to delete");
+		if(!args) return "Please provide a note to delete";
 
 		if(['all','*'].includes(args[0].toLowerCase())) {
 			var message = await msg.channel.createMessage("Are you sure you want to delete **all** your notes?");
@@ -171,7 +142,7 @@ module.exports.subcommands.delete = {
 			["✅","❌"].forEach(r => message.addReaction(r))
 		} else {
 			var note = await bot.utils.getNote(bot, msg.author.id, args[0].toLowerCase());
-			if(!note) return msg.channel.createMessage("Note not found");
+			if(!note) return "Note not found";
 
 			var message = await msg.channel.createMessage("Are you sure you want to delete this note?");
 			if(!bot.menus) bot.menus = {};
@@ -214,10 +185,10 @@ module.exports.subcommands.edit = {
 	help: ()=> "Runs a menu to edit a note",
 	usage: ()=> [" [hid] - Opens the note edit menu"],
 	execute: async (bot, msg, args) => {
-		if(!args[0]) return msg.channel.createMessage("Please provide a note to edit");
+		if(!args[0]) return "Please provide a note to edit";
 
 		var note = await bot.utils.getNote(bot, msg.author.id, args[0].toLowerCase());
-		if(!note) return msg.channel.createMessage("Couldn't find that note");
+		if(!note) return "Couldn't find that note";
 
 		var resp;
 
@@ -229,27 +200,27 @@ module.exports.subcommands.edit = {
 			"```"
 		].join("\n"));
 		resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {maxMatches: 1, time: 30000});
-		if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out");
+		if(!resp || !resp[0]) return "ERR: timed out";
 		switch(resp[0].content) {
 			case "1":
 				await msg.channel.createMessage("Enter the new title. You have 1 minute to do this");
 				resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {maxMatches: 1, time: 60000});
-				if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out");
+				if(!resp || !resp[0]) return "ERR: timed out";
 				if(resp[0].content.length > 100) return m.channel.createMessage("ERR: title must be 100 characters or less");
 				var scc = await bot.utils.editNote(bot, msg.author.id, note.hid, "title", resp[0].content);
-				if(scc) msg.channel.createMessage("Note edited!");
-				else msg.channel.createMessage("Something went wrong");
+				if(scc) return "Note edited!";
+				else return "Something went wrong";
 				break;
 			case "2":
 				await msg.channel.createMessage("Enter the new body. You have 5 minutes to do this");
 				resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {maxMatches: 1, time: 5*60000});
-				if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out");
+				if(!resp || !resp[0]) return "ERR: timed out";
 				var scc = await bot.utils.editNote(bot, msg.author.id, note.hid, "body", resp[0].content);
-				if(scc) msg.channel.createMessage("Note edited!");
-				else msg.channel.createMessage("Something went wrong");
+				if(scc) return "Note edited!";
+				else return "Something went wrong";
 				break;
 			default:
-				return msg.channel.createMessage("ERR: invalid input. Aborting...")
+				return "ERR: invalid input. Aborting..."
 				break;
 		}
 	}

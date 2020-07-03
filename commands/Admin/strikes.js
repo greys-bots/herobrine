@@ -7,8 +7,8 @@ module.exports = {
 				 " remove [user] [strikeID | all] - Removes the given strike from the user, or all strikes if 'all' is given as an argument"],
 	execute: async (bot, msg, args) => {
 		if(!args[0]) {
-			var strikes = await bot.utils.getAllStrikes(bot, msg.guild.id);
-			if(!strikes || !strikes[0]) return msg.channel.createMessage("No strikes found for this server");
+			var strikes = await bot.stores.strikes.getAll(msg.guild.id);
+			if(!strikes || !strikes[0]) return "No strikes found for this server";
 			var users = [...new Set(strikes.map(s => s.user_id))];
 			console.log(users);
 
@@ -34,33 +34,12 @@ module.exports = {
 				}
 			}
 
-			var message = await msg.channel.createMessage(embeds[0]);
-			if(embeds[1]) {
-				if(!bot.menus) bot.menus = {};
-				bot.menus[message.id] = {
-					user: msg.author.id,
-					data: embeds,
-					index: 0,
-					timeout: setTimeout(()=> {
-						if(!bot.menus[message.id]) return;
-						try {
-							message.removeReactions();
-						} catch(e) {
-							console.log(e);
-						}
-						delete bot.menus[msg.author.id];
-					}, 900000),
-					execute: bot.utils.paginateEmbeds
-				};
-				["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
-			}
-
-			return;
+			return embeds;
 		}
 
 		if(Number.isNaN(parseInt(args[0].replace(/[<@!>]/g,"")))) {
-			var strike = await bot.utils.getStrike(bot, msg.guild.id, args[0].toLowerCase());
-			if(!strike) return msg.channel.createMessage("Strike not found");
+			var strike = await bot.stores.strikes.get(msg.guild.id, args[0].toLowerCase());
+			if(!strike) return "Strike not found";
 
 			var user = await bot.utils.fetchUser(bot, strike.user_id);
 			if(!user) user = {
@@ -69,20 +48,20 @@ module.exports = {
 				id: strike.user_id
 			};
 
-			msg.channel.createMessage({embed: {
+			return {embed: {
 				title: `Strike ${strike.hid}`,
 				description: [
 				`**User:**\n${user.username}#${user.discriminator} (${user.id})\n\n`,
 				`**Reason:**\n${strike.reason}`
 				].join(""),
 
-			}});
+			}};
 		} else {
 			var user = await bot.utils.fetchUser(bot, args[0].replace(/[<@!>]/g,""))
-			if(!user) return msg.channel.createMessage("Couldn't find that user");
+			if(!user) return "Couldn't find that user";
 			
-			var strikes = await bot.utils.getStrikes(bot, msg.guild.id, user.id);
-			if(!strikes || !strikes[0]) return msg.channel.createMessage("That user has no strikes");
+			var strikes = await bot.stores.strikes.getByUser(msg.guild.id, user.id);
+			if(!strikes || !strikes[0]) return "That user has no strikes";
 
 			var embeds = await bot.utils.genEmbeds(bot, strikes, async s => {
 				return {name: s.hid, value: s.reason}
@@ -91,26 +70,7 @@ module.exports = {
 				description: `Current strike count: ${strikes.length}`
 			}, 10);
 
-			var message = await msg.channel.createMessage(embeds[0]);
-			if(embeds[1]) {
-				if(!bot.menus) bot.menus = {};
-				bot.menus[message.id] = {
-					user: msg.author.id,
-					index: 0,
-					data: embeds,
-					timeout: setTimeout(()=> {
-						if(!bot.menus[message.id]) return;
-						try {
-							message.removeReactions();
-						} catch(e) {
-							console.log(e);
-						}
-						delete bot.menus[message.id];
-					}, 900000),
-					execute: bot.utils.paginateEmbeds
-				};
-				["\u2b05", "\u27a1", "\u23f9"].forEach(r => message.addReaction(r));
-			}
+			return embeds;
 		}
 	},
 	subcommands: {},
@@ -126,16 +86,17 @@ module.exports.subcommands.add = {
 				 " [user] [reason] - Adds a strike with the given reason"],
 	desc: ()=> "The user argument can be an @mention, name#1234, or user ID.",
 	execute: async (bot, msg, args) => {
-		if(!args[0]) return msg.channel.createMessage("Please provide a user to add a strike to");
+		if(!args[0]) return "Please provide a user to add a strike to";
 
 		var user = msg.guild.members.find(m => m.id == args[0].replace(/[<@!>]/g, "") || (m.username + "#" + m.discriminator).toLowerCase() == args[0].toLowerCase());
-		if(!user) return msg.channel.createMessage("Couldn't find that user");
+		if(!user) return "Couldn't find that user";
 
-		var strikes = await bot.utils.getStrikes(bot, msg.guild.id, user.id) || [];
+		var strikes = await bot.stores.strikes.getByUser(msg.guild.id, user.id) || [];
+		var code = bot.utils.genCode(4, bot.strings.codestab);
 
-		var scc = await bot.utils.addStrike(bot, msg.guild.id, user.id, args[1] ? args.slice(1).join(" ") : "[no reason given]");
-		if(scc) msg.channel.createMessage(`Strike added! New count: ${strikes.length + 1}`);
-		else msg.channel.createMessage("Something went wrong");
+		var scc = await bot.stores.strikes.create(msg.guild.id, code, user.id, args[1] ? args.slice(1).join(" ") : "[no reason given]");
+		if(scc) return `Strike added! New count: ${strikes.length + 1}\nStrike hid: ${code}`;
+		else return "Something went wrong";
 	},
 	alias: ["give", "+"],
 	permissions: ["manageMembers"],
@@ -145,23 +106,22 @@ module.exports.subcommands.add = {
 module.exports.subcommands.remove = {
 	help: ()=> "Remove a(ll) strike(s) from a user",
 	usage: ()=> [" [user] [strikeID] - Remove the given strike from the given user",
-				 " [user] all - Remove all strikes from the given user",
-				 " [user] * - Does the same as above"],
+				 " [user] all|* - Remove all strikes from the given user"],
 	execute: async (bot, msg, args) => {
-		if(!args[1]) return msg.channel.createMessage("Please provide a user to remove the strike(s) from, and a strike/scope to remove");
+		if(!args[1]) return "Please provide a user to remove the strike(s) from, and a strike/scope to remove";
 
 		var user = msg.guild.members.find(m => m.id == args[0].replace(/[<@!>]/g, "") || (m.username + "#" + m.discriminator).toLowerCase() == args[0].toLowerCase());
-		if(!user) return msg.channel.createMessage("Couldn't find that user");
+		if(!user) return "Couldn't find that user";
 
-		var strikes = await bot.utils.getStrikes(bot, msg.guild.id, user.id);
-		if(!strikes) return msg.channel.createMessage("User has no strikes; nothing to remove");
+		var strikes = await bot.stores.strikes.getByUser(msg.guild.id, user.id);
+		if(!strikes || !strikes[0]) return "User has no strikes; nothing to remove";
 
 		var scc;
-		if(["all", "*"].includes(args[1].toLowerCase())) scc = await bot.utils.deleteAllStrikes(bot, msg.guild.id, user.id);
-		else scc = await bot.utils.deleteStrike(bot, msg.guild.id, user.id, args[1].toLowerCase());
+		if(["all", "*"].includes(args[1].toLowerCase())) scc = await bot.stores.strikes.deleteByUser(msg.guild.id, user.id);
+		else scc = await bot.stores.strikes.delete(msg.guild.id, args[1].toLowerCase());
 
-		if(scc) msg.channel.createMessage(`Strike${["all", "*"].includes(args[1].toLowerCase()) ? "s" : ""} removed!`);
-		else msg.channel.createMessage("Something went wrong");
+		if(scc) return `Strike${["all", "*"].includes(args[1].toLowerCase()) ? "s" : ""} removed!`;
+		else return "Something went wrong";
 
 	},
 	alias: ["take", "delete", "-"],

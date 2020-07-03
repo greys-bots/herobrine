@@ -10,6 +10,7 @@ module.exports = {
 				},5000)
 			});
 		}).catch(e=>console.log(e))
+		return;
 	},
 	subcommands: {},
 	permissions: ["manageMessages"],
@@ -30,6 +31,7 @@ module.exports.subcommands.safe = {
 				},5000)
 			});
 		}).catch(e=>console.log(e))
+		return;
 	},
 	permissions: ["manageMessages"],
 	guildOnly: true,
@@ -43,7 +45,8 @@ module.exports.subcommands.archive = {
 		var del = (args[0] ? args[0] : 100);
 
 		bot.commands.archive.execute(bot, msg, [del]);
-		bot.commands.prune.execute(bot, msg, [del])
+		bot.commands.prune.execute(bot, msg, [del]);
+		return;
 	},
 	permissions: ["manageMessages"],
 	guildOnly: true,

@@ -2,7 +2,7 @@ module.exports = {
 	help: ()=> "[Hack]bans members.",
 	usage: ()=> [" [userID] - Bans member with that ID."],
 	execute: async (bot, msg, args)=>{
-		if(!args[0]) return msg.channel.createMessage("Please provide an account to ban");
+		if(!args[0]) return "Please provide an account to ban";
 		args = args.join(" ").split(/(,?\s)/);
 		var ind;
 		var membs;

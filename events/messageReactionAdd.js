@@ -19,16 +19,4 @@ module.exports = async (msg, emoji, user, bot) => {
 		}
 		return;
 	}
-
-	if(!msg.guild) return;
-	if(emoji.id) emoji.name = `:${emoji.name}:${emoji.id}`;
-
-	bot.utils.handleStarboardReactions(bot, msg, emoji, user);
-
-	if(user == bot.user.id) return;
-
-	bot.utils.handleReactPostReactions(bot, msg, emoji, user);
-
-	bot.utils.handlePollReactions(bot, msg, emoji, user);
-
 }

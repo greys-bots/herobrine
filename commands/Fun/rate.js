@@ -5,7 +5,7 @@ module.exports = {
 				 " babyscale [thing to rate] - Returns a rating of whether the given thing is creacher or baby"],
 	desc: ()=> "*Special thanks to our friends for suggesting this <3*",
 	execute: async (bot, msg, args) => {
-		msg.channel.createMessage({embed: {
+		return {embed: {
 			title: "Current Rating Scales",
 			fields: [
 				{name: "Coolness Factor", value: "How chilly are you?"},
@@ -16,7 +16,7 @@ module.exports = {
 				text: "Use `hh!help rate` to see all rating subcommands",
 				icon_url: bot.user.avatarURL
 			}
-		}})
+		}};
 	},
 	alias: ["rateme", "r8"],
 	module: "fun",
@@ -45,7 +45,7 @@ module.exports.subcommands.coolness = {
 		else if(target == "**My friends** are all") return "100% frosty :sunglasses:";
 		else rating = Math.floor(Math.random()*2) == 1 ? Math.ceil(Math.random()*100)+"% cool!" : bot.utils.randomText(bot.strings.coolness);
 
-		msg.channel.createMessage(`${target} **${rating}**`);
+		return `${target} **${rating}**`;
 	},
 	alias: ["cool", "coolness", "cs", "coolscale", "coolnesscale"]
 }
@@ -72,7 +72,7 @@ module.exports.subcommands.babyscale = {
 		else if(target == "**My friends** are all") return "baby creacher";
 		else rating = Math.floor(Math.random()*2) == 1 ? "baby" : "creacher";
 
-		msg.channel.createMessage(`${target} **${rating}**!`);
+		return `${target} **${rating}**!`;
 	},
 	alias: ["bs", "baby", "babscale", "creacherscale", "creacher", "creecher", "creecherscale"]
 }
