@@ -1,4 +1,4 @@
-.module.exports = {
+module.exports = {
 	help: ()=> "Send feedback to a server.",
 	usage: ()=> [' [serverID] - Initiate feedback menu',
 				 ' channel [channel] - Set the channel for feedback to go to',
@@ -111,7 +111,7 @@ module.exports.subcommands.config = {
 	usage: ()=> [" - Views server's feedback config"],
 	execute: async (bot, msg, args) => {
 		var cfg = (await bot.stores.feedbackConfigs.get(msg.guild.id)) || {};
-		var channel = cfg.channel ? msg.guild.channels.find(c => c.id == cfg.channel) : undefined;
+		var channel = cfg.channel_id ? msg.guild.channels.find(c => c.id == cfg.channel_id) : undefined;
 		msg.channel.createMessage({embed: {
 			title: "Feedback Config",
 			fields: [
@@ -246,13 +246,14 @@ module.exports.subcommands.find = {
 		var query;
 		var user;
 		var tickets;
-		if(args[0].toLowerCase().startsWith('from:')) {
-			user = args[0].toLowerCase().replace('from:','');
-			query = args[1] ? args.slice(1).join(" ").toLowerCase() : undefined;
+		var user_match = args.join(" ").toLowerCase().match(/from\:\s?([0-9]*)/);
+		if(user_match) {
+			user = user_match[1];
+			query = args.join(" ").toLowerCase().replace(new RegExp(user_match[0]), "").trim();
 		} else {
 			query = args[0] ? args.join(" ").toLowerCase() : undefined;
 		}
-		if(!user && !query) return "Please provide a search query";
+		if(!user && !query) return "Please provide a search query.";
 
 		var tickets = await bot.stores.feedbackTickets.search(msg.guild.id, {sender_id: user, message: query});
 		if(!tickets || !tickets[0]) return 'No tickets found matching that query.';
@@ -268,7 +269,7 @@ module.exports.subcommands.find = {
 			return {name: `User: ${dat.user} | Ticket: ${dat.hid}`, value: dat.message.length > 500 ? dat.message.slice(0, 500) + "..." : dat.message}
 		}, {
 			title: "Search Results",
-			description: "Use `hh!feedback view [id]` to view a ticket individually",
+			description: "Use `hh!feedback view [id]` to view a ticket individually.",
 		}, 10);
 
 		return embeds;

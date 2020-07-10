@@ -10,12 +10,12 @@ module.exports = {
 			var alias = await bot.stores.aliases.get(msg.guild.id, args[0].toLowerCase());
 			if(!alias) return "Alias not found.";
 
-			return msg.channel.createMessage({embed: {
+			return {embed: {
 				fields: [
 					{name: alias.name, value: alias.command}
 				],
 				color: parseInt("5555aa", 16)
-			}})
+			}};
 		}
 
 		var aliases = await bot.stores.aliases.getAll(msg.guild.id);

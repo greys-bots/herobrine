@@ -82,6 +82,19 @@ class NoteStore extends Collection {
 		})
 	}
 
+	async getCount(user) {
+		return new Promise(async (res, rej) => {
+			try {
+				var data = await this.db.query(`SELECT COUNT(*) as count FROM notes WHERE user_id = $1`,[user]);
+			} catch(e) {
+				console.log(e);
+				return rej(e.message);
+			}
+
+			res(data.rows[0].count);
+		})
+	}
+
 	async update(user, hid, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
@@ -124,11 +137,11 @@ class NoteStore extends Collection {
 		})
 	}
 
-	async handleNoteReactions(bot, m, e, user) {
+	async handleReactions(bot, m, e, user) {
 		switch(e.name) {
 			case '⏹️':
 				await m.delete();
-				delete this.bot.menus[m.id];
+				delete bot.menus[m.id];
 				break;
 			case "✏️":
 				var resp;
@@ -148,7 +161,7 @@ class NoteStore extends Collection {
 						if(!resp || !resp[0]) return m.channel.createMessage("ERR: timed out");
 						if(resp[0].content.length > 100) return m.channel.createMessage("ERR: title must be 100 characters or less");
 						try {
-							await this.update(this.user, this.data.hid, "title", resp[0].content);
+							await bot.stores.notes.update(this.user, this.data.hid, {title: resp[0].content});
 						} catch(e) {
 							return await m.channel.createMessage("ERR: "+e);
 						}
@@ -162,14 +175,14 @@ class NoteStore extends Collection {
 								m.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
 							}
 						}
-						delete this.bot.menus[m.id];
+						delete bot.menus[m.id];
 						break;
 					case "2":
 						await m.channel.createMessage("Enter the new body. You have 5 minutes to do this");
 						resp = await m.channel.awaitMessages(ms => ms.author.id == this.user, {maxMatches: 1, time: 5*60000});
 						if(!resp || !resp[0]) return m.channel.createMessage("ERR: timed out");
 						try {
-							await this.update(this.user, this.data.hid, "body", resp[0].content);
+							await bot.stores.notes.update(this.user, this.data.hid, {body: resp[0].content});
 						} catch(e) {
 							return await m.channel.createMessage("ERR: "+e);
 						}
@@ -192,7 +205,7 @@ class NoteStore extends Collection {
 								m.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
 							}
 						}
-						delete this.bot.menus[m.id];
+						delete bot.menus[m.id];
 						break;
 					default:
 						return await m.channel.createMessage("ERR: invalid input. Aborting...")
@@ -205,7 +218,7 @@ class NoteStore extends Collection {
 				if(!resp || !resp[0]) return m.channel.createMessage("ERR: timed out");
 				if(resp[0].content.toLowerCase() != "y") return m.channel.createMessage("Action cancelled");
 				try {
-					await this.delete(user, this.data.hid);
+					await bot.stores.notes.delete(user, this.data.hid);
 				} catch(e) {
 					return await m.channel.createMessage("ERR: "+e);
 				}
@@ -219,7 +232,7 @@ class NoteStore extends Collection {
 						m.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
 					}
 				}
-				delete this.bot.menus[m.id];
+				delete bot.menus[m.id];
 				break;
 		}
 	}

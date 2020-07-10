@@ -8,7 +8,7 @@ module.exports = {
 	execute: async (bot, msg, args) => {
 		if(!args[0]) {
 			var strikes = await bot.stores.strikes.getAll(msg.guild.id);
-			if(!strikes || !strikes[0]) return "No strikes found for this server";
+			if(!strikes || !strikes[0]) return "No strikes found for this server.";
 			var users = [...new Set(strikes.map(s => s.user_id))];
 			console.log(users);
 
@@ -19,7 +19,7 @@ module.exports = {
 				var userstrikes = strikes.filter(x => x.user_id == users[i]);
 
 				var tmp = await bot.utils.genEmbeds(bot, userstrikes, async s => {
-					return {name: s.hid, value: s.reason}
+					return {name: s.hid, value: s.reason || "(no reason given)"}
 				}, {
 					title: `Strikes for ${user.username}#${user.discriminator} (${user.id})`,
 					description: `Current strike count: ${userstrikes.length}`
@@ -34,14 +34,36 @@ module.exports = {
 				}
 			}
 
+			console.log(embeds);
+
 			return embeds;
 		}
 
-		if(Number.isNaN(parseInt(args[0].replace(/[<@!>]/g,"")))) {
-			var strike = await bot.stores.strikes.get(msg.guild.id, args[0].toLowerCase());
-			if(!strike) return "Strike not found";
+		var user;
+		try {
+			user = await bot.utils.fetchUser(bot,args[0].replace(/[<@!>]/g,""));
+		} catch(e) {
+			console.log(e.message);
+		}
 
-			var user = await bot.utils.fetchUser(bot, strike.user_id);
+		if(user) {
+			var strikes = await bot.stores.strikes.getByUser(msg.guild.id, user.id);
+			if(!strikes || !strikes[0]) return "That user has no strikes.";
+
+			var embeds = await bot.utils.genEmbeds(bot, strikes, async s => {
+				return {name: s.hid, value: s.reason || "(no reason given)"}
+			}, {
+				title: `Strikes for ${user.username}#${user.discriminator} (${user.id})`,
+				description: `Current strike count: ${strikes.length}`
+			}, 10);
+
+			console.log(embeds[0].fields);
+			return embeds;
+		} else {
+			var strike = await bot.stores.strikes.get(msg.guild.id, args[0].toLowerCase());
+			if(!strike) return "Strike not found.";
+
+			user = await bot.utils.fetchUser(bot, strike.user_id);
 			if(!user) user = {
 				username: "Non-cached User",
 				discriminator: "#0000",
@@ -51,30 +73,15 @@ module.exports = {
 			return {embed: {
 				title: `Strike ${strike.hid}`,
 				description: [
-				`**User:**\n${user.username}#${user.discriminator} (${user.id})\n\n`,
+				`**User:**\n${user.mention} (${user.id})\n\n`,
 				`**Reason:**\n${strike.reason}`
 				].join(""),
 
 			}};
-		} else {
-			var user = await bot.utils.fetchUser(bot, args[0].replace(/[<@!>]/g,""))
-			if(!user) return "Couldn't find that user";
-			
-			var strikes = await bot.stores.strikes.getByUser(msg.guild.id, user.id);
-			if(!strikes || !strikes[0]) return "That user has no strikes";
-
-			var embeds = await bot.utils.genEmbeds(bot, strikes, async s => {
-				return {name: s.hid, value: s.reason}
-			}, {
-				title: `Strikes for ${user.username}#${user.discriminator} (${user.id})`,
-				description: `Current strike count: ${strikes.length}`
-			}, 10);
-
-			return embeds;
 		}
 	},
 	subcommands: {},
-	permissions: ["manageMembers"],
+	permissions: ["kickMembers"],
 	alias: ["strike", "warn"],
 	guildOnly: true,
 	module: "admin"
@@ -94,12 +101,16 @@ module.exports.subcommands.add = {
 		var strikes = await bot.stores.strikes.getByUser(msg.guild.id, user.id) || [];
 		var code = bot.utils.genCode(4, bot.strings.codestab);
 
-		var scc = await bot.stores.strikes.create(msg.guild.id, code, user.id, args[1] ? args.slice(1).join(" ") : "[no reason given]");
-		if(scc) return `Strike added! New count: ${strikes.length + 1}\nStrike hid: ${code}`;
-		else return "Something went wrong";
+		try {
+			await bot.stores.strikes.create(msg.guild.id, code, user.id, {reason: args[1] ? args.slice(1).join(" ") : "[no reason given]"});
+		} catch(e) {
+			return "ERR: "+e;
+		}
+
+		return `Strike added! New count: ${strikes.length + 1}\nStrike hid: ${code}`;
 	},
 	alias: ["give", "+"],
-	permissions: ["manageMembers"],
+	permissions: ["kickMembers"],
 	guildOnly: true
 }
 
@@ -116,15 +127,16 @@ module.exports.subcommands.remove = {
 		var strikes = await bot.stores.strikes.getByUser(msg.guild.id, user.id);
 		if(!strikes || !strikes[0]) return "User has no strikes; nothing to remove";
 
-		var scc;
-		if(["all", "*"].includes(args[1].toLowerCase())) scc = await bot.stores.strikes.deleteByUser(msg.guild.id, user.id);
-		else scc = await bot.stores.strikes.delete(msg.guild.id, args[1].toLowerCase());
-
-		if(scc) return `Strike${["all", "*"].includes(args[1].toLowerCase()) ? "s" : ""} removed!`;
-		else return "Something went wrong";
-
+		try {
+			if(["all", "*"].includes(args[1].toLowerCase())) scc = await bot.stores.strikes.deleteByUser(msg.guild.id, user.id);
+			else scc = await bot.stores.strikes.delete(msg.guild.id, args[1].toLowerCase());
+		} catch(e) {
+			return "ERR: "+e;
+		}
+		
+		return `Strike${["all", "*"].includes(args[1].toLowerCase()) ? "s" : ""} removed!`;
 	},
 	alias: ["take", "delete", "-"],
-	permissions: ["manageMembers"],
+	permissions: ["kickMembers"],
 	guildOnly: true
 }

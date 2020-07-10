@@ -25,7 +25,7 @@ module.exports = {
 					return {name: `:${i+1 == 10 ? "keycap_10" : bot.strings.numbers[i+1]}: ${c.option}`, value: `${c.count} ${c.count != 1 ? "votes" : "vote"}`}
 				}),
 				footer: {
-					text: `ID: ${poll.hid} | Started: ${bot.formatTime(new Date(poll.start))}${!poll.active ? " | Ended: "+bot.formatTime(new Date(poll.end)) : ""}`
+					text: `ID: ${poll.hid} | Started: ${bot.formatTime(new Date(poll.start_time))}${!poll.active ? " | Ended: "+bot.formatTime(new Date(poll.end_time)) : ""}`
 				},
 				author: {
 					name: `${member.username}#${member.discriminator}`,
@@ -35,6 +35,7 @@ module.exports = {
 		}
 		
 		var polls = await bot.stores.polls.getAll(msg.guild.id);
+		if(!polls || !polls[0]) return "No polls are registered for this server.";
 		if(args[0] && args[0].toLowerCase() == "active") polls = polls.filter(p => p.active);
 
 		var embeds = polls.map((p,i) => {
@@ -46,7 +47,7 @@ module.exports = {
 					return {name: `:${bot.strings.numbers[i+1]}: ${c.option}`, value: `${c.count} votes`}
 				}),
 				footer: {
-					text: `ID: ${p.hid} | Started: ${bot.formatTime(new Date(p.start))}${!p.active ? " | Ended: "+bot.formatTime(new Date(p.end)) : ""}`
+					text: `ID: ${p.hid} | Started: ${bot.formatTime(new Date(p.start_time))}${!p.active ? " | Ended: "+bot.formatTime(new Date(p.end_time)) : ""}`
 				}
 			}}
 		})
@@ -128,13 +129,13 @@ module.exports.subcommands.create = {
 		await message.delete();
 
 		try {
-			await bot.stores.polls.create(hid, poll.channel.guild.id, {
+			await bot.stores.polls.create(poll.channel.guild.id, hid, {
 				channel_id: poll.channel.id,
 				message_id: poll.id,
 				user_id: msg.author.id,
 				title,
 				description: desc,
-				choices,
+				choices: JSON.stringify(choices),
 				start: date.toISOString()
 			});
 		} catch(e) {
@@ -162,17 +163,18 @@ module.exports.subcommands.find = {
 		var query;
 		var user;
 		var polls;
-		if(args[0].toLowerCase().startsWith('from:')) {
-			user = args[0].toLowerCase().replace('from:','');
-			query = args[1] ? args.slice(1).join(" ").toLowerCase() : undefined;
+		var user_match = args.join(" ").toLowerCase().match(/from\:\s?([0-9]*)/);
+		if(user_match) {
+			user = user_match[1];
+			query = args.join(" ").toLowerCase().replace(new RegExp(user_match[0]), "").trim();
 		} else {
 			query = args[0] ? args.join(" ").toLowerCase() : undefined;
 		}
-		if(!user && !query) return "Please provide a search query";
+		if(!user && !query) return "Please provide a search query.";
 
 		polls = await bot.stores.polls.search(msg.guild.id, {user_id: user, message: query});
 
-		if(!polls) return "No polls found that match that query";
+		if(!polls) return "No polls found that match that query.";
 
 		var embeds = polls.map((p,i) => {
 			return {embed: {
@@ -183,7 +185,7 @@ module.exports.subcommands.find = {
 					return {name: `:${bot.strings.numbers[i+1]}: ${c.option}`, value: `${c.count} votes`}
 				}),
 				footer: {
-					text: `ID: ${p.hid} | Started: ${bot.formatTime(new Date(p.start))}${!p.active ? " | Ended: "+bot.formatTime(new Date(p.end)) : ""}`
+					text: `ID: ${p.hid} | Started: ${bot.formatTime(new Date(p.start_time))}${!p.active ? " | Ended: "+bot.formatTime(new Date(p.end_time)) : ""}`
 				}
 			}}
 		})

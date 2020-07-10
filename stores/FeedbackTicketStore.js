@@ -87,7 +87,7 @@ class FeedbackTicketStore extends Collection {
 	async getByUser(server, user) {
 		return new Promise(async (res, rej) => {	
 			try {
-				var data = await this.db.query(`SELECT * FROM feedback WHERE server_id = $1 AND sender_id = $2 AND anon NOT $3`, [server, user, true]);
+				var data = await this.db.query(`SELECT * FROM feedback WHERE server_id = $1 AND sender_id = $2 AND anon <> $3`, [server, user, true]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
@@ -109,7 +109,7 @@ class FeedbackTicketStore extends Collection {
 				return rej(e)
 			}
 
-			if(query.message) tickets.filter(t => t.message.toLowerCase().includes(query.message));
+			if(query.message) tickets = tickets.filter(t => t.message.toLowerCase().includes(query.message.toLowerCase()));
 
 			if(tickets[0]) res(tickets);
 			else res(undefined);

@@ -145,45 +145,42 @@ module.exports = {
 
 	paginateEmbeds: async function(bot, m, emoji) {
 		switch(emoji.name) {
-			case "\u2b05":
+			case "⬅️":
 				if(this.index == 0) {
 					this.index = this.data.length-1;
 				} else {
 					this.index -= 1;
 				}
 				await bot.editMessage(m.channel.id, m.id, this.data[this.index]);
-				await bot.removeMessageReaction(m.channel.id, m.id, emoji.name, this.user)
+				if(m.guild) await bot.removeMessageReaction(m.channel.id, m.id, emoji.name, this.user)
 				bot.menus[m.id] = this;
 				break;
-			case "\u27a1":
+			case "➡️":
 				if(this.index == this.data.length-1) {
 					this.index = 0;
 				} else {
 					this.index += 1;
 				}
 				await bot.editMessage(m.channel.id, m.id, this.data[this.index]);
-				await bot.removeMessageReaction(m.channel.id, m.id, emoji.name, this.user)
+				if(m.guild) await bot.removeMessageReaction(m.channel.id, m.id, emoji.name, this.user)
 				bot.menus[m.id] = this;
 				break;
-			case "\u23f9":
+			case "⏹️":
 				await bot.deleteMessage(m.channel.id, m.id);
 				delete bot.menus[m.id];
 				break;
 		}
 	},
 
-	isDisabled: async (bot, srv, cmd, name) =>{
+	isDisabled: async (bot, srv, cmd) =>{
 		return new Promise(async res=>{
-			var cfg = await bot.utils.getConfig(bot, srv);
+			var cfg = await bot.stores.configs.get(srv);
 			if(!cfg || !cfg.disabled) return res(false);
 			let dlist = cfg.disabled;
-			name = name.split(" ");
-			if(dlist.commands && (dlist.commands.includes(name[0]) || dlist.commands.includes(name.join(" ")))) {
-				res(true);
-			} else {
-				res(false);
-			}
+			if(!dlist.commands || !dlist.commands[0]) return res(false);
 
+			if(dlist.commands.includes(cmd.name)) res(true);
+			else res(false);
 		})
 	},
 	
@@ -212,6 +209,143 @@ module.exports = {
 			}
 
 			res(user);
+		})
+	},
+
+	parseDate: (input) => {
+		if(typeof input == "string") {
+			var match = input.match(/((?:\d+?|\b\w+\s)\s?(?:mo|w|d|h|m|s))/gi);
+			if(!match || !match[0]) match = input.match(/\b(mo|w|d|h|m|s)/gi);
+			if(!match || !match[0]) return null;
+			console.log(match);
+
+			var parsed = {
+				mo: 0,
+				w: 0,
+				d: 0,
+				h: 0,
+				m: 0,
+				s: 0
+			}
+			var matched = false
+			for(var i = 0; i < match.length; i++) {
+				var section = match[i].match(/[a-z]$/i)[0];
+				console.log(section);
+				if(Object.keys(parsed).includes(section)) {
+					if(match[i].match(/[0-9]+/gi)) {
+						parsed[section] = parseInt(match[i].match(/[0-9]+/gi)[0]);
+					} else {
+						parsed[section] = 1;
+					}
+					matched = true;
+				}
+			}
+
+			console.log(parsed);
+
+			if(!matched) return null;
+
+			var date = new Date(Date.now() + 
+								(parsed.mo*30*24*60*1000) +
+								(parsed.w*7*24*60*60*1000) +
+								(parsed.d*24*60*60*1000) +
+								(parsed.h*60*60*1000) +
+								(parsed.m*60*1000) +
+								(parsed.s*1000));
+			console.log(date);
+			return {parsed: parsed, date: date};
+		} else {
+			var parsed = [];
+			var err = false;
+
+			for(var i = 0; i<input.length; i++) {
+				var match = input[i].match(/\b((?:\d+|\S+\s)?\s?(?:mo|w|d|h|m|s){1})/gi);
+				console.log(match);
+				if(!match || !match[0]) {
+					err = true;
+					break;
+				}
+
+				parsed.push({parsed: {mo: 0, w: 0, d: 0, h: 0, m: 0, s: 0}});
+
+				var matched = false
+				for(var j = 0; j < match.length; j++) {
+					var section = match[j].match(/[a-z]/i)[0];
+					if(Object.keys(parsed[i].parsed).includes(section)) {
+						if(match[j].match(/[0-9]/)) {
+							parsed[i].parsed[section] = parseInt(match[j].match(/[0-9]/)[0]);
+						} else {
+							parsed[i].parsed[section] = 1;
+						}
+						matched = true;
+					}
+				}
+
+				parsed[i].date = new Date(Date.now() + 
+									(parsed[i].parsed.mo*30*24*60*1000) +
+									(parsed[i].parsed.w*7*24*60*60*1000) +
+									(parsed[i].parsed.d*24*60*60*1000) +
+									(parsed[i].parsed.h*60*60*1000) +
+									(parsed[i].parsed.m*60*1000) +
+									(parsed[i].parsed.s*1000));
+			}
+			console.log(err);
+			if(err) return null;
+
+			console.log(parsed);
+
+			return parsed
+		}
+	},
+	parseCommandActions: async (bot, cmd) => {
+		return new Promise(res => {
+			var actions = [];
+			cmd.actions.forEach(a => {
+				var text = "";
+				switch(a.type) {
+					// case "if":
+					// 	var condition = action.condition;
+					// 	var ac = action.action;
+					// 	bot.customActions.forEach(ca => {
+					// 		var n = ca.regex ? new RegExp(ca.name) : ca.name;
+					// 		condition = condition.replace(n, ca.replace)
+					// 		ac = ac.replace(n, ca.replace);
+					// 	})
+					// 	cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+					// 		`if(${condition}) ${ac};`
+					// 	), action.success, action.fail]);
+					// 	break;
+					// case "if:else":
+					// 	var condition = action.condition;
+					// 	var tr = action.action[0];
+					// 	var fls = action.action[1];
+					// 	bot.customActions.forEach(ca => {
+					// 		var n = ca.regex ? new RegExp(ca.name) : ca.name;
+					// 		condition = condition.replace(n, ca.replace)
+					// 		tr = tr.replace(n, ca.replace);
+					// 		fls = fls.replace(n, ca.replace);
+					// 	})
+
+					// 	cmd.newActions.push([new AsyncFunction("bot", "msg", "args",
+					// 		`if(${condition}) ${tr};
+					// 		 else ${fls}`
+					// 	), action.success, action.fail]);
+					// 	break;
+					case "rr":
+						var rl = a.action.match(/rf\('(.*)'\)/);
+						text = `Removes role "${rl[1]}"`;
+						break;
+					case "ar":
+						var rl = a.action.match(/rf\('(.*)'\)/);
+						text = `Adds role "${rl[1]}"`;
+						break;
+					case "bl":
+						text = "Blacklists target from using the bot";
+						break;
+				}
+				actions.push(text);
+			})
+			res(actions);
 		})
 	}
 }

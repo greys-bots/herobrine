@@ -75,7 +75,7 @@ class ResponseStore extends Collection {
 			}
 			
 			if(data.rows && data.rows[0]) {
-				res(data.rows[0])
+				res(data.rows)
 			} else res(undefined);
 		})
 	}

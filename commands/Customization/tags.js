@@ -11,9 +11,10 @@ module.exports = {
 		if(!tags || !tags[0]) return "No tags registered.";
 
 		var embeds = await bot.utils.genEmbeds(bot, tags, tag => {
-			var val = typeof t.value == "string" ? 
-					  t.value.substring(0, 128)+(t.value.length > 128 ? "..." : "") :
-					  t.value.map(r => r.substring(0, 128)+(r.length > 128 ? "..." : "")).join("\n");
+			console.log(tag);
+			var val = typeof tag.value == "string" ? 
+					  tag.value.substring(0, 128)+(tag.value.length > 128 ? "..." : "") :
+					  tag.value.map(r => r.substring(0, 128)+(r.length > 128 ? "..." : "")).join("\n");
 			return {name: tag.name, value: val}
 		}, {
 			title: "Server Tags",
@@ -40,8 +41,8 @@ module.exports.subcommands.add = {
 		await msg.channel.createMessage("Enter a name for the tag. This is what will activate the response. Examples: `server rules`, `modinfo`, etc.\nThe bot's prefix doesn't need to be present for the response to work.");
 		var resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 60000, maxMatches: 1});
 		if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
-		var cmd = await bot.parseCommand(bot, msg, resp[0].content.toLowerCase().split(" "));
-		if(tags && tags.find(t => t.name == resp[0].content.toLowerCase()) || cmd)
+		var {command} = await bot.parseCommand(bot, msg, resp[0].content.toLowerCase().split(" "));
+		if(tags && tags.find(t => t.name == resp[0].content.toLowerCase()) || command)
 			return "ERR: another tag or command exists with that name. Aborting.";
 		name = resp[0].content.toLowerCase();
 
@@ -63,7 +64,7 @@ module.exports.subcommands.add = {
 		if(val.length == 0) return "ERR: No responses added. Aborting.";
 
 		try {
-			await bot.stores.responses.create(msg.guild.id, name, val);
+			await bot.stores.responses.create(msg.guild.id, name, {value: val});
 		} catch(e) {
 			return "ERR: "+e;
 		}
@@ -117,7 +118,7 @@ module.exports.subcommands.edit = {
 	usage: ()=> [" [tag name] - Runs a menu to edit the given tag"],
 	execute: async (bot, msg, args) => {
 		if(!args[0]) return "Please provide a tag to edit.";
-		var tag = await bot.stores.responses.get(bot, args.join(" ").toLowerCase());
+		var tag = await bot.stores.responses.get(msg.guild.id, args.join(" ").toLowerCase());
 		if(!tag) return "Tag not found.";
 
 		var resp;

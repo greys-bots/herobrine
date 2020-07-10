@@ -66,6 +66,8 @@ module.exports.subcommands.roles = {
 			}});
 		}
 
+		if(embeds.length > 1) for(var i = 0; i < embeds.length; i++) embeds[i].embed.title += ` (page ${i+1}/${embeds.length})`;
+
 		return embeds;
 	},
 	alias: ["rl", "r", "rls"],

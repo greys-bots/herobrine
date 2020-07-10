@@ -6,7 +6,7 @@ module.exports = {
 				 " name [commandname] [newname] - Rename a command",
 				 " delete [commandname] - Delete a custom command"],
 	execute: async (bot, msg, args) => {
-		var cmds = await bot.stores.commands.customCommands.get(msg.guild.id);
+		var cmds = await bot.stores.customCommands.getAll(msg.guild.id);
 		if(!cmds) return "No custom commands registered for this server.";
 		if(cmds.length > 5) {
 			var embeds = await bot.utils.genEmbeds(bot, cmds, c => {
@@ -193,7 +193,7 @@ module.exports.subcommands.name = {
 	usage: ()=> [" [oldname] [newname] - Renames the given custom command"],
 	execute: async (bot, msg, args) => {
 		if(!args[1]) return "Please provide a command and the new name.";
-		var cmd = await bot.utils.getCustomCommand(bot, msg.guild.id, args[0].toLowerCase());
+		var cmd = await bot.stores.customCommands.get(msg.guild.id, args[0].toLowerCase());
 		if(!cmd) return "Couldn't find that command.";
 
 		var name = args.slice(1).join("").toLowerCase();

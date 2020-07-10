@@ -16,6 +16,7 @@ module.exports = async (bot) => {
 
 		CREATE TABLE IF NOT EXISTS bundles (
 			id 			SERIAL PRIMARY KEY,
+			hid 		TEXT,
 			server_id 	TEXT,
 			name 		TEXT,
 			description TEXT,
@@ -37,10 +38,10 @@ module.exports = async (bot) => {
 			server_id 	TEXT,
 			prefix 		TEXT,
 			autoroles 	TEXT[],
-			disabled 	TEXT[],
+			disabled 	JSONB,
 			opped 		TEXT[],
 			logged 		TEXT[],
-			autopin 	INTEGER
+			starboard 	INTEGER
 		);
 
 		CREATE TABLE IF NOT EXISTS feedback_configs (
@@ -78,8 +79,8 @@ module.exports = async (bot) => {
 			description	TEXT,
 			choices 	JSONB,
 			active 		BOOLEAN,
-			start 		DATE,
-			end 		DATE
+			start_time	TIMESTAMPTZ,
+			end_time 	TIMESTAMPTZ
 		);
 
 		CREATE TABLE IF NOT EXISTS profiles (
@@ -92,7 +93,7 @@ module.exports = async (bot) => {
 			lvl 		BIGINT,
 			exp 		BIGINT,
 			cash 		BIGINT,
-			daily 		DATE,
+			daily 		TIMESTAMPTZ,
 			disabled 	BOOLEAN
 		);
 
@@ -133,7 +134,7 @@ module.exports = async (bot) => {
 			hid 		TEXT,
 			user_id 	TEXT,
 			note 		TEXT,
-			time 		DATE,
+			time 		TIMESTAMPTZ,
 			recurring 	BOOLEAN,
 			interval	JSONB
 		);
@@ -220,7 +221,7 @@ module.exports = async (bot) => {
 		if(["__db.js", "__migrations.js", "tmp.js"].includes(file)) continue;
 		var tmpname = file.replace(/store\.js/i, "");
 		var name =  tmpname[0].toLowerCase() + tmpname.slice(1);
-		if(tmpname.endsWith('y')) name += "ies"; //ReactCategoryStore.js becomes reactCategories
+		if(tmpname.endsWith('y')) name = name.slice(0, -1) + "ies"; //ReactCategoryStore.js becomes reactCategories
 		else if(tmpname.endsWith('s')) name += "es"; //AliasStore.js becomes aliases
 		else name += "s"; //ProfileStore.js becomes profiles
 

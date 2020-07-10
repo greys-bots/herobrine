@@ -14,6 +14,8 @@ const exec 		= require("child_process").exec;
 const config 	= require ("./config.json");
 const chrono 	= require('chrono-node');
 
+require('dotenv').config();
+
 var status 		= 0;
 
 const bot 		= new Eris(config.token,{restMode: true});
@@ -54,30 +56,12 @@ bot.customActionTypes = [
 	{name: "bl", description: "Blacklist the user from using the bot"}
 ]
 
-//uncommenting the line below may fix "kill einvalid" errors on some computers;
-//make sure the config is set up and then uncomment if you're getting issues
-// dblite.bin = bot.cfg.sqlite;
-
-try{
-	bot.db = dblite("./data.sqlite","-header");
-} catch(e){
-	console.log(
-		[
-		"Error opening database with dblite.",
-		"You may need to set sqlite's location in config",
-		"and uncomment the dblite.bin line in bot.js (line 60).",
-		"This can be fixed by adding sqlite3.exe to your path,",
-		"or installing it with a package manager, if applicable."
-		].join("\n") + "\nError:\n"+e);
-	process.exit(1);
-}
-
 const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 
 //for command setup
 const recursivelyReadDirectory = function(dir) {
 	var results = [];
-	var files = fs.readdirSync(dir, {withFileTypes: true});
+	var files = bot.fs.readdirSync(dir, {withFileTypes: true});
 	for(file of files) {
 		if(file.isDirectory()) {
 			results = results.concat(recursivelyReadDirectory(dir+"/"+file.name));
@@ -132,6 +116,7 @@ bot.asyncForEach = async (arr, bot, msg, args, cb) => {
 }
 
 const setup = async () => {
+	bot.db = await require('./stores/__db')(bot);
 	if(bot.cfg.update && bot.cfg.remote && bot.cfg.branch){
 		var git = exec(`git pull ${bot.cfg.remote} ${bot.cfg.branch}`,{cwd: __dirname}, (err, out, stderr)=>{
 			if(err){
@@ -260,7 +245,11 @@ bot.parseCommand = async function(bot, msg, args, command) {
 	if(!args[0]) return undefined;
 	
 	var command = bot.commands.get(bot.aliases.get(args[0].toLowerCase()));
-	if(!command) return {command, args};
+	if(!command) {
+		var alias = await bot.stores.aliases.get(msg.guild.id, args[0].toLowerCase());
+		if(alias) return await bot.parseCommand(bot, msg, alias.command.split(" ").concat(args.slice(1)));
+		else return {command, args};
+	}
 
 	args.shift();
 	var permcheck = true;
@@ -469,17 +458,6 @@ bot.on("ready",async ()=>{
 	bot.writeLog(bot, "startup");
 	updateStatus();
 	setInterval(updateStatus, 600000);
-
-	var today = new Date();
-	var reminders = await bot.utils.getAllReminders(bot);
-	await Promise.all(reminders.map(async r => {
-		var time = new Date(r.time);
-		if(time < today) {
-			await bot.utils.sendReminder(bot, r.user_id, r.hid);
-		} else {
-			bot.reminders[r.user_id+"-"+r.hid] = bot.scheduler.scheduleJob(time, ()=> bot.utils.sendReminder(bot, r.user_id, r.hid))
-		}
-	}))
 })
 
 //----------------------------------------------------------------------------------------------------//

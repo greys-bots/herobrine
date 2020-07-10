@@ -20,7 +20,7 @@ module.exports = {
 				{name: "EXP", value: profile.exp, inline: true},
 				{name: "Cash", value: profile.cash}
 			],
-			color: profile.color || parseInt("aaaaaa", 16),
+			color: parseInt(profile.color, 16) || parseInt("aaaaaa", 16),
 			author: {
 				name: member.username,
 				icon_url: member.avatarURL
@@ -84,14 +84,17 @@ module.exports.subcommands.edit = {
 		var profile = await bot.stores.profiles.get(msg.author.id);
 		if(!profile) return "Couldn't get your profile, please try again.";
 
-		var prop = args[0];
-		if(!prop) {
+		var prop;
+		if(!args[0]) {
 			var resp;
 			msg.channel.createMessage("```\nWhat do you want to edit? (Choose a number)\n\n[1] Title\n[2] Bio\n[3] Color\n[4] Cancel\n```");
 			resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 10000, maxMatches: 1});
 			if(resp[0].content == 4) return "Action cancelled.";
-			prop = ["bio", "title","color"][resp[0].content];
+			prop = ["title", "bio", "color"][parseInt(resp[0].content) - 1];
 			if(!prop) return "ERR: invalid choice. Aborting.";
+		} else {
+			prop = args[0].toLowerCase();
+			if(!["bio", "title","color"].includes(prop)) return "That prop is invalid. Options: `bio`, `title`, or `color`";
 		}
 
 		var val = args.slice(1).join(" ");
@@ -99,6 +102,12 @@ module.exports.subcommands.edit = {
 			msg.channel.createMessage(`Enter a new value for your ${prop}.`);
 			resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 10000, maxMatches: 1});
 			val = resp[0].content;
+		}
+
+		if(prop == "color") {
+			var color = bot.tc(val);
+			if(!color.isValid()) return "ERR: color is invalid. Aborting.";
+			val = color.toHex()
 		}
 
 		var dat = {};

@@ -1,5 +1,5 @@
 module.exports = {
-	help: ()=> "View and manage server welcoming protocol",
+	help: ()=> "View and manage server welcoming protocol.",
 	usage: ()=> [" - Views current welcome config",
 				 " [users] - Welcomes users",
 				 " channel <channel> - [Re]sets welcome channel",
@@ -116,7 +116,7 @@ module.exports = {
 }
 
 module.exports.subcommands.channel = {
-	help: ()=> "[Re]set welcome channel",
+	help: ()=> "[Re]set welcome channel.",
 	usage: ()=> [" <channel> - Sets welcome channel. Resets it if no channel given"],
 	desc: ()=> "Channel can be a #mention, ID, or channel-name",
 	execute: async (bot, msg, args)=>{
@@ -125,57 +125,59 @@ module.exports.subcommands.channel = {
 		if(cfg && cfg.channel) channel = msg.guild.channels.find(c => c.id == cfg.channel);
 		else channel = undefined;
 		if(!args[0]) {
-			if(channel) {
-				var message = await msg.channel.createMessage(`Current channel: ${channel.mention}.\nWould you like to reset it?`);
-				if(!bot.menus) bot.menus = {};
-				bot.menus[message.id] = {
-					user: msg.author.id,
-					index: 0,
-					timeout: setTimeout(()=> {
-						if(!bot.menus[message.id]) return;
-						if(message.channel.guild) {
-							try {
-								message.removeReactions();
-							} catch(e) {
-								console.log(e);
-							}
-						}
-						delete bot.menus[message.id];
-					}, 900000),
-					execute: async function(bot, m, e) {
-						switch(e.name) {
-							case "✅":
-								try {
-									await bot.stores.welcomeConfigs.update(m.guild.id, {channel: null});
-								} catch(e) {
-									return await m.channel.createMessage("ERR: "+e);
-								}
-
-								await m.channel.createMessage("Channel reset!");
-								break;
-							case "❌":
-								await m.channel.createMessage("Action cancelled");
-								break;
-						}
-					}
-				};
-				["✅","❌"].forEach(r => message.addReaction(r));
-				return;
-			} else if(!channel && (cfg && cfg.welcome && cfg.welcome.channel)) {
+			if(!cfg) return "No welcome channel configured for this server.";
+			if(!channel && (cfg && cfg.welcome && cfg.welcome.channel)) {
 				try {
 					await bot.stores.welcomeConfigs.update(msg.guild.id, {channel: null});
 				} catch(e) {
 					return "Error while resetting invalid channel: "+e;
 				}
 				return "The current set channel is invalid and has been reset.";
-			} else return "No welcome channel has been set.";
+			}
+
+			var message = await msg.channel.createMessage(`Current channel: ${channel.mention}.\nWould you like to reset it?`);
+			if(!bot.menus) bot.menus = {};
+			bot.menus[message.id] = {
+				user: msg.author.id,
+				index: 0,
+				timeout: setTimeout(()=> {
+					if(!bot.menus[message.id]) return;
+					if(message.channel.guild) {
+						try {
+							message.removeReactions();
+						} catch(e) {
+							console.log(e);
+						}
+					}
+					delete bot.menus[message.id];
+				}, 900000),
+				execute: async function(bot, m, e) {
+					switch(e.name) {
+						case "✅":
+							try {
+								await bot.stores.welcomeConfigs.update(m.guild.id, {channel: null});
+							} catch(e) {
+								return await m.channel.createMessage("ERR: "+e);
+							}
+
+							await m.channel.createMessage("Channel reset!");
+							break;
+						case "❌":
+							await m.channel.createMessage("Action cancelled");
+							break;
+					}
+				}
+			};
+			["✅","❌"].forEach(r => message.addReaction(r));
+			return;
 		}
 
 		channel = msg.guild.channels.find(c => c.id == args[0].replace(/[<#>]/g,"") || c.name == args[0].toLowerCase());
 		if(!channel) return "Channel not found";
 
 		try {
-			await bot.stores.welcomeConfigs.update(msg.guild.id, {channel: channel.id});
+			if(!cfg) await bot.stores.welcomeConfigs.create(msg.guild.id, {channel: channel.id});
+			else await bot.stores.welcomeConfigs.update(msg.guild.id, {channel: channel.id});
 		} catch(e) {
 			return "ERR: "+e;
 		}
@@ -188,7 +190,7 @@ module.exports.subcommands.channel = {
 }
 
 module.exports.subcommands.message = {
-	help: ()=> "[Re]set welcome message",
+	help: ()=> "[Re]set welcome message.",
 	usage: ()=> [" <new message> - Sets welcome message. Resets if no message is given"],
 	desc: ()=> ["**Defined Vars**",
 				"$MEMBER.MENTION = mentions the member who joined",
@@ -238,7 +240,8 @@ module.exports.subcommands.message = {
 			}
 		} else {
 			try {
-				await bot.stores.welcomeConfigs.update(msg.guild.id, {message: args.join(" ")});
+				if(!cfg) await bot.stores.welcomeConfigs.create(msg.guild.id, {message: args.join(" ")});
+				else await bot.stores.welcomeConfigs.update(msg.guild.id, {message: args.join(" ")});
 			} catch(e) {
 				return "ERR: "+e;
 			}
@@ -251,53 +254,13 @@ module.exports.subcommands.message = {
 	permisions: ["manageGuild"]
 }
 
-module.exports.subcommands.enable = {
-	help: ()=> "Enable welcome protocol",
-	usage: ()=> [" - Enables welcome protocol"],
-	execute: async (bot, msg, args)=>{
-		var cfg = await bot.stores.welcomeConfigs.get(msg.guild.id);
-		if(cfg.enabled) return "Welcome already enabled.";
-
-		try {
-			await bot.stores.welcomeConfigs.update(msg.guild.id, {enabled: true});
-		} catch(e) {
-			return "ERR: "+e;
-		}
-
-		return "Welcome enabled!";
-	},
-	guildOnly: true,
-	alias: ["e","1"],
-	permisions: ["manageGuild"]
-}
-
-module.exports.subcommands.disable = {
-	help: ()=> "Disables welcome protocol.",
-	usage: ()=> [" - Disables welcome protocol"],
-	execute: async (bot, msg, args)=>{
-		var cfg = await bot.stores.welcomeConfigs.get(msg.guild.id);
-		if(!cfg.enabled) return "Welcome already disabled.";
-
-		try {
-			await bot.stores.welcomeConfigs.update(msg.guild.id, {enabled: false});
-		} catch(e) {
-			return "ERR: "+e;
-		}
-
-		return "Welcome disabled!";
-	},
-	guildOnly: true,
-	alias: ["d","0"],
-	permisions: ["manageGuild"]
-}
-
 module.exports.subcommands.preroles = {
 	help: ()=> "Set roles to be added when users join the server",
 	usage: ()=> [" <roles, to, add> - [Re]sets pre/autoroles for the server"],
 	execute: async (bot, msg, args) => {
 		var cfg = await bot.stores.welcomeConfigs.get(msg.guild.id);
 		if(!args[0]) {
-			if(!cfg.preroles) return "No preroles exist for this server.";
+			if(!cfg || !cfg.preroles) return "No preroles exist for this server.";
 
 			var roles = cfg.preroles.map(r => msg.guild.roles.find(rl => rl.id == r)).filter(x => x!=undefined);
 			var ms = `Current preroles:\n${roles.map(r => r.name).join("\n")}\nWould you like to reset them?`;
@@ -347,6 +310,7 @@ module.exports.subcommands.preroles = {
 			return;
 		}
 
+		if(!cfg) cfg = {new: true};
 		cfg.preroles = [];
 		var results = [];
 		for(var i = 0; i < args.length; i++) {
@@ -358,7 +322,8 @@ module.exports.subcommands.preroles = {
 		}
 
 		try {
-			await bot.stores.welcomeConfigs.update(msg.guild.id, {preroles: cfg.preroles});
+			if(cfg.new) await bot.stores.welcomeConfigs.update(msg.guild.id, {preroles: cfg.preroles});
+			else await bot.stores.welcomeConfigs.update(msg.guild.id, {preroles: cfg.preroles});
 		} catch(e) {
 			return "ERR: "+e;
 		}
@@ -373,7 +338,7 @@ module.exports.subcommands.preroles = {
 	},
 	guildOnly: true,
 	alias: ["autoroles","autorole"],
-	permissions: ["manageRoles","manageGuil"]
+	permissions: ["manageRoles","manageGuild"]
 }
 
 module.exports.subcommands.postroles = {
@@ -382,7 +347,7 @@ module.exports.subcommands.postroles = {
 	execute: async (bot, msg, args) => {
 		var cfg = await bot.stores.welcomeConfigs.get(msg.guild.id);
 		if(!args[0]) {
-			if(!cfg.postroles) return "No postroles exist for this server.";
+			if(!cfg || !cfg.postroles) return "No postroles exist for this server.";
 
 			var roles = cfg.postroles.map(r => msg.guild.roles.find(rl => rl.id == r)).filter(x => x!=undefined);
 			var ms = `Current postroles:\n${roles.map(r => r.name).join("\n")}\nWould you like to reset them?`;
@@ -432,6 +397,7 @@ module.exports.subcommands.postroles = {
 			return;
 		}
 
+		if(!cfg) cfg = {new: true};
 		cfg.postroles = [];
 		var results = [];
 		for(var i = 0; i < args.length; i++) {
@@ -443,7 +409,8 @@ module.exports.subcommands.postroles = {
 		}
 
 		try {
-			await bot.stores.welcomeConfigs.update(msg.guild.id, {postroles: cfg.postroles});
+			if(cfg.new) bot.stores.welcomeConfigs.create(msg.guild.id, {postroles: cfg.postroles});
+			else await bot.stores.welcomeConfigs.update(msg.guild.id, {postroles: cfg.postroles});
 		} catch(e) {
 			return "ERR: "+e;
 		}
@@ -459,4 +426,46 @@ module.exports.subcommands.postroles = {
 	guildOnly: true,
 	permissions: ["manageRoles","manageGuild"],
 	alias: ["postrole","welcomerole","welcomeroles","welcroles","welcrole"]
+}
+
+module.exports.subcommands.enable = {
+	help: ()=> "Enable welcome protocol.",
+	usage: ()=> [" - Enables welcome protocol"],
+	execute: async (bot, msg, args)=>{
+		var cfg = await bot.stores.welcomeConfigs.get(msg.guild.id);
+		if(!cfg) return "No config to enable.";
+		if(cfg.enabled) return "Welcome already enabled.";
+
+		try {
+			await bot.stores.welcomeConfigs.update(msg.guild.id, {enabled: true});
+		} catch(e) {
+			return "ERR: "+e;
+		}
+
+		return "Welcome enabled!";
+	},
+	guildOnly: true,
+	alias: ["e","1"],
+	permisions: ["manageGuild"]
+}
+
+module.exports.subcommands.disable = {
+	help: ()=> "Disables welcome protocol.",
+	usage: ()=> [" - Disables welcome protocol"],
+	execute: async (bot, msg, args)=>{
+		var cfg = await bot.stores.welcomeConfigs.get(msg.guild.id);
+		if(!cfg) return "No config to disable.";
+		if(!cfg.enabled) return "Welcome already disabled.";
+
+		try {
+			await bot.stores.welcomeConfigs.update(msg.guild.id, {enabled: false});
+		} catch(e) {
+			return "ERR: "+e;
+		}
+
+		return "Welcome disabled!";
+	},
+	guildOnly: true,
+	alias: ["d","0"],
+	permisions: ["manageGuild"]
 }

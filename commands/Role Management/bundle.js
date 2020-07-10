@@ -1,7 +1,7 @@
 module.exports = {
 	help: ()=> "Manage and assign role bundles.",
-	usage: ()=> [" create [bundle name] - Runs a creation menu",
-				 " [hid] - Gets info on a bundle",
+	usage: ()=> [" [hid] - Gets info on a bundle",
+				 " create [bundle name] [1|0] - Runs a creation menu. The 1 or 0 defines self-assignability",
 				 " add [hid] <@user @mention> - Adds bundle to yourself. Mod only: mention users to add bundle to them instead",
 				 " remove [hid] <@user @mention> - Removes bundle from yourself. Mod only: mention users to remove bundle from them instead",
 				 " name [hid] [new name] - Sets the name of a bundle (mod only)",
@@ -11,10 +11,9 @@ module.exports = {
 		if(args[0]) {
 			var bundle = await bot.stores.bundles.get(msg.guild.id, args[0].toLowerCase());
 			if(!bundle) return "Bundle not found.";
-			var roles = bundle.roles.map(r => msg.guild.roles.find(rl => rl.id == r)).filter(x => x != undefined);
 
-			if(roles.length !== bundle.roles.length) {
-				if(!roles[0]) {
+			if(bundle.raw_roles.length !== bundle.roles.length) {
+				if(!bundle.raw_roles[0]) {
 					try {
 						await bot.stores.bundles.delete(msg.guild.id, bundle.hid);
 					} catch(e) {
@@ -24,7 +23,7 @@ module.exports = {
 					return "That bundle no longer has any valid roles in it, and has been deleted.";
 				} else {
 					try {
-						await bot.store.bundles.update(msg.guild.id, bundle.hid, {roles: roles.map(r => r.id)});
+						await bot.store.bundles.update(msg.guild.id, bundle.hid, {roles: bundle.raw_roles.map(r => r.id)});
 					} catch(e) {
 						return "Error while removing invalid roles from bundle: "+e;
 					}
@@ -32,14 +31,14 @@ module.exports = {
 			}
 
 			return {embed: {
-				title: bundle.name,
+				title: `${bundle.name} (${bundle.hid})`,
 				fields: [
-					{name: "Roles", value: roles.map(r => r.name).join(", ") || "(no valid roles)"},
+					{name: "Roles", value: bundle.raw_roles.map(r => r.name).join(", ") || "(no valid roles)"},
 					{name: "Self Assignable?", value: bundle.assignable ? "Yes" : "No"}
 				],
 				color: b.assignable ? parseInt("55aa55", 16) : parseInt("5555aa", 16),
 				footer: {
-					text: `ID: ${b.hid}${roles.length < bundle.roles.length ? " | Invalid roles have been removed" : ""}`
+					text: `ID: ${b.hid}${bundle.raw_roles.length < bundle.roles.length ? " | Invalid roles have been removed" : ""}`
 				}
 			}}
 		}
@@ -49,12 +48,11 @@ module.exports = {
 
 		var deleted = [];
 		for(var i = 0; i < bundles.length; i++) {
-			bundles[i].realRoles = bundles[i].roles.map(r => msg.guild.roles.find(rl => rl.id == r)).filter(x => x != undefined) || [];
 			try {
-				if(!bundles[i].realRoles[0]) {
+				if(!bundles[i].raw_roles[0]) {
 					await bot.stores.bundles.delete(msg.guild.id, bundles[i].hid);
 					deleted.push(bundles[i].hid);
-				} else await bot.stores.bundle.update(msg.guild.id, bundles[i].hid, {roles: bundles[i].realRoles.map(r => r.id)});
+				} else if(bundles[i].raw_roles.length < bundles[i].roles.length) await bot.stores.bundles.update(msg.guild.id, bundles[i].hid, {roles: bundles[i].raw_roles.map(r => r.id)});
 			} catch(e) {
 				console.log(e);
 			}
@@ -68,10 +66,10 @@ module.exports = {
 				}}
 			} else {
 				return {embed: {
-					title: b.name,
+					title:`${b.name} (${b.hid})`,
 					description: b.description || "(no description)",
 					fields: [
-						{name: "Roles", value: b.realRoles.map(r => r.name).join(", ") || "(no valid roles)"},
+						{name: "Roles", value: b.raw_roles.map(r => r.name).join(", ") || "(no valid roles)"},
 						{name: "Self Assignable?", value: b.assignable ? "Yes" : "No"}
 					],
 					color: b.assignable ? parseInt("55aa55", 16) : parseInt("5555aa", 16),
@@ -82,11 +80,60 @@ module.exports = {
 			}
 		})
 
+		if(embeds.length > 1) for(var i = 0; i < embeds.length; i++) embeds[i].embed.title += ` (page ${i+1}/${embeds.length})`;
+
 		return embeds;
 	},
+	alias: ['bundles'],
 	subcommands: {},
 	guildOnly: true,
 	module: "admin"
+}
+
+module.exports.subcommands.create = {
+	help: ()=> "Runs a menu for creating bundles.",
+	usage: ()=> [" [bundle name] [true/false | 1/0] - Creates a bundle with the given name and self-assignability"],
+	execute: async (bot, msg, args)=> {
+		var name = args.slice(0,-1).join(" ").toLowerCase();
+		var assignable = args[args.length-1];
+		var description;
+		var code;
+		var resp;
+		if(!["true", "false", "1", "0"].includes(assignable)) return "Please provide a value for self-assignability.";
+
+		await msg.channel.createMessage("Enter a description for this bundle. You have 5 minutes to do this. Type `skip` to skip");
+		resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 300000, maxMatches: 1});
+		if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
+		if(resp[0].content.toLowerCase() !== "skip") description = resp[0].content;
+		
+		await msg.channel.createMessage("Enter role names for this bundle. They can be separated by new lines or commas. You have 3 minutes to do this");
+		resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 180000, maxMatches: 1});
+		if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
+
+		var rolenames = resp[0].content.split(/(?:,\s*|\n)/);
+		var roles = rolenames.map(r => msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase())).filter(x => x != undefined);
+		if(!roles || !roles[0]) return "None of those roles are valid.";
+
+		code = bot.utils.genCode(4, bot.strings.codestab);
+
+		try {
+			await bot.stores.bundles.create(msg.guild.id, code, {name, description, roles: roles.map(r => r.id), assignable});
+		} catch(e) {
+			return "ERR: "+e;
+		}
+
+		return {embed: {
+			title: "Results",
+			fields: [
+				{name: "Indexed", value: roles.map(r => r.name).join("\n") || "(none)"},
+				{name: "Not Indexed", value: rolenames.filter(r => !roles.find(rl => rl.name.toLowerCase() == r.toLowerCase())).map(x => `${x} - Role not found`).join("\n") || "(none)"}
+			],
+			color: parseInt("5555aa", 16)
+		}}
+	},
+	alias: ["new", "make", "c"],
+	permissions: ["manageRoles"],
+	guildOnly: true
 }
 
 module.exports.subcommands.add = {
@@ -101,7 +148,11 @@ module.exports.subcommands.add = {
 			targets = msg.mentions.map(u => {
 				var member = msg.guild.members.find(m => m.id == u.id);
 				if(!member) {
-					embeds.push({embed: {title: `Results for ${u.username}#${u.discriminator}`, description: "Couldn't find that user"}});
+					embeds.push({embed: {
+						title: `Results for ${u.username}#${u.discriminator}`,
+						description: "Couldn't find that user"},
+						color: parseInt("aa5555", 16)
+					});
 					return null
 				} else return member;
 			}).filter(x => x!=null);
@@ -143,7 +194,8 @@ module.exports.subcommands.add = {
 				fields: [
 					{name: "Added", value: results.filter(x => !x.reason).map(x => x.name).join("\n") || "None"},
 					{name: "Not Added", value: results.filter(x => x.reason != undefined).map(x => `${x.name} - ${x.reason}`).join("\n") || "None"}
-				]
+				],
+				color: parseInt("55aa55", 16)
 			}})
 		}
 
@@ -165,7 +217,11 @@ module.exports.subcommands.remove = {
 			targets = msg.mentions.map(u => {
 				var member = msg.guild.members.find(m => m.id == u.id);
 				if(!member) {
-					embeds.push({embed: {title: `Results for ${u.username}#${u.discriminator}`, description: "Couldn't find that user"}});
+					embeds.push({embed: {
+						title: `Results for ${u.username}#${u.discriminator}`,
+						description: "Couldn't find that user",
+						color: parseInt("aa5555", 16)
+					}});
 					return null
 				} else return member;
 			}).filter(x => x!=null);
@@ -207,7 +263,8 @@ module.exports.subcommands.remove = {
 				fields: [
 					{name: "Removed", value: results.filter(x => !x.reason).map(x => x.name).join("\n") || "None"},
 					{name: "Not Removed", value: results.filter(x => x.reason != undefined).map(x => `${x.name} - ${x.reason}`).join("\n") || "None"}
-				]
+				],
+				color: parseInt("55aa55", 16)
 			}})
 		}
 
@@ -215,52 +272,6 @@ module.exports.subcommands.remove = {
 	},
 	guildOnly: true,
 	alias: ["r", "rmv", "-"]
-}
-
-module.exports.subcommands.create = {
-	help: ()=> "Runs a menu for creating bundles",
-	usage: ()=> [" [bundle name] [true/false | 1/0] - Creates a bundle with the given name and self-assignability"],
-	execute: async (bot, msg, args)=> {
-		var name = args.slice(0,-1).join(" ").toLowerCase();
-		var assignable = args[args.length-1];
-		var description;
-		var code;
-		var response;
-		if(!["true", "false", "1", "0"].includes(assignable)) return "Please provide a value for self-assignability.";
-
-		await msg.channel.createMessage("Enter a description for this bundle. You have 5 minutes to do this. Type `skip` to skip");
-		response = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 300000, maxMatches: 1});
-		if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
-		if(resp[0].content.toLowerCase() !== "skip") description = resp[0].content;
-		
-		await msg.channel.createMessage("Enter role names for this bundle. They can be separated by new lines or commas. You have 3 minutes to do this");
-		response = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 180000, maxMatches: 1});
-		if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
-
-		var rolenames = resp[0].content.split(/(?:,\s*|\n)/);
-		var roles = rolenames.map(r => msg.guild.roles.find(rl => rl.name.toLowerCase() == r.toLowerCase())).filter(x => x != undefined);
-		if(!roles || !roles[0]) return "None of those roles are valid.";
-
-		code = bot.utils.genCode(4, bot.strings.codestab);
-
-		try {
-			await bot.stores.bundles.create(msg.guild.id, code, {name, description, roles: roles.map(r => r.id), assignable});
-		} catch(e) {
-			return "ERR: "+e;
-		}
-
-		return {embed: {
-			title: "Results",
-			fields: [
-				{name: "Indexed", value: roles.map(r => r.name).join("\n")},
-				{name: "Not Indexed", value: rolenames.filter(r => !roles.find(rl => rl.name.toLowerCase() == r.name.toLowerCase())).map(x => `${x} - Role not found`).join("\n")}
-			],
-			color: parseInt("5555aa", 16)
-		}}
-	},
-	alias: ["new", "make", "c"],
-	permissions: ["manageRoles"],
-	guildOnly: true
 }
 
 module.exports.subcommands.name = {
@@ -271,7 +282,7 @@ module.exports.subcommands.name = {
 		if(!bundle) return "Bundle not found.";
 
 		try {
-			await bot.stores.bundles.get(msg.guild.id, bundle.id, {name: args.slice(1).join(" ")});
+			await bot.stores.bundles.update(msg.guild.id, bundle.hid, {name: args.slice(1).join(" ")});
 		} catch(e) {
 			return "ERR: "+e;
 		}
@@ -284,14 +295,14 @@ module.exports.subcommands.name = {
 }
 
 module.exports.subcommands.description = {
-	help: ()=> "Set a bundle's description",
+	help: ()=> "Set a bundle's description.",
 	usage: ()=> [" [hid] [new description] - Sets the given bundle's description"],
 	execute: async (bot, msg, args) => {
 		var bundle = await bot.stores.bundles.get(msg.guild.id, args[0].toLowerCase());
 		if(!bundle) return "Bundle not found.";
 
 		try {
-			await bot.stores.bundles.get(msg.guild.id, bundle.id, {description: args.slice(1).join(" ")});
+			await bot.stores.bundles.update(msg.guild.id, bundle.hid, {description: args.slice(1).join(" ")});
 		} catch(e) {
 			return "ERR: "+e;
 		}
@@ -304,14 +315,14 @@ module.exports.subcommands.description = {
 }
 
 module.exports.subcommands.delete = {
-	help: ()=> "Deletes a bundle",
+	help: ()=> "Deletes a bundle.",
 	usage: ()=> [" [hid] - Deletes given bundle"],
 	execute: async (bot, msg, args)=> {
 		var bundle = await bot.stores.bundles.get(msg.guild.id, args[0].toLowerCase());
 		if(!bundle) return "Bundle not found.";
 
 		try {
-			await bot.stores.bundles.delete(msg.guild.id, bundle.id);
+			await bot.stores.bundles.delete(msg.guild.id, bundle.hid);
 		} catch(e) {
 			return "ERR: "+e;
 		}

@@ -55,8 +55,8 @@ class RoleStore extends Collection {
 	async get(server, role, forceUpdate = false) {
 		return new Promise(async (res, rej) => {
 			if(!forceUpdate) {
-				var role = super.get(`${server}-${role}`);
-				if(role) return res(role);
+				var srole = super.get(`${server}-${role}`);
+				if(srole) return res(srole);
 			}
 			
 			try {
@@ -66,12 +66,12 @@ class RoleStore extends Collection {
 				return rej(e.message);
 			}
 
-			var guild = bot.guilds.find(g => g.id == server);
+			var guild = this.bot.guilds.find(g => g.id == server);
 			if(!guild) return rej("Couldn't get guild");
 			
 			if(data.rows && data.rows[0]) {
-				var role = guild.roles.find(r => r.id == data.rows[0].role_id);
-				if(role) data.rows[0].raw = role;
+				srole = guild.roles.find(r => r.id == data.rows[0].role_id);
+				if(srole) data.rows[0].raw = srole;
 				this.set(`${server}-${role}`, data.rows[0])
 				res(data.rows[0])
 			} else res(undefined);
@@ -87,6 +87,9 @@ class RoleStore extends Collection {
 				return rej(e.message);
 			}
 			
+			var guild = this.bot.guilds.find(g => g.id == server);
+			if(!guild) return rej("Couldn't get guild");
+
 			if(data.rows && data.rows[0]) {
 				for(var i = 0; i < data.rows.length; i++) {
 					var role = guild.roles.find(r => r.id == data.rows[i].role_id);
@@ -105,6 +108,9 @@ class RoleStore extends Collection {
 				console.log(e);
 				return rej(e.message);
 			}
+
+			var guild = this.bot.guilds.find(g => g.id == server);
+			if(!guild) return rej("Couldn't get guild");
 			
 			if(data.rows && data.rows[0]) {
 				for(var i = 0; i < data.rows.length; i++) {

@@ -18,11 +18,11 @@ class ConfigStore extends Collection {
 					disabled,
 					opped,
 					logged,
-					autopin
+					starboard
 				) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
 				[server, data.prefix, data.autoroles|| [],
 				 data.disabled || [], data.opped || [],
-				 data.logged || [], data.autopin])
+				 data.logged || [], data.starboard])
 			} catch(e) {
 				console.log(e);
 		 		return rej(e.message);

@@ -17,37 +17,39 @@ class BundleStore extends Collection {
 		})
 	}
 
-	async create(server, name, data = {}) {
+	async create(server, hid, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
 				await this.db.query(`INSERT INTO bundles (
+					hid,
 					server_id,
 					name,
 					description,
 					roles,
 					assignable
-				) VALUES ($1,$2,$3,$4,$5)`,
-				[server, name, data.roles || [], data.assignable || false])
+				) VALUES ($1,$2,$3,$4,$5,$6)`,
+				[hid, server, data.name, data.description, data.roles || [], data.assignable || false])
 			} catch(e) {
 				console.log(e);
 		 		return rej(e.message);
 			}
 			
-			res(await this.get(server, name));
+			res(await this.get(server, hid));
 		})
 	}
 
-	async index(server, name, data = {}) {
+	async index(server, hid, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
 				await this.db.query(`INSERT INTO bundles (
+					hid,
 					server_id,
 					name,
 					description,
 					roles,
 					assignable
-				) VALUES ($1,$2,$3,$4,$5)`,
-				[server, name, data.roles || [], data.assignable || false])
+				) VALUES ($1,$2,$3,$4,$5,$6)`,
+				[hid, server, data.name, data.description, data.roles || [], data.assignable || false])
 			} catch(e) {
 				console.log(e);
 		 		return rej(e.message);
@@ -57,15 +59,15 @@ class BundleStore extends Collection {
 		})
 	}
 
-	async get(server, name, forceUpdate = false) {
+	async get(server, hid, forceUpdate = false) {
 		return new Promise(async (res, rej) => {
 			if(!forceUpdate) {
-				var bundle = super.get(`${server}-${name}`);
+				var bundle = super.get(`${server}-${hid}`);
 				if(bundle) return res(bundle);
 			}
 			
 			try {
-				var data = await this.db.query(`SELECT * FROM bundles WHERE server_id = $1 AND name = $2`,[server, name]);
+				var data = await this.db.query(`SELECT * FROM bundles WHERE server_id = $1 AND hid = $2`,[server, hid]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
@@ -81,10 +83,10 @@ class BundleStore extends Collection {
 					if(rl) roles.push(rl);
 				}
 
-				if(roles.length < data.rows[0].roles.length) await this.update(server, name, {roles: roles.map(r => r.id)});
-				data.rows[0].roles = roles;
+				if(roles.length < data.rows[0].roles.length) await this.update(server, hid, {roles: roles.map(r => r.id)});
+				data.rows[0].raw_roles = roles;
 
-				this.set(`${server}-${name}`, data.rows[0])
+				this.set(`${server}-${hid}`, data.rows[0])
 				res(data.rows[0])
 			} else res(undefined);
 		})
@@ -110,8 +112,8 @@ class BundleStore extends Collection {
 						if(rl) roles.push(rl);
 					}
 
-					if(roles.length < data.rows[i].roles.length) await this.update(server, data.rows[i].name, {roles: roles.map(r => r.id)});
-					data.rows[i].roles = roles;
+					if(roles.length < data.rows[i].roles.length) await this.update(server, data.rows[i].hid, {roles: roles.map(r => r.id)});
+					data.rows[i].raw_roles = roles;
 				}
 
 				res(data.rows)
@@ -139,8 +141,8 @@ class BundleStore extends Collection {
 						if(rl) roles.push(rl);
 					}
 
-					if(roles.length < data.rows[i].roles.length) await this.update(server, data.rows[i].name, {roles: roles.map(r => r.id)});
-					data.rows[i].roles = roles;
+					if(roles.length < data.rows[i].roles.length) await this.update(server, data.rows[i].hid, {roles: roles.map(r => r.id)});
+					data.rows[i].raw_roles = roles;
 				}
 
 				res(data.rows)
@@ -148,29 +150,29 @@ class BundleStore extends Collection {
 		})
 	}
 
-	async update(server, name, data = {}) {
+	async update(server, hid, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`UPDATE bundles SET ${Object.keys(data).map((k, i) => k+"=$"+(i+3)).join(",")} WHERE server_id = $1 AND name = $2`,[server, name, ...Object.values(data)]);
+				await this.db.query(`UPDATE bundles SET ${Object.keys(data).map((k, i) => k+"=$"+(i+3)).join(",")} WHERE server_id = $1 AND hid = $2`,[server, hid, ...Object.values(data)]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
 			}
 
-			res(await this.get(server, name, true));
+			res(await this.get(server, hid, true));
 		})
 	}
 
-	async delete(server, name) {
+	async delete(server, hid) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`DELETE FROM bundles WHERE server_id = $1 AND name = $2`, [server, name]);
+				await this.db.query(`DELETE FROM bundles WHERE server_id = $1 AND hid = $2`, [server, hid]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
 			}
 			
-			super.delete(`${server}-${name}`);
+			super.delete(`${server}-${hid}`);
 			res();
 		})
 	}
@@ -180,7 +182,7 @@ class BundleStore extends Collection {
 			try {
 				var bundles = await this.getAll(server);
 				await this.db.query(`DELETE FROM bundles WHERE server_id = $1`, [server]);
-				for(var bundle of bundles) super.delete(`${server}-${bundle.name}`);
+				for(var bundle of bundles) super.delete(`${server}-${bundle.hid}`);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);

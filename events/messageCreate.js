@@ -1,3 +1,12 @@
+const WELCOMES = [
+	"you're welcome!",
+	"you're welcome! :D",
+	"of course!",
+	"no problem!",
+	"don't mention it :heart:",
+	"baa!! :heart:"
+];
+
 module.exports = async (msg, bot) =>{
 	//todo: make this look better
 	//good god it is ugly
@@ -28,7 +37,7 @@ module.exports = async (msg, bot) =>{
 		if(!cfg) cfg = await bot.stores.configs.create(msg.guild.id);
 
 		try {
-
+			var lvlup = await bot.stores.profiles.handleBonus(msg.author.id);
 		} catch(e) {
 			console.log("Couldn't handle cash/exp: "+e);
 		}
@@ -41,17 +50,24 @@ module.exports = async (msg, bot) =>{
 		if(tag) return msg.channel.createMessage(typeof tag.value == "string" ? tag.value : bot.utils.randomText(tag.value));
 	}
 
-	if(!prefix.test(msg.content.toLowerCase())) return;
+	if(!prefix.test(msg.content.toLowerCase())) {
+		var thanks = msg.content.match(/^(thanks? ?(you)?|ty),? ?hero(brine)?/i);
+		if(thanks) return await msg.channel.createMessage(bot.utils.randomText(WELCOMES));
+		return;
+	}
 
 	var {command, args, permcheck} = await bot.parseCommand(bot, msg, msg.content.replace(prefix, "").split(" "));
 	if(!command) ({command, args} = await bot.parseCustomCommand(bot, msg, msg.content.replace(prefix, "").split(" ")));
 	if(!command) return msg.channel.createMessage("Command not found.");
 	
-	console.log(command.name);
 	if(command.guildOnly && !msg.guild) return msg.channel.createMessage("This command can only be used in guilds.");
-	var cfg = msg.guild ? await bot.stores.configs.get(msg.guild.id) : {};
-	if(cfg && cfg.blacklist && cfg.blacklist.includes(msg.author.id)) return msg.channel.createMessage("You have been banned from using commands.");
 	if(command.permissions && !permcheck) return msg.channel.createMessage("You don't have permission to do this.");
+	if(cfg) {
+		if(cfg.blacklist && cfg.blacklist.includes(msg.author.id))
+			return msg.channel.createMessage("You have been banned from using commands.");
+		if(cfg.disabled && cfg.disabled.commands && cfg.disabled.commands.includes(command.name))
+			return msg.channel.createMessage("This command is disabled.");
+	}
 	
 	var result;
 	try {
@@ -85,5 +101,5 @@ module.exports = async (msg, bot) =>{
 		}
 	} else msg.channel.createMessage(result);
 
-	command.execute(bot, msg, nargs, command);
+	bot.writeLog(bot, 'msg', msg);
 }

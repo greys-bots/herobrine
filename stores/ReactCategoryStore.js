@@ -141,9 +141,6 @@ class ReactCategoryStore extends Collection {
 				}
 			});
 
-			console.log(embeds);
-			console.log("---")
-
 			if(updatePosts) {
 				for(var post of category.posts) {
 					try {

@@ -68,7 +68,7 @@ module.exports.subcommands.create = {
 	usage: ()=> [" [name] (new line) [description] - Creates a new category with the given name and description (NOTE: description needs to be on new line)"],
 	execute: async (bot, msg, args)=> {
 		var nargs = args.join(" ").split("\n");
-		var code = bot.utils.genCode(bot.chars);
+		var code = bot.utils.genCode(4, bot.strings.codestab);
 
 		try {
 			await bot.stores.reactCategories.create(msg.guild.id, code, {name: nargs[0], description: nargs.slice(1).join("\n")});
@@ -250,6 +250,7 @@ module.exports.subcommands.post = {
 	help: ()=> "Posts a message with all possible reaction roles.",
 	usage: ()=> [" [category] [channel] - Posts reaction roles message in given channel"],
 	execute: async (bot, msg, args) => {
+		if(!args[1]) return "Please provide a category and a channel.";
 		var category = await bot.stores.reactCategories.get(msg.guild.id, args[0].toLowerCase());
 		if(!category) return 'Category does not exist';
 
@@ -329,11 +330,11 @@ module.exports.subcommands.required = {
 			if(!category.required) return "That category doesn't have a required role.";
 			var role = msg.guild.roles.find(r => r.id == category.required);
 			if(!role) return "The required role for that category is invalid or has been deleted.";
-			await msg.channel.createMessage({embed: {
+			return {embed: {
 				title: "Current role",
 				description: role.mention,
 				footer: {text: `To clear it, use \`hh!rc required ${category.hid} clear\``}
-			}});
+			}};
 		}
 
 		if(args[1].toLowerCase() == "clear") {

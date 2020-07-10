@@ -36,7 +36,7 @@ const trigger_categories = [
 	}
 ];
 
-module.exports= {
+module.exports = {
 	help: ()=> "View and manage trigger lists.",
 	usage: ()=> [" - List your trigger lists, if you have any",
 				 " [hid] - List triggers registered at that hid",
@@ -46,8 +46,8 @@ module.exports= {
 				 " delete [hid] - Deletes a trig+ger list"],
 	desc: ()=> ["**Categories**\n",
 				`Trigger lists are split into ${trigger_categories.length} categories:`,
-				`${tigger_categories.map(c => "`"+c.name+"`")}\n`,
-				trigger.categories.map(c => `${c.name.toUpperCase()} - ${c.description}`).join("\n")],
+				`${trigger_categories.map(c => "`"+c.name+"`").join(", ")}\n`,
+				trigger_categories.map(c => `${c.name.toUpperCase()} - ${c.description}`).join("\n")].join(""),
 	execute: async (bot, msg, args) => {
 		if(args[0]) {
 			var triggers = await bot.stores.triggers.get(msg.author.id, args[0].toLowerCase());
@@ -106,10 +106,10 @@ module.exports= {
 module.exports.subcommands.new = {
 	help: ()=> "Creates a new trigger list.",
 	usage: ()=> [" - Opens a menu for creating a new list"],
-	execute: async (bot, msg, args)=>{
+	execute: async (bot, msg, args) => {
 		var resp;
 		var name;
-		var list = {extreme: [], bad: [], mild: []};
+		var list = {extreme: [], bad: [], mild: [], squicks: []};
 		var private;
 		var attempt = 0;
 
@@ -128,7 +128,7 @@ module.exports.subcommands.new = {
 					"You have 5 minutes to do this. Type `cancel` to cancel, or `skip` to skip this part"
 				].join(""));
 				resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {time: 5*60000, maxMatches: 1});
-				if(!resp || !resp[0]) return msg.channel.createMessage("ERR: timed out. Aborting");
+				if(!resp || !resp[0]) return "ERR: timed out. Aborting";
 				if(resp[0].content.toLowerCase() == "cancel") return "Action cancelled.";
 				if(resp[0].content.toLowerCase() != "skip") list[category.name] = resp[0].content.split("\n");
 			}
@@ -352,7 +352,7 @@ module.exports.subcommands.remove = {
 }
 
 module.exports.subcommands.delete = {
-	help: ()=> "Delete a trigger list",
+	help: ()=> "Delete a trigger list.",
 	usage: ()=> [" [hid] - Delete a trigger list with the given hid"],
 	execute: async (bot, msg, args)=>{
 		if(!args[0]) return "Please provide a list to delete.";
@@ -372,11 +372,11 @@ module.exports.subcommands.delete = {
 }
 
 module.exports.subcommands.private = {
-	help: ()=> "Set whether a trigger list is private or not",
+	help: ()=> "Set whether a trigger list is private or not.",
 	usage: ()=> [" [hid] [(true | 1) | (false | 0)] - Sets the privacy value of the given list"],
 	execute: async (bot, msg, args) => {
 		if(!args[1]) return "Please provide a list and a value.";
-		var list = await bot.utils.getTriggerList(bot, msg.author.id, args[0].toLowerCase());
+		var list = await bot.stores.triggers.get(msg.author.id, args[0].toLowerCase());
 		if(!list) return "List not found.";
 		if(list == "private" || list.user_id != msg.author.id) return "You do not have permission to edit that list.";
 

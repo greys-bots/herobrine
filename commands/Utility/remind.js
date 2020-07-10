@@ -56,13 +56,14 @@ module.exports = {
 					}
 					delete bot.menus[message.id];
 				}, 900000),
-				execute: async function(bot, m, e) {
-					switch(e.name) {
+				execute: async function(bot, m, em) {
+					await m.removeReaction(em.name, this.user)
+					switch(em.name) {
 						case '⏹️':
 							await m.delete();
 							delete bot.menus[m.id];
 							break;
-						case "\u270f":
+						case "✏":
 							var resp;
 							await m.channel.createMessage("Enter the new reminder message. Type `cancel` to cancel.");
 							resp = await m.channel.awaitMessages(ms => ms.author.id == this.user, {maxMatches: 1, time: 30000});
@@ -109,9 +110,12 @@ module.exports = {
 			["⏹️","\u270f","❌"].forEach(r => message.addReaction(r));
 		} else if(args[1]) {
 			var today = new Date();
+			// var limit = new Date(Date.now() + 90*24*60*60*1000);
+			// var min = new Date(Date.now() + 5*60*1000);
+			// var min_recurring = new Date(Date.now() + 24*60*60*1000);
 			var limit = new Date(Date.now() + 90*24*60*60*1000);
-			var min = new Date(Date.now() + 5*60*1000);
-			var min_recurring = new Date(Date.now() + 24*60*60*1000);
+			var min = new Date(Date.now() + 0);
+			var min_recurring = new Date(Date.now() + 0);
 			var type;
 			var in_ind = args.map(a => a.toLowerCase()).lastIndexOf("in"); //love me some good old fashioned
 			var every = args.map(a => a.toLowerCase()).lastIndexOf("every"); //case insensitivity
@@ -180,7 +184,7 @@ module.exports = {
 					recurring: type == "recurring",
 					interval: type == "recurring" ? (time.parsed ? time.parsed : time[1].parsed) : null
 				});
-				bot.reminders[msg.author.id+"-"+code] = bot.scheduler.scheduleJob(time.date ? time.date : time[0].date, ()=> bot.utils.sendReminder(bot, msg.author.id, code));
+				bot.reminders[msg.author.id+"-"+code] = bot.scheduler.scheduleJob(time.date ? time.date : time[0].date, ()=> bot.stores.reminders.send(msg.author.id, code));
 			} catch(e) {
 				if(e.message) await bot.stores.reminders.delete(msg.author.id, code);
 				return "ERR: "+(e.message || e);
@@ -188,6 +192,7 @@ module.exports = {
 
 			return `Reminder set for ${bot.formatDiff(Date.now(), time.date ? time.date : time[0].date)} from now. ID: ${code}`;
 		} else {
+			var reminders = await bot.stores.reminders.getAll(msg.author.id);
 			var embeds = await bot.utils.genEmbeds(bot, reminders, async (r) => {
 				if(!r.recurring) {
 					return {

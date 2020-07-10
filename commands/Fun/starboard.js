@@ -14,7 +14,7 @@ module.exports = {
 				"their own specified tolerance."].join(""),
 	execute: async (bot, msg, args)=> {
 		var config = await bot.stores.configs.get(msg.guild.id);
-		if(!config) config = {autopin: 2};
+		if(!config) config = {starboard: 2};
 		if(args[0]) {
 			var channel = msg.guild.channels.find(ch => ch.name == args[0].toLowerCase() || ch.id == args[0].replace(/[<#>]/g,""));
 			var board;
@@ -37,7 +37,7 @@ module.exports = {
 				title: channel.name,
 				fields: [
 					{name: "Emoji", value: board.emoji.includes(":") ? `<${board.emoji}>` : board.emoji},
-					{name: "Tolerance", value: board.tolerance ? board.tolerance : (config.autopin.tolerance || 2)},
+					{name: "Tolerance", value: board.tolerance ? board.tolerance : (config.starboard || 2)},
 					{name: "Moderator Override", value: board.override ? "Yes" : "No"},
 					{name: "Message Count", value: board.message_count}
 				],
@@ -58,7 +58,7 @@ module.exports = {
 					title: channel.name,
 					fields: [
 						{name: "Emoji", value: boards[i].emoji.includes(":") ? `<${boards[i].emoji}>` : boards[i].emoji},
-						{name: "Tolerance", value: boards[i].tolerance ? boards[i].tolerance : (config.autopin.tolerance || 2)},
+						{name: "Tolerance", value: boards[i].tolerance ? boards[i].tolerance : (config.starboard || 2)},
 						{name: "Moderator Override", value: boards[i].override ? "Yes" : "No"},
 						{name: "Message Count", value: boards[i].message_count}
 					],
@@ -88,11 +88,11 @@ module.exports = {
 	permissions: ["manageGuild"],
 	guildOnly: true,
 	module: "admin",
-	alias: ["ap", "autopins", "pinboard", "pb", "starboard", "sb"]
+	alias: ["sb", "starboards", "ap", "autopin", "autopins", "pb", "pinboard", "pinboards"]
 }
 
 module.exports.subcommands.add = {
-	help: ()=> "Adds a channel to the server's autopin config.",
+	help: ()=> "Adds a channel to the server's starboard config.",
 	usage: ()=> [" [channel] [:emoji:] <tolerance> - Adds channel and reaction config for the server. Tolerance is optional"],
 	desc: ()=> "The channel can be a channel ID, channel-name, or #mention. The emoji can be a custom one.",
 	execute: async (bot, msg, args)=> {
@@ -121,14 +121,13 @@ module.exports.subcommands.add = {
 }
 
 module.exports.subcommands.remove = {
-	help: ()=> "Removes a channel from the server's autopin config.",
+	help: ()=> "Removes a channel from the server's starboard config.",
 	usage: ()=> [" [channel] - Removes the channel's pin config"],
 	desc: ()=> "The board can be a channel ID, channel-name, or #mention.",
 	execute: async (bot, msg, args)=> {
-		if(!args[1]) return"Please provide a channel and an emoji.";
+		if(!args[0]) return "Please provide a channel.";
 		var channel = msg.guild.channels.find(ch => ch.name == args[0].toLowerCase() || ch.id == args[0].replace(/[<#>]/g,""));
 		if(!channel) return "Channel not found.";
-		var emoji = args[1].replace(/[<>]/g,"");
 
 		var board = await bot.stores.starboards.get(msg.guild.id, channel.id);
 		if(!board) return "Board not found.";
@@ -180,11 +179,11 @@ module.exports.subcommands.tolerance = {
 				 " [board] [number] - Set specific tolerance"],
 	execute: async (bot, msg, args) => {
 		var cfg = await bot.stores.configs.get(msg.guild.id);
-		if(!cfg) cfg = {autopin: 2};
+		if(!cfg) cfg = {starboard: 2};
 		var scc;
 		if(!args[0]) {
 			try {
-				await bot.stores.configs.update(msg.guild.id, {autopin: 2});
+				await bot.stores.configs.update(msg.guild.id, {starboard: 2});
 			} catch(e) {
 				return "ERR: "+e;
 			}
@@ -195,7 +194,7 @@ module.exports.subcommands.tolerance = {
 			if(!channel && isNaN(args[0])) return "Channel not found.";
 			else if(!channel && !isNaN(args[0])) {
 				try {
-					await bot.stores.configs.update(msg.guild.id, {autopin: parseInt(args[0])});
+					await bot.stores.configs.update(msg.guild.id, {starboard: parseInt(args[0])});
 				} catch(e) {
 					return "ERR: "+e;
 				}
@@ -206,7 +205,7 @@ module.exports.subcommands.tolerance = {
 			if(!board) return "Board not found.";
 
 			try {
-				await bot.stores.starboards.update(msg.guild.id, channel.id, {tolerance: args[1] ? parseInt(args[1] : null)});
+				await bot.stores.starboards.update(msg.guild.id, channel.id, {tolerance: args[1] ? parseInt(args[1]) : null});
 			} catch(e) {
 				return "ERR: "+e;
 			}

@@ -1,6 +1,6 @@
 const {Collection} = require("discord.js");
 
-class WelcomeConfigstore extends Collection {
+class WelcomeConfigStore extends Collection {
 	constructor(bot, db) {
 		super();
 
@@ -8,7 +8,11 @@ class WelcomeConfigstore extends Collection {
 		this.bot = bot;
 	}
 
-	async create(user, data = {}) {
+	async init() {
+		this.bot.on("guildMemberAdd", (guild, member) => this.handleWelcome(guild, member));
+	}
+
+	async create(server, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
 				await this.db.query(`INSERT INTO welcome_configs (
@@ -30,7 +34,7 @@ class WelcomeConfigstore extends Collection {
 		})
 	}
 
-	async index(user, data = {}) {
+	async index(server, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
 				await this.db.query(`INSERT INTO welcome_configs (
@@ -73,7 +77,7 @@ class WelcomeConfigstore extends Collection {
 		})
 	}
 
-	async update(server) {
+	async update(server, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
 				await this.db.query(`UPDATE welcome_configs SET ${Object.keys(data).map((k, i) => k+"=$"+(i+2)).join(",")} WHERE server_id = $1`,[server, ...Object.values(data)]);

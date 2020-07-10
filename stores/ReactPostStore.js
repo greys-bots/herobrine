@@ -253,8 +253,8 @@ class ReactPostStore extends Collection {
 	}
 
 	async update(server, message, data = {}) {
+		console.log(data);
 		return new Promise(async (res, rej) => {
-			console.log(data);
 			try {
 				if(data.roles || data.single || data.required)
 					await this.db.query(`UPDATE reactposts SET roles = $1, single = $2, required = $3 WHERE server_id = $4 AND message_id = $5`,
@@ -265,7 +265,6 @@ class ReactPostStore extends Collection {
 			}
 			
 			var post = await this.get(server, message, true);
-			console.log(post);
 
 			if(post.message && post.message.embeds[0] && post.message.author.id == this.bot.user.id) { //react post from us
 				if(!data.embed && data.roles) { //regen roles
@@ -277,8 +276,14 @@ class ReactPostStore extends Collection {
 					data = data[0];
 				}
 
-				console.log(data);
-				if(data.embed) {
+				if(!data.embed || !data.roles[0]) {
+					try {
+						await this.delete(server, message);
+						await this.bot.deleteMessage(post.channel_id, post.message_id);
+					} catch(e) {
+						return rej(e.message || e);
+					}
+				} else if(data.embed) {
 					try {
 						await this.bot.editMessage(post.channel_id, post.message_id, {embed: data.embed});
 						await this.bot.removeMessageReactions(post.channel_id, post.message_id);
@@ -286,13 +291,6 @@ class ReactPostStore extends Collection {
 					} catch(e) {
 						console.log(e);
 						return rej(e.message);
-					}
-				} else if(!data.embed && post.page > 0) {
-					try {
-						await this.delete(server, message);
-						await this.bot.deleteMessage(post.channel_id, post.message_id);
-					} catch(e) {
-						return rej(e.message || e);
 					}
 				}
 			} else { //probably not a react post, or not from us; bound post instead
@@ -340,6 +338,7 @@ class ReactPostStore extends Collection {
 	async handleReactions(msg, emoji, user) {
 		return new Promise(async (res, rej) => {
 			if(this.bot.user.id == user) return;
+			if(!msg.channel.guild) return;
 			var post = await this.get(msg.channel.guild.id, msg.id);
 			if(!post) return;
 			if(emoji.id) emoji.name = `:${emoji.name}:${emoji.id}`;

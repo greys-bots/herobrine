@@ -65,7 +65,7 @@ class ProfileStore extends Collection {
 	async get(user, forceUpdate = false) {
 		return new Promise(async (res, rej) => {
 			if(!forceUpdate) {
-				var profile = super.get(config);
+				var profile = super.get(user);
 				if(profile) return res(profile);
 			}
 			
@@ -92,7 +92,7 @@ class ProfileStore extends Collection {
 				return rej(e.message);
 			}
 
-			res(await this.get(server, true));
+			res(await this.get(user, true));
 		})
 	}
 
@@ -118,6 +118,9 @@ class ProfileStore extends Collection {
 				return res({success: scc, msg: null});
 			}
 
+			prof.lvl = parseInt(prof.lvl);
+			prof.exp = parseInt(prof.exp)
+			prof.cash = parseInt(prof.cash);
 			var curlvl = prof.lvl;
 
 			if(prof.exp+5 >= (Math.pow(prof.lvl, 2) + 100)){

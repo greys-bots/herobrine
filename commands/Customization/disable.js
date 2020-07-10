@@ -3,9 +3,10 @@ module.exports = {
 	usage: ()=> [" - Lists disabled commands",
 				 " [command/module] <subcommand> - Disables given command or its subcommand"],
 	execute: async (bot, msg, args) => {
+		var cfg = await bot.stores.configs.get(msg.guild.id);
+		console.log(cfg);
 		if(!args[0]) {
-			var cfg = await bot.stores.configs.get(msg.guild.id);
-			if(!cfg || !cfg.disabled || (cfg.disabled && !cfg.disabled.commands && !cfg.disabled.levels)) return msg.channel.createMessage('No config found for this server')
+			if(!cfg || !cfg.disabled || (cfg.disabled && !cfg.disabled.commands && !cfg.disabled.levels)) return 'No config found for this server.';
 			
 			return {embed: {
 				title: "Disabled Functions",
@@ -17,10 +18,9 @@ module.exports = {
 		}
 
 		if(["disable", "enable"].includes(args[0].toLowerCase())) return "You can't disable or enable this command.";
-		var cfg = await bot.stores.configs.get(msg.guild.id);
 		var dis;
 		if(!cfg) cfg = {new: true};
-		if(!cfg.disabled) dis = {modules: [], commands: [], levels: false};
+		if(!cfg.disabled) dis = {levels: false, commands: []};
 		else dis = cfg.disabled;
 		if(!dis.commands) dis.commands = [];
 		if(!dis.levels) dis.levels = false;
@@ -73,7 +73,6 @@ module.exports = {
 			}
 		}
 	},
-	subcommands: {},
 	guildOnly: true,
 	module: "admin",
 	alias: ["dis","disabled"],

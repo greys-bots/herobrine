@@ -18,7 +18,7 @@ async function migrate() {
 			server_id: String,
 			name: String,
 			command: String
-		}, (err, rows) => {
+		}, async (err, rows) => {
 			if(err) {
 				console.log(err);
 				rej(err.message);
@@ -37,8 +37,8 @@ async function migrate() {
 			name: String,
 			description: String,
 			roles: val => val ? JSON.parse(val) : null,
-			assignable: Boolean
-		}, (err, rows)=>{
+			assignable: val => val ? Boolean(val) : false
+		}, async (err, rows)=>{
 			if(err) {
 				console.log(err);
 				res(undefined);
@@ -59,7 +59,7 @@ async function migrate() {
 			feedback: val => val ? JSON.parse(val) : null,
 			logged: val => val ? JSON.parse(val) : null,
 			autopin: Number
-		},(err,rows)=>{
+		}, async (err,rows)=>{
 			if(err){
 				console.log(err)
 				res(undefined);
@@ -110,7 +110,7 @@ async function migrate() {
 			user_id: String,
 			title: String,
 			body: String
-		}, (err, rows) => {
+		}, async (err, rows) => {
 			if(err) {
 				console.log(err);
 				res(undefined);
@@ -133,9 +133,9 @@ async function migrate() {
 			description: String,
 			choices: JSON.parse,
 			active: Boolean,
-			start: String,
-			end: String
-		}, (err, rows) => {
+			start_time: Date,
+			end_time: Date
+		}, async (err, rows) => {
 			if(err) {
 				console.log(err);
 				res(undefined);
@@ -159,7 +159,7 @@ async function migrate() {
 			cash: Number,
 			daily: Number,
 			disabled: Boolean
-		}, (err, rows) => {
+		}, async (err, rows) => {
 			if(err) {
 				console.log(err);
 				res(undefined);
@@ -236,7 +236,7 @@ async function migrate() {
 			time: Date,
 			recurring: Boolean,
 			interval: val => val ? JSON.parse(val) : null
-		}, (err, rows) => {
+		}, async (err, rows) => {
 			if(err) {
 				console.log(err);
 				res(undefined);
@@ -258,7 +258,7 @@ async function migrate() {
 				else if(val) return val;
 				else return null;
 			}
-		}, (err, rows) => {
+		}, async (err, rows) => {
 			if(rows && rows[0]) {
 				console.log(rows[0].value)
 				res(rows[0]);
@@ -313,7 +313,7 @@ async function migrate() {
 			server_id: String,
 			user_id: String,
 			reason: String
-		}, (err, rows) => {
+		}, async (err, rows) => {
 			if(err) {
 				console.log(err);
 				res(undefined);
@@ -332,7 +332,7 @@ async function migrate() {
 			name: String,
 			list: val => val ? JSON.parse(val) : null,
 			private: Boolean
-		}, (err, rows) => {
+		}, async (err, rows) => {
 			if(err) {
 				console.log(err);
 				res(undefined);
@@ -352,7 +352,7 @@ async function migrate() {
 			channel: String,
 			message: String,
 			enabled: Boolean
-		}, (err, rows) => {
+		}, async (err, rows) => {
 			if(err) {
 				console.log(err);
 				res(undefined);
@@ -363,6 +363,7 @@ async function migrate() {
 				}
 			}
 		});
+	})
 }
 
 migrate();

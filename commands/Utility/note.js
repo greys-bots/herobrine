@@ -1,5 +1,5 @@
 module.exports = {
-	help: ()=> "View and manage notes",
+	help: ()=> "View and manage notes.",
 	usage: ()=> [" - Lists your current notes",
 				 " [hid] - Views a specific note",
 				 " add - Opens a menu to add a new note",
@@ -48,7 +48,7 @@ module.exports = {
 			return;
 		} else {
 			var notes = await bot.stores.notes.getAll(msg.author.id);
-			if(!notes || !notes[0]) return "You don't have any notes";
+			if(!notes || !notes[0]) return "You don't have any notes.";
 
 			var embeds = await bot.utils.genEmbeds(bot, notes, async (n) => {
 				return {
@@ -69,10 +69,10 @@ module.exports = {
 }
 
 module.exports.subcommands.add = {
-	help: ()=> "Runs a menu to add a new note",
+	help: ()=> "Runs a menu to add a new note.",
 	usage: ()=> [" - Opens the note add menu"],
 	execute: async (bot, msg, args) => {
-		var count = await bot.utils.getNoteCount(bot, msg.author.id);
+		var count = await bot.stores.notes.getCount(msg.author.id);
 		if(count >= 100) return "You already have 100 or more notes!"
 		var resp;
 		var title;
@@ -129,9 +129,13 @@ module.exports.subcommands.delete = {
 				execute: async function(bot, m, e){
 					switch(e.name) {
 						case "✅":
-							var scc = await bot.utils.deleteNotes(bot, this.user);
-							if(scc) m.channel.createMessage("Notes deleted!");
-							else m.channel.createMessage("Something went wrong")
+							try {
+								await bot.stores.notes.deleteAll(this.user);
+							} catch(e) {
+								return await m.channel.createMessage("ERR: "+e);
+							}
+							
+							await m.channel.createMessage("Notes deleted!");
 							break;
 						case "❌":
 							m.channel.createMessage("Action cancelled");
@@ -141,8 +145,8 @@ module.exports.subcommands.delete = {
 			};
 			["✅","❌"].forEach(r => message.addReaction(r))
 		} else {
-			var note = await bot.utils.getNote(bot, msg.author.id, args[0].toLowerCase());
-			if(!note) return "Note not found";
+			var note = await bot.stores.notes.get(msg.author.id, args[0].toLowerCase());
+			if(!note) return "Note not found.";
 
 			var message = await msg.channel.createMessage("Are you sure you want to delete this note?");
 			if(!bot.menus) bot.menus = {};
@@ -165,9 +169,13 @@ module.exports.subcommands.delete = {
 				execute: async function(bot, m, e){
 					switch(e.name) {
 						case "✅":
-							var scc = await bot.utils.deleteNote(bot, this.user, this.data);
-							if(scc) m.channel.createMessage("Note deleted!");
-							else m.channel.createMessage("Something went wrong")
+							try {
+								await bot.stores.delete(this.user, this.data);
+							} catch(e) {
+								return await m.channel.createMessage("ERR: "+e);
+							}
+							
+							await m.channel.createMessage("Note deleted!");
 							break;
 						case "❌":
 							m.channel.createMessage("Action cancelled");
@@ -187,7 +195,7 @@ module.exports.subcommands.edit = {
 	execute: async (bot, msg, args) => {
 		if(!args[0]) return "Please provide a note to edit";
 
-		var note = await bot.utils.getNote(bot, msg.author.id, args[0].toLowerCase());
+		var note = await bot.stores.notes.get(msg.author.id, args[0].toLowerCase());
 		if(!note) return "Couldn't find that note";
 
 		var resp;
@@ -201,27 +209,32 @@ module.exports.subcommands.edit = {
 		].join("\n"));
 		resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {maxMatches: 1, time: 30000});
 		if(!resp || !resp[0]) return "ERR: timed out";
+		var data = {};
 		switch(resp[0].content) {
 			case "1":
-				await msg.channel.createMessage("Enter the new title. You have 1 minute to do this");
+				await msg.channel.createMessage("Enter the new title. You have 1 minute to do this.");
 				resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {maxMatches: 1, time: 60000});
 				if(!resp || !resp[0]) return "ERR: timed out";
-				if(resp[0].content.length > 100) return m.channel.createMessage("ERR: title must be 100 characters or less");
-				var scc = await bot.utils.editNote(bot, msg.author.id, note.hid, "title", resp[0].content);
-				if(scc) return "Note edited!";
-				else return "Something went wrong";
+				if(resp[0].content.length > 100) return m.channel.createMessage("ERR: title must be 100 characters or less.");
+				data.title = resp[0].content;
 				break;
 			case "2":
-				await msg.channel.createMessage("Enter the new body. You have 5 minutes to do this");
+				await msg.channel.createMessage("Enter the new body. You have 5 minutes to do this.");
 				resp = await msg.channel.awaitMessages(m => m.author.id == msg.author.id, {maxMatches: 1, time: 5*60000});
-				if(!resp || !resp[0]) return "ERR: timed out";
-				var scc = await bot.utils.editNote(bot, msg.author.id, note.hid, "body", resp[0].content);
-				if(scc) return "Note edited!";
-				else return "Something went wrong";
+				if(!resp || !resp[0]) return "ERR: timed out.";
+				data.body = resp[0].content;
 				break;
 			default:
 				return "ERR: invalid input. Aborting..."
 				break;
 		}
+
+		try {
+			await bot.stores.notes.update(msg.author.id, note.hid, data)
+		} catch(e) {
+			return "ERR: "+e;
+		}
+
+		return "Note edited!";
 	}
 }

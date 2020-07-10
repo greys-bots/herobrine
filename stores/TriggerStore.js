@@ -84,7 +84,7 @@ class TriggerStore extends Collection {
 		})
 	}
 
-	async update(user, hid) {
+	async update(user, hid, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
 				await this.db.query(`UPDATE triggers SET ${Object.keys(data).map((k, i) => k+"=$"+(i+3)).join(",")} WHERE user_id = $1 AND hid = $2`,[user, hid, ...Object.values(data)]);
@@ -127,7 +127,7 @@ class TriggerStore extends Collection {
 	}
 
 	async handleReactions(bot, m, emoji, user) {
-		await this.bot.removeMessageReaction(m.channel.id, m.id, emoji.name, this.user);
+		await bot.removeMessageReaction(m.channel.id, m.id, emoji.name, this.user);
 		switch(emoji.name) {
 			case "\u2b05":
 				if(this.index == 0) {
@@ -135,8 +135,8 @@ class TriggerStore extends Collection {
 				} else {
 					this.index -= 1;
 				}
-				await this.bot.editMessage(m.channel.id, m.id, this.data.embeds[this.index]);
-				this.bot.menus[m.id] = this;
+				await bot.editMessage(m.channel.id, m.id, this.data.embeds[this.index]);
+				bot.menus[m.id] = this;
 				break;
 			case "\u27a1":
 				if(this.index == this.data.embeds.length-1) {
@@ -144,12 +144,12 @@ class TriggerStore extends Collection {
 				} else {
 					this.index += 1;
 				}
-				await this.bot.editMessage(m.channel.id, m.id, this.data.embeds[this.index]);
-				this.bot.menus[m.id] = this;
+				await bot.editMessage(m.channel.id, m.id, this.data.embeds[this.index]);
+				bot.menus[m.id] = this;
 				break;
 			case "\u23f9":
-				await this.bot.deleteMessage(m.channel.id, m.id);
-				delete this.bot.menus[m.id];
+				await bot.deleteMessage(m.channel.id, m.id);
+				delete bot.menus[m.id];
 				break;
 			case "\u270f":
 				if(!user == this.data.list.user_id) return;
@@ -172,19 +172,23 @@ class TriggerStore extends Collection {
 						if(!resp || !resp[0]) return m.channel.createMessage("ERR: timed out. Aborting");
 						if(resp[0].content.length > 100) return m.channel.createMessage("That name is too long. Names must be between 1 and 100 characters in length");
 
-						this.bot.commands.get("triggers").subcommands.get("rename").execute(bot, this.data.msg, [this.data.list.hid, resp[0].content])
+						var result = await bot.commands.get("triggers").subcommands.get("rename").execute(bot, this.data.msg, [this.data.list.hid, resp[0].content])
+						return m.channel.createMessage(result);
 						break;
 					case "2":
-						this.bot.commands.get("triggers").subcommands.get("add").execute(bot, this.data.msg, [this.data.list.hid])
+						var result = await bot.commands.get("triggers").subcommands.get("add").execute(bot, this.data.msg, [this.data.list.hid])
+						return m.channel.createMessage(result);
 						break;
 					case "3":
-						this.bot.commands.get("triggers").subcommands.get("remove").execute(bot, this.data.msg, [this.data.list.hid])
+						var result = await bot.commands.get("triggers").subcommands.get("remove").execute(bot, this.data.msg, [this.data.list.hid])
+						return m.channel.createMessage(result);
 						break;
 					case "4":
-						this.bot.commands.get("triggers").subcommands.get("set").execute(bot, this.data.msg, [this.data.list.hid])
+						var result = await bot.commands.get("triggers").subcommands.get("set").execute(bot, this.data.msg, [this.data.list.hid])
+						return m.channel.createMessage(result);
 						break;
 					default:
-						return m.channel.createMessage("ERR: invalid option given. Aborting");
+						return m.channel.createMessage("ERR: invalid option given. Aborting.");
 						break;
 				}
 				break;
@@ -192,22 +196,25 @@ class TriggerStore extends Collection {
 				if(user != this.data.list.user_id) return;
 				await m.channel.createMessage("Are you sure you want to delete this list? (y/n)");
 				var resp = await m.channel.awaitMessages(ms => ms.author.id == this.user, {maxMatches: 1, time: 30000});
-				if(!resp || !resp[0]) return m.channel.createMessage("ERR: timed out");
-				if(resp[0].content.toLowerCase() != "y") return m.channel.createMessage("Action cancelled");
-				var scc = await this.delete(user, this.data.list.hid);
-				if(scc) {
-					m.channel.createMessage("List deleted!");
-					if(m.channel.guild) {
-						try {
-							await m.removeReactions();
-						} catch(e) {
-							console.log(e);
-							m.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `mangeMessages` permission")
-						}
-					}
-					delete this.bot.menus[m.id];
+				if(!resp || !resp[0]) return m.channel.createMessage("ERR: timed out.");
+				if(resp[0].content.toLowerCase() != "y") return m.channel.createMessage("Action cancelled.");
+
+				try {
+					await bot.stores.triggers.delete(user, this.data.list.hid);
+				} catch(e) {
+					return m.channel.createMessage("ERR: "+e);
 				}
-				else m.channel.createMessage("Something went wrong")
+
+				m.channel.createMessage("List deleted!");
+				if(m.channel.guild) {
+					try {
+						await m.removeReactions();
+					} catch(e) {
+						console.log(e);
+						m.channel.createMesage("ERR: Couldn't remove reactions. Make sure I have the `manageMessages` permission.")
+					}
+				}
+				delete bot.menus[m.id];
 				break;
 		}
 	}

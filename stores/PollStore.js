@@ -27,7 +27,7 @@ class PollStore extends Collection {
 
 		this.bot.on("messageDeleteBulk", async (msgs) => {
 			try {
-				this.deleteByIDs(msgs[0].channel.guild.id, msgs.map(msg => msg.id));
+				this.deleteByMessages(msgs[0].channel.guild.id, msgs.map(msg => msg.id));
 			} catch(e) {
 				console.log(e);
 			}
@@ -51,11 +51,11 @@ class PollStore extends Collection {
 					description,
 					choices,
 					active,
-					start,
-					end
+					start_time,
+					end_time
 				) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
 				[hid, server, data.channel_id, data.message_id, data.user_id, data.title,
-				 data.description, data.choices || [], data.active || 1, data.start || new Date(), data.end])
+				 data.description, data.choices || [], data.active || 1, data.start_time || new Date(), data.end_time])
 			} catch(e) {
 				console.log(e);
 		 		return rej(e.message);
@@ -73,16 +73,16 @@ class PollStore extends Collection {
 					server_id,
 					channel_id,
 					message_id,
-					server_id,
+					user_id,
 					title,
 					description,
 					choices,
 					active,
-					start,
-					end
+					start_time,
+					end_time
 				) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-				[hid, server, data.channel_id, data.message_id, data.server_id, data.title,
-				 data.description, data.choices || [], data.active || 1, data.start || new Date(), data.end])
+				[hid, server, data.channel_id, data.message_id, data.user_id, data.title,
+				 data.description, data.choices || [], data.active || 1, data.start_time || new Date(), data.end_time])
 			} catch(e) {
 				console.log(e);
 		 		return rej(e.message);
@@ -131,11 +131,11 @@ class PollStore extends Collection {
 			
 			if(data.rows && data.rows[0]) {
 				try {
-					var message = await this.bot.getMessage(data.rows[0].channel_id, data.rows[0].message_id);
+					var msg = await this.bot.getMessage(data.rows[0].channel_id, data.rows[0].message_id);
 				} catch(e) {
 					console.log(e);
 				}
-				if(message) data.rows[0].message = message;
+				if(msg) data.rows[0].message = msg;
 
 				res(data.rows[0])
 			} else res(undefined);
@@ -152,7 +152,7 @@ class PollStore extends Collection {
 			}
 			
 			if(data.rows && data.rows[0]) {
-				for(var i = 0; i < rows.length; i++) {
+				for(var i = 0; i < data.rows.length; i++) {
 					try {
 						var message = await this.bot.getMessage(data.rows[i].channel_id, data.rows[i].message_id);
 					} catch(e) {
@@ -176,7 +176,7 @@ class PollStore extends Collection {
 			}
 			
 			if(data.rows && data.rows[0]) {
-				for(var i = 0; i < rows.length; i++) {
+				for(var i = 0; i < data.rows.length; i++) {
 					try {
 						var message = await this.bot.getMessage(data.rows[i].channel_id, data.rows[i].message_id);
 					} catch(e) {
@@ -200,7 +200,7 @@ class PollStore extends Collection {
 			}
 			
 			if(data.rows && data.rows[0]) {
-				for(var i = 0; i < rows.length; i++) {
+				for(var i = 0; i < data.rows.length; i++) {
 					try {
 						var message = await this.bot.getMessage(data.rows[i].channel_id, data.rows[i].message_id);
 					} catch(e) {
@@ -225,7 +225,7 @@ class PollStore extends Collection {
 			}
 
 			if(query.message)
-				polls.filter(p => {
+				polls = polls.filter(p => {
 					return p.description.toLowerCase().includes(query.message) ||
 						   p.title.toLowerCase().includes(query.message);
 				});
@@ -329,11 +329,13 @@ class PollStore extends Collection {
 	}
 
 	async handleReactions(msg, emoji, user) {
-		var poll = await this.get(msg.guild.id, msg.channel.id, msg.id);
+		if(user == this.bot.user.id) return;
+		if(!msg.channel.guild) return;
+		var poll = await this.getByMessage(msg.channel.guild.id, msg.channel.id, msg.id);
 		if(!poll) return;
 		var owner = this.bot.users.find(u => u.id == poll.user_id);
 		if(!owner) owner = {username: "(user not cached)", discriminator: "0000", avatarURL: "https://discordapp.com/assets/6debd47ed13483642cf09e832ed0bc1b.png"};
-		var embed = msg.embeds[0];
+		var embed = poll.message.embeds[0];
 		if(!embed) embed = {
 			title: poll.title,
 			description: poll.desc,
@@ -375,7 +377,7 @@ class PollStore extends Collection {
 					embed.fields[ind].value = choice.count + " votes";
 				}
 				poll.choices[ind] = choice;
-				await this.update(poll.server_id, poll.hid, {choices: poll.choices});
+				await this.update(poll.server_id, poll.hid, {choices: JSON.stringify(poll.choices)});
 				
 				try {
 					await this.bot.editMessage(poll.channel_id, poll.message_id, {embed: embed});
@@ -391,17 +393,17 @@ class PollStore extends Collection {
 					await this.bot.removeMessageReaction(poll.channel_id, poll.message_id, emoji.name, user);
 					if(poll.user_id == user) {
 						var date = new Date();
-						await this.update(poll.server_id, poll.hid, {active: false, end: date.toISOString()});
+						await this.update(poll.server_id, poll.hid, {active: false, end_time: date.toISOString()});
 					
 						embed.title += " (ENDED)";
 						embed.color = parseInt("aa5555", 16);
 						embed.footer.text += " | Ended: "+this.bot.formatTime(date);
 						embed.timestamp = date.toISOString();
 						await this.bot.editMessage(poll.channel_id, poll.message_id, {embed: embed});
-						await msg.removeReactions();
+						await this.bot.removeMessageReactions(poll.channel_id, poll.message_id);
 					}
 					break;
-				case "\u270f":
+				case "✏":
 					await this.bot.removeMessageReaction(poll.channel_id, poll.message_id, emoji.name, user);
 					if(poll.user_id == user) {
 						var resp;
@@ -489,7 +491,7 @@ class PollStore extends Collection {
 								}
 								choices.forEach((c,i) =>  this.bot.addMessageReaction(poll.channel_id, poll.message_id,`${this.bot.strings.pollnumbers[i+1]}`));
 								["✅","✏","❓"].forEach(r => this.bot.addMessageReaction(poll.channel_id, poll.message_id, r));
-								await this.update(poll.server_id, poll.hid, {choices});
+								await this.update(poll.server_id, poll.hid, {choices: JSON.stringify(choices)});
 								await this.bot.editMessage(poll.channel_id, poll.message_id, {embed: embed});
 								await m2.delete();
 								await resp[0].delete();

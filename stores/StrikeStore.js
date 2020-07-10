@@ -23,7 +23,7 @@ class StrikeStore extends Collection {
 		 		return rej(e.message);
 			}
 			
-			res(await this.get(server, name));
+			res(await this.get(server, hid));
 		})
 	}
 

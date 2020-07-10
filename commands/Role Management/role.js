@@ -57,7 +57,6 @@ module.exports = {
 				description: "Roles that can be self assigned",
 				color: parseInt("55aa55", 16)
 			}, 10);
-			console.log(assignable);
 			embeds = embeds.concat(assignable);
 		}
 		if(roles.filter(x => !x.assignable).length > 0) {
