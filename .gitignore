@@ -3,6 +3,7 @@ logs/
 node_modules/
 config.json
 *.sqlite
+*.sql
 Procfile
 run.bat
 .env

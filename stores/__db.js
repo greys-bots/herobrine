@@ -90,9 +90,9 @@ module.exports = async (bot) => {
 			bio 		TEXT,
 			color 		TEXT,
 			badges 		JSONB,
-			lvl 		BIGINT,
-			exp 		BIGINT,
-			cash 		BIGINT,
+			lvl 		TEXT,
+			exp 		TEXT,
+			cash 		TEXT,
 			daily 		TIMESTAMPTZ,
 			disabled 	BOOLEAN
 		);

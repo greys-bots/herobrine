@@ -1,10 +1,10 @@
 const WELCOMES = [
-	"you're welcome!",
-	"you're welcome! :D",
-	"of course!",
-	"no problem!",
-	"don't mention it :heart:",
-	"baa!! :heart:"
+	"You're welcome!",
+	"You're welcome. :)",
+	"Of course!",
+	"No problem. :heart:",
+	"Any time~",
+	"Don't mention it. Really."
 ];
 
 module.exports = async (msg, bot) =>{
