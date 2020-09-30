@@ -9,7 +9,6 @@ Official "birthday": 25 September 2017
 
 const Eris 		= require("eris-additions")(require("eris")); //lib we're actually using
 const Discord 	= require("discord.js"); //just for collections
-const dblite 	= require("dblite").withSQLite('3.8.6+');
 const exec 		= require("child_process").exec;
 const config 	= require ("./config.json");
 const chrono 	= require('chrono-node');
@@ -178,6 +177,7 @@ const setup = async () => {
 		
 		registerCommand({command: require(f), module: mod, name: file.slice(0, -3).toLowerCase()})
 	}
+	return Promise.resolve();
 }
 
 bot.writeLog = (bot, type, msg) => {
@@ -462,6 +462,8 @@ bot.on("ready",async ()=>{
 
 //----------------------------------------------------------------------------------------------------//
 
-setup();
-bot.connect()
-.catch(e => console.log("Trouble connecting...\n"+e))
+setup().then(()=> {
+	console.log('set up');
+	bot.connect()
+	.catch(e => console.log("Trouble connecting...\n"+e))
+}).catch(e => console.log(e));
