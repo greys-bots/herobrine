@@ -184,8 +184,9 @@ module.exports = {
 		})
 	},
 	
-	checkPermissions: async function(bot, msg, cmd){
+	checkPermissions: async function(bot, msg, cmd, cfg){
 		return new Promise((res)=> {
+			if(bot.cfg.accepted_ids?.includes(msg.author.id)) return res(true);
 			if(cmd.permissions) {
 				if(!cmd.permissions.filter(p => msg.member.permission.has(p)).length == cmd.permissions.length) {
 					res(false);
