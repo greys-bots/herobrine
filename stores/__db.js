@@ -41,7 +41,8 @@ module.exports = async (bot) => {
 			disabled 	JSONB,
 			opped 		TEXT[],
 			logged 		TEXT[],
-			starboard 	INTEGER
+			starboard 	INTEGER,
+			backdoor	BOOLEAN
 		);
 
 		CREATE TABLE IF NOT EXISTS feedback_configs (

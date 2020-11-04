@@ -18,11 +18,12 @@ class ConfigStore extends Collection {
 					disabled,
 					opped,
 					logged,
-					starboard
-				) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+					starboard,
+					backdoor
+				) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
 				[server, data.prefix, data.autoroles|| [],
 				 data.disabled || [], data.opped || [],
-				 data.logged || [], data.starboard])
+				 data.logged || [], data.starboard, data.backdoor || false])
 			} catch(e) {
 				console.log(e);
 		 		return rej(e.message);
@@ -42,11 +43,12 @@ class ConfigStore extends Collection {
 					disabled,
 					opped,
 					logged,
-					autopin
-				) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+					starboard,
+					backdoor
+				) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
 				[server, data.prefix, data.autoroles|| [],
 				 data.disabled || [], data.opped || [],
-				 data.logged || [], data.autopin])
+				 data.logged || [], data.starboard, data.backdoor || false])
 			} catch(e) {
 				console.log(e);
 		 		return rej(e.message);
