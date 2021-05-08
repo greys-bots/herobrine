@@ -15,7 +15,7 @@
     "discord.js": "github:discordjs/discord.js",
     "dotenv": "^8.2.0",
     "emoji-name-map": "^1.2.9",
-    "eris": "github:abalabahaha/eris#dev",
+    "eris": "^0.15.1",
     "eris-additions": "^1.4.1",
     "jimp": "^0.6.8",
     "mime": "^2.4.6",
@@ -29,7 +29,6 @@
     "tinycolor2": "^1.4.2",
     "util": "^0.11.1"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "supervisor -e .js,.json -i logs,data.sqlite,data.sqlite-journal,376384358388465667.emoji bot.js"

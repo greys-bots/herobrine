@@ -336,6 +336,7 @@ class ReactPostStore extends Collection {
 	}
 
 	async handleReactions(msg, emoji, user) {
+		user = user.id;
 		return new Promise(async (res, rej) => {
 			if(this.bot.user.id == user) return;
 			if(!msg.channel.guild) return;

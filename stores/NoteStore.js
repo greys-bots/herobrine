@@ -138,6 +138,7 @@ class NoteStore extends Collection {
 	}
 
 	async handleReactions(bot, m, e, user) {
+		user = user.id;
 		switch(e.name) {
 			case '⏹️':
 				await m.delete();

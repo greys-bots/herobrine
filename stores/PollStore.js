@@ -329,6 +329,7 @@ class PollStore extends Collection {
 	}
 
 	async handleReactions(msg, emoji, user) {
+		user = user.id;
 		if(user == this.bot.user.id) return;
 		if(!msg.channel.guild) return;
 		var poll = await this.getByMessage(msg.channel.guild.id, msg.channel.id, msg.id);

@@ -127,6 +127,7 @@ class TriggerStore extends Collection {
 	}
 
 	async handleReactions(bot, m, emoji, user) {
+		user = user.id;
 		await bot.removeMessageReaction(m.channel.id, m.id, emoji.name, this.user);
 		switch(emoji.name) {
 			case "\u2b05":

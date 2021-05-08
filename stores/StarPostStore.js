@@ -231,6 +231,7 @@ class StarPostStore extends Collection {
 	}
 
 	async handleReactions(msg, emoji, user) {
+		user = user.id;
 		return new Promise(async (res, rej) => {
 			try {
 				msg = await this.bot.getMessage(msg.channel.id, msg.id);
@@ -264,6 +265,7 @@ class StarPostStore extends Collection {
 	}
 
 	async handleReactionRemove(msg, emoji, user) {
+		user = user.id;
 		return new Promise(async (res, rej) => {
 			var post = await this.getByOriginal(msg.channel.guild.id, msg.id);
 			if(!post) return;

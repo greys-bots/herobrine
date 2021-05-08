@@ -10,9 +10,9 @@ module.exports = async (msg, emoji, user, bot) => {
 	}
 	
 
-	if(bot.menus && bot.menus[msg.id] && bot.menus[msg.id].user == user) {
+	if(bot.menus && bot.menus[msg.id] && bot.menus[msg.id].user == user.id) {
 		try {
-			await bot.menus[msg.id].execute(bot, msg, emoji, user);	
+			await bot.menus[msg.id].execute(bot, msg, emoji, user.id);	
 		} catch(e) {
 			console.log(e);
 			msg.channel.createMessage("ERR:\n"+e.message);
