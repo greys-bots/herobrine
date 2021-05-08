@@ -8,7 +8,7 @@
     "npm": "*"
   },
   "dependencies": {
-    "chrono-node": "^1.4.8",
+    "chrono-node": "^2.2.4",
     "datauri": "^2.0.0",
     "dblite": "^0.10.0",
     "discord": "^0.8.2",
