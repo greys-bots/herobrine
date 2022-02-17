@@ -144,10 +144,10 @@ module.exports.subcommands.add = {
 		if(!category) return 'Category does not exist.';
 
 		var result = [];
-		var roles = args.slice(1).join(" ").split(/,\s+/g);
+		var roles = args.slice(1).join(" ").toLowerCase().replace(/[<@&>]/g, "").split(/,\s+/g);
 		var max = category.posts && category.posts[0] ? category.posts.sort((a,b)=> a.page - b.page)[0].page : 0;
 		for(var rl of roles) {
-			var role = msg.guild.roles.find(r => r.id == rl.replace(/[<@&>]/g, "") || r.name.toLowerCase() == rl.toLowerCase());
+			var role = msg.guild.roles.find(r => [r.id, r.name.toLowerCase()].includes(rl.toLowerCase()));
 			if(!role) {
 				result.push({succ: false, name: rl, reason: "Role not found"})
 				continue;
@@ -201,12 +201,12 @@ module.exports.subcommands.remove = {
 		if(!category) return 'Category does not exist.';
 
 		var result = [];
-		var roles = args.slice(1).join(" ").split(/,\s+/g);
+		var roles = args.slice(1).join(" ").toLowerCase().replace(/[<@&>]/g, "").split(/,\s+/g);
 		var max = category.posts ? category.posts.sort((a,b)=> a.page - b.page) : 0;
 		for(var rl of roles) {
 			var role = msg.roleMentions.length > 0 ?
 				   msg.roleMentions[0] :
-				   msg.guild.roles.find(r => r.id == rl.replace(/[<@&>]/g, "") || r.name.toLowerCase() == rl.toLowerCase());
+				   msg.guild.roles.find(r => [r.id, r.name.toLowerCase()].includes(rl.toLowerCase()));
 			if(!role) {
 				result.push({succ: false, name: rl, reason: "Role not found"})
 			}
@@ -346,7 +346,8 @@ module.exports.subcommands.required = {
 
 			return "Required role cleared!";
 		} else {
-			var role = msg.guild.roles.find(r => r.id == args[1].replace(/[<@&>]/g, "") || r.name == args.slice(1).join(" ").toLowerCase());
+			var arg = args.slice(1).join(" ").replace(/[<@&>]/g, "").toLowerCase();
+			var role = msg.guild.roles.find(r => [r.id, r.name.toLowerCase()].includes(arg));
 			if(!role) return "Role not found.";
 			try {
 				await bot.stores.reactCategories.update(msg.guild.id, category.hid, {required: role.id});

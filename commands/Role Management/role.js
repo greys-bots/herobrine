@@ -12,7 +12,8 @@ module.exports = {
 				 " delete [role] - Deletes a role (mod only)"],
 	execute: async (bot, msg, args)=>{
 		if(args[0]) {
-			var role = msg.guild.roles.find(r => [r.name.toLowerCase(), r.id].includes(args.join(" ").toLowerCase()));
+			var rl = args.join(" ").toLowerCase().replace(/[<@&>]/g, "");
+			var role = msg.guild.roles.find(r => [r.name.toLowerCase(), r.id].includes(rl));
 			if(!role) return "Role not found.";
 			var selfrole = await bot.stores.roles.get(msg.guild.id, role.id);
 			var assignable;
@@ -107,16 +108,16 @@ module.exports.subcommands.add = {
 					return null
 				} else return member;
 			}).filter(x => x!=null);
-			names = args.slice(0,-l).join(" ").split(/,\s*/);
+			names = args.slice(0,-l).join(" ").toLowerCase().replace(/[<@&>]/g, "").split(/,\s*/);
 		} else {
-			names = args.join(" ").toLowerCase().split(/,\s*/g);
+			names = args.join(" ").toLowerCase().replace(/[<@&>]/g, "").split(/,\s*/g);
 			targets = [msg.member];
 		}
 
 		for(var i = 0; i < targets.length; i++) {
 			var results = [];
 			for(var j = 0; j < names.length; j++) {
-				var role = msg.guild.roles.find(rl => rl.name.toLowerCase() == names[j].toLowerCase());
+				var role = msg.guild.roles.find(rl => [rl.id, rl.name.toLowerCase()].includes(names[j]));
 				if(!role) {
 					results.push({name: names[j], reason: "Role not found"});
 					continue;
@@ -180,16 +181,16 @@ module.exports.subcommands.remove = {
 					return null
 				} else return member;
 			}).filter(x => x!=null);
-			names = args.slice(0,-l).join(" ").split(/,\s*/);
+			names = args.slice(0,-l).join(" ").toLowerCase().replace(/[<@&>]/g, "").split(/,\s*/);
 		} else {
-			names = args.join(" ").toLowerCase().split(/,\s*/g);
+			names = args.join(" ").toLowerCase().replace(/[<@&>]/g, "").split(/,\s*/g);
 			targets = [msg.member];
 		}
 
 		for(var i = 0; i < targets.length; i++) {
 			var results = [];
 			for(var j = 0; j < names.length; j++) {
-				var role = msg.guild.roles.find(rl => rl.name.toLowerCase() == names[j].toLowerCase());
+				var role = msg.guild.roles.find(rl => [rl.id, rl.name.toLowerCase()].includes(names[j]));
 				if(!role) {
 					results.push({name: names[j], reason: "Role not found"});
 					continue;
@@ -237,7 +238,8 @@ module.exports.subcommands.description = {
 	usage: ()=> [" [role name] (new line) [description] - Sets the given self role's description"],
 	execute: async (bot, msg, args) => {
 		var nargs = args.join(" ").split("\n");
-		var role = msg.guild.roles.find(r => r.name.toLowerCase() == nargs[0].toLowerCase());
+		var rl = nargs[0].toLowerCase().replace(/[<@&>]/g, "");
+		var role = msg.guild.roles.find(r => [r.id, r.name.toLowerCase()].includes(rl));
 		if(!role) return "Role not found.";
 		var selfrole = await bot.stores.roles.get(msg.guild.id, role.id);
 		if(!selfrole) return "Self role not found.";
@@ -263,12 +265,12 @@ module.exports.subcommands.index = {
 		if(!args[1]) return "Please provide a role name and a value for self-assignability.";
 		var nargs = args.join(" ").split("\n");
 		var line1 = nargs[0].split(" ");
-		var name = line1.slice(0,-1).join(" ").toLowerCase();
+		var name = line1.slice(0,-1).join(" ").toLowerCase().replace(/[<@&>]/g, "");
 		var assignable = line1[line1.length-1];
 		var description = nargs.slice(1).join("\n");
 		if(!["0", "1", "false", "true", "remove"].includes(assignable)) return msg.channel.createMessage("Please provide a value for self-assignability");
 
-		var role = msg.guild.roles.find(r => r.name.toLowerCase() == name);
+		var role = msg.guild.roles.find(r => [r.id, r.name.toLowerCase()].includes(name));
 		if(!role) return "Couldn't find that role.";
 
 		var selfrole = await bot.stores.roles.get(msg.guild.id, role.id);
@@ -330,7 +332,8 @@ module.exports.subcommands.name = {
 	usage: ()=> " [role] (new line) [new name] - Sets the role's name",
 	execute: async (bot, msg, args) => {
 		var nargs = args.join(" ").split("\n");
-		var role = msg.guild.roles.find(r => r.name.toLowerCase() == nargs[0]);
+		var rl = nargs[0].toLowerCase().replace(/[<@&>]/g, "");
+		var role = msg.guild.roles.find(r => [r.id, r.name.toLowerCase()].includes(rl));
 		if(!role) return "Role not found.";
 
 		try {
@@ -352,7 +355,8 @@ module.exports.subcommands.color = {
 	usage: ()=> " [role] (new line) [new color] - Sets the role's color",
 	execute: async (bot, msg, args) => {
 		var nargs = args.join(" ").split("\n");
-		var role = msg.guild.roles.find(r => r.name.toLowerCase() == nargs[0]);
+		var rl = nargs[0].toLowerCase().replace(/[<@&>]/g, "");
+		var role = msg.guild.roles.find(r => [r.id, r.name.toLowerCase()].includes(rl));
 		if(!role) return "Role not found.";
 		var color = bot.tc(nargs[1].split(" ").join(""));
 		if(!color.isValid()) return "That isn't a valid color.";
@@ -374,7 +378,8 @@ module.exports.subcommands.delete = {
 	help: ()=> "Deletes a role.",
 	usage: ()=> [" [role name/ID] - Deletes given role"],
 	execute: async (bot, msg, args)=> {
-		var role = msg.guild.roles.find(r => [r.name.toLowerCase(), r.id].includes(args.join(" ").toLowerCase().replace(/<@&>/g, '')));
+		var rl = args.join(" ").toLowerCase().replace(/[<@&>]/g, "");
+		var role = msg.guild.roles.find(r => [r.id, r.name.toLowerCase()].includes(rl));
 		if(!role) return "Role not found";
 
 		try {

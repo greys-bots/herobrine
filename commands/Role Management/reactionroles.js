@@ -33,7 +33,7 @@ module.exports.subcommands.emoji = {
 	usage: ()=> " [role] [emoji] - Changes emoji for the given role",
 	execute: async (bot, msg, args)=> {
 		var rl = args.slice(0, args.length - 1).join(" ").replace(/[<@&>]/g,"").toLowerCase();
-		var role = msg.guild.roles.find(r => r.id == rl || r.name.toLowerCase() == rl);
+		var role = msg.guild.roles.find(r => [r.id, r.name.toLowerCase()].includes(rl));
 		if(!role) return "Role not found.";
 		role = await bot.stores.reactRoles.get(msg.guild.id, role.id);
 		if(!role) return "React role not found.";
@@ -58,7 +58,7 @@ module.exports.subcommands.description = {
 	execute: async (bot, msg, args)=> {
 		var nargs = args.join(" ").split("\n");
 		var rl = nargs[0].replace(/[<@&>]/g,"").toLowerCase();
-		var role = msg.guild.roles.find(r => r.id == rl || r.name.toLowerCase() == rl);
+4		var role = msg.guild.roles.find(r => [r.id, r.name.toLowerCase()].includes(rl));
 		if(!role) return "Role not found.";
 		role = await bot.stores.reactRoles.get(msg.guild.id, role.id);
 		if(!role) return "React role not found.";
@@ -84,7 +84,8 @@ module.exports.subcommands.add = {
 	execute: async (bot, msg, args)=> {
 		var nargs = args.join(" ").split("\n");
 		var arg1 = nargs[0].replace(/\s+$/,"").split(" ");
-		var role = msg.guild.roles.find(r => r.id == arg1.slice(0, arg1.length-1).join(" ").replace(/[<@&>]/g, "") || r.name.toLowerCase() == arg1.slice(0, arg1.length-1).join(" ").toLowerCase());
+		var rl = arg1.slice(0, arg1.length-1).join(" ").toLowerCase().replace(/[<@&>]/g, "");
+		var role = msg.guild.roles.find(r => [r.id, r.name.toLowerCase()].includes(rl) );
 		if(!role) return "Role not found.";
 		var emoji = arg1.slice(-1)[0].replace(/[<>\s]/g,"");
 		var description = nargs.slice(1).join("\n");
@@ -106,7 +107,8 @@ module.exports.subcommands.remove = {
 	help: ()=> "Removes a reaction role config.",
 	usage: ()=> [" [role] - Removes config for the role (NOTE: roles that are deleted automatically have their config removed when posting or listing configs"],
 	execute: async (bot, msg, args)=> {
-		var role = msg.guild.roles.find(r => r.id == args.join(" ").replace(/[<@&>]/g, "") || r.name.toLowerCase() == args.join(" ").toLowerCase());
+		var rl = args.join(" ").toLowerCase().replace(/[<@&>]/g, "");
+		var role = msg.guild.roles.find(r => [r.id, r.name.toLowerCase()].includes(rl));
 		if(!role) return "Role not found.";
 		
 		try {
