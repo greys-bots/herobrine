@@ -111,7 +111,7 @@ module.exports.subcommands.create = {
 		if(!resp || !resp[0]) return "ERR: timed out. Aborting.";
 
 		var rolenames = resp[0].content.toLowerCase().replace(/[<@&>]/g, "").split(/(?:,\s*|\n)/);
-		var roles = rolenames.map(r => msg.guild.roles.find(rl => [rl.id, rl.name.toLowerCase()].includes(r)).filter(x => x != undefined);
+		var roles = rolenames.map(r => msg.guild.roles.find(rl => [rl.id, rl.name.toLowerCase()].includes(r))).filter(x => x != undefined);
 		if(!roles || !roles[0]) return "None of those roles are valid.";
 
 		code = bot.utils.genCode(4, bot.strings.codestab);

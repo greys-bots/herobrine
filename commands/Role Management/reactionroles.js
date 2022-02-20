@@ -58,7 +58,7 @@ module.exports.subcommands.description = {
 	execute: async (bot, msg, args)=> {
 		var nargs = args.join(" ").split("\n");
 		var rl = nargs[0].replace(/[<@&>]/g,"").toLowerCase();
-4		var role = msg.guild.roles.find(r => [r.id, r.name.toLowerCase()].includes(rl));
+		var role = msg.guild.roles.find(r => [r.id, r.name.toLowerCase()].includes(rl));
 		if(!role) return "Role not found.";
 		role = await bot.stores.reactRoles.get(msg.guild.id, role.id);
 		if(!role) return "React role not found.";
