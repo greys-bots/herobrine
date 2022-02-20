@@ -1,0 +1,20 @@
+{
+  "name": "basebot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@discordjs/rest": "^0.3.0",
+    "discord-api-types": "^0.27.2",
+    "discord.js": "^13.6.0",
+    "dotenv": "^8.2.0",
+    "pg": "^8.7.3",
+    "tinycolor2": "^1.4.2"
+  }
+}
