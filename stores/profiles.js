@@ -1,11 +1,14 @@
 const KEYS = [
 	'id',
 	'user_id',
-	'name',
-	'description',
+	'title',
+	'bio',
 	'color',
+	'badges',
 	'level',
 	'exp',
+	'cash',
+	'daily',
 	'disabled'
 ]
 
@@ -58,16 +61,20 @@ class ProfileStore {
 		try {
 			this.db.query(`INSERT INTO profiles (
 				user_id,
-				name,
-				description,
+				title,
+				bio,
 				color,
+				badges,
 				level,
 				exp,
+				cash,
+				daily,
 				disabled
-			) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-			[user, data.name, data.description,
-			 data.color, data.level || 1, data.exp || 0,
-			 data.disabled || 0])
+			) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+			[user, data.title, data.bio,
+			 data.color, data.badges, data.level || 1, 
+			 data.exp || 0, data.cash || 0, data.daily,
+			 data.disabled || false])
 		} catch(e) {
 			console.error(e.message);
 			return Promise.reject(e.message);
@@ -147,4 +154,7 @@ class ProfileStore {
 	}
 }
 
-module.exports = (bot, db) => new ProfileStore(bot, db);
+module.exports = {
+	Profile,
+	store: (bot, db) => new ProfileStore(bot, db)
+}

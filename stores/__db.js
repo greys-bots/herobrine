@@ -7,21 +7,26 @@ module.exports = async (bot) => {
 	await db.query(`
 		CREATE TABLE IF NOT EXISTS profiles (
 			id 			SERIAL PRIMARY KEY,
-			user_id 	TEXT,
-			name 		TEXT,
-			description	TEXT,
-			color 		TEXT,
-			level 		INTEGER,
-			exp		 	INTEGER,
-			disabled 	BOOLEAN
+			user_id		TEXT,
+			title		TEXT,
+			bio			TEXT,
+			color		TEXT,
+			badges		JSONB,
+			lvl			TEXT,
+			exp			TEXT,
+			cash		TEXT,
+			daily		TIMESTAMPTZ,
+			disabled	BOOLEAN
 		);
 
 		CREATE TABLE IF NOT EXISTS configs (
 			id 			SERIAL PRIMARY KEY,
 			server_id 	TEXT,
-			prefix		TEXT,
-			disabled	TEXT[],
-			levels		INTEGER
+			prefix 		TEXT,
+			autoroles 	TEXT[],
+			disabled 	JSONB,
+			opped 		TEXT[],
+			backdoor	BOOLEAN
 		);
 
 		CREATE TABLE IF NOT EXISTS extras (
@@ -36,7 +41,7 @@ module.exports = async (bot) => {
 	for(var file of files) {
 		if(["__db.js", "migrations"].includes(file)) continue;
 		var name = file.slice(0, -3);
-		bot.stores[name] = require(__dirname+'/'+file)(bot, db);
+		bot.stores[name] = require(__dirname+'/'+file).store(bot, db);
 		if(bot.stores[name].init) bot.stores[name].init();
 	}
 

@@ -2,8 +2,10 @@ const KEYS = [
 	'id',
 	'server_id',
 	'prefix',
+	'autoroles',
 	'disabled',
-	'levels'
+	'opped',
+	'backdoor'
 ]
 
 const PATCHABLE = KEYS.slice(2);
@@ -50,10 +52,13 @@ class ConfigStore {
 			await this.db.query(`INSERT INTO configs (
 				server_id,
 				prefix,
+				autoroles,
 				disabled,
-				levels
-			) VALUES ($1,$2,$3,$4)`,
-			[server, data.prefix, data.disabled, data.levels])
+				opped,
+				backdoor
+			) VALUES ($1,$2,$3,$4,$5,$6)`,
+			[server, data.prefix, data.autoroles, 
+			 data.disabled, data.opped, data.backdoor])
 		} catch(e) {
 			return Promise.reject(e.message)
 		}
@@ -87,7 +92,7 @@ class ConfigStore {
 		try {
 			await this.db.query(`
 				UPDATE configs SET ${Object.keys(data).map((k, i) => k+'=$' + (i + 2)).join(",")}
-				WHERE id=$1`,
+				WHERE id = $1`,
 			[id, ...Object.values(data)])
 		} catch(e) {
 			return Promise.reject(e.message)
@@ -107,4 +112,7 @@ class ConfigStore {
 	}
 }
 
-module.exports = (bot, db) => new ConfigStore(bot, db);
+module.exports = {
+	Config,
+	store: (bot, db) => new ConfigStore(bot, db)
+}
