@@ -34,6 +34,47 @@ module.exports = async (bot) => {
 			key 		TEXT,
 			val 		TEXT
 		);
+
+		CREATE TABLE IF NOT EXISTS triggers (
+			id 			SERIAL PRIMARY KEY,
+			hid 		TEXT,
+			user_id 	TEXT,
+			name 		TEXT,
+			list 		JSONB,
+			private		BOOLEAN
+		);
+
+		CREATE TABLE IF NOT EXISTS welcome_configs (
+			id 			SERIAL PRIMARY KEY,
+			server_id	TEXT,
+			preroles	TEXT[],
+			postroles	TEXT[],
+			channel 	TEXT,
+			message 	TEXT,
+			enabled		BOOLEAN
+		);
+
+		CREATE OR REPLACE FUNCTION gen_hid() RETURNS TEXT AS
+			'select lower(substr(md5(random()::text), 0, 5));'
+		LANGUAGE SQL VOLATILE;
+		
+		CREATE OR REPLACE FUNCTION find_unique(_tbl regclass) RETURNS TEXT AS $$
+			DECLARE nhid TEXT;
+			DECLARE res BOOL;
+			BEGIN
+				LOOP
+					nhid := gen_hid();
+					EXECUTE format(
+						'SELECT (EXISTS (
+							SELECT FROM %s
+							WHERE hid = %L
+						))::bool',
+						_tbl, nhid
+					) INTO res;
+					IF NOT res THEN RETURN nhid; END IF;
+				END LOOP;
+			END
+		$$ LANGUAGE PLPGSQL VOLATILE;
 	`);
 
 	bot.stores = {};
