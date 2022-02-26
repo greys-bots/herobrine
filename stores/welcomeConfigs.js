@@ -47,6 +47,20 @@ class WelcomeConfigStore {
 		this.bot = bot;
 	}
 
+	async init() {
+		await this.db.query(`
+			CREATE TABLE IF NOT EXISTS welcome_configs (
+				id 			SERIAL PRIMARY KEY,
+				server_id	TEXT,
+				preroles	TEXT[],
+				postroles	TEXT[],
+				channel 	TEXT,
+				message 	TEXT,
+				enabled		BOOLEAN
+			);
+		`)
+	}
+
 	async create(server, data = {}) {
 		try {
 			await this.db.query(`INSERT INTO welcome_configs (

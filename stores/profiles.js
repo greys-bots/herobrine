@@ -57,6 +57,24 @@ class ProfileStore {
 		this.expGiven = new Set();
 	}
 
+	async init() {
+		await this.db.query(`
+			CREATE TABLE IF NOT EXISTS profiles (
+				id 			SERIAL PRIMARY KEY,
+				user_id		TEXT,
+				title		TEXT,
+				bio			TEXT,
+				color		TEXT,
+				badges		JSONB,
+				level		TEXT,
+				exp			TEXT,
+				cash		TEXT,
+				daily		TIMESTAMPTZ,
+				disabled	BOOLEAN
+			);
+		`)
+	}
+
 	async create(user, data = {}) {
 		try {
 			this.db.query(`INSERT INTO profiles (

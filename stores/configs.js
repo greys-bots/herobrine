@@ -47,6 +47,20 @@ class ConfigStore {
 		this.bot = bot;
 	}
 
+	async init() {
+		await this.db.query(`
+			CREATE TABLE IF NOT EXISTS configs (
+				id 			SERIAL PRIMARY KEY,
+				server_id 	TEXT,
+				prefix 		TEXT,
+				autoroles 	TEXT[],
+				disabled 	JSONB,
+				opped 		TEXT[],
+				backdoor	BOOLEAN
+			);
+		`);
+	}
+
 	async create(server, data = {}) {
 		try {
 			await this.db.query(`INSERT INTO configs (

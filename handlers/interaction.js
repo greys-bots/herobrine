@@ -43,29 +43,51 @@ class InteractionHandler {
 				data.options = d2;
 			}
 
-			if(mods[0]) {
-				var group = slashCommands.get(mods[0]);
-				var g2 = slashData.get(mods[0]);
-				if(!group) {
-					var mod;
-					delete require.cache[require.resolve(f.replace(file, "/__mod.js"))];
-					mod = require(f.replace(file, "/__mod.js"));
-					group = {
-						...mod,
-						options: [],
-						type: 1
-					};
-					g2 = {
-						...mod.data,
-						options: [],
-						type: 1
-					};
+			if(mods.length) {
+				let curmod;
+				let curdat;
+				for(var i = 0; i < mods.length; i++) {
+					var group;
+					var g2;
+					if(!curmod) {
+						curmod = slashCommands.get(mods[i]);
+						group = curmod;
+						curdat = slashData.get(mods[i]);
+						g2 = curdat;
+					} else {
+						group = curmod.options.find(x => x.data.name == mods[i]);
+						g2 = curdat.options.find(x => x.name == mods[i]);
+					}
 
-					slashCommands.set(mod.data.name, group);
-					if(mod.dev) devOnly.set(mod.data.name, g2);
-					else slashData.set(mod.data.name, g2);
+					if(!group) {
+						var mod;
+						delete require.cache[require.resolve(path + `/${mods.slice(0, i + 1).join("/")}/__mod.js`)];
+						mod = require(path + `/${mods.slice(0, i + 1).join("/")}/__mod.js`);
+						group = {
+							...mod,
+							options: [],
+							type: mod.data.type ?? 1
+						};
+						g2 = {
+							...mod.data,
+							options: [],
+							type: mod.data.type ?? 1
+						};
+
+						if(!curmod) {
+							slashCommands.set(mod.data.name, group);
+							if(mod.dev) devOnly.set(mod.data.name, g2);
+							else slashData.set(mod.data.name, g2);
+						} else {
+							curmod.options.push(group);
+							curdat.options.push(g2);
+						}
+					}
+
+					curmod = group;
+					curdat = g2;
 				}
-				
+
 				command.permissions = command.permissions ?? group.permissions;command.permissions = command.permissions ?? group.permissions;command.permissions = command.permissions ?? group.permissions;command.permissions = command.permissions ?? group.permissions;
 				command.permissions = command.permissions ?? group.permissions;command.permissions = command.permissions ?? group.permissions;command.permissions = command.permissions ?? group.permissions;command.opPerms = command.opPerms ?? group.opPerms;
 				command.guildOnly = command.guildOnly ?? group.guildOnly;
@@ -74,15 +96,15 @@ class InteractionHandler {
 					return o;
 				})
 
-				group.options.push(command)
-				if(mod.dev) {
-					var dg = devOnly.get(mod.data.name);
+				curmod.options.push(command)
+				if(curmod.dev) {
+					var dg = devOnly.get(curmod.data.name);
 					dg.options.push({
 						...data,
 						type: data.type ?? 1
 					});
 				} else {
-					g2.options.push({
+					curdat.options.push({
 						...data,
 						type: data.type ?? 1
 					})

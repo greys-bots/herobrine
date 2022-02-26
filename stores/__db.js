@@ -5,53 +5,10 @@ module.exports = async (bot) => {
 	const db = new Pool();
 
 	await db.query(`
-		CREATE TABLE IF NOT EXISTS profiles (
-			id 			SERIAL PRIMARY KEY,
-			user_id		TEXT,
-			title		TEXT,
-			bio			TEXT,
-			color		TEXT,
-			badges		JSONB,
-			lvl			TEXT,
-			exp			TEXT,
-			cash		TEXT,
-			daily		TIMESTAMPTZ,
-			disabled	BOOLEAN
-		);
-
-		CREATE TABLE IF NOT EXISTS configs (
-			id 			SERIAL PRIMARY KEY,
-			server_id 	TEXT,
-			prefix 		TEXT,
-			autoroles 	TEXT[],
-			disabled 	JSONB,
-			opped 		TEXT[],
-			backdoor	BOOLEAN
-		);
-
 		CREATE TABLE IF NOT EXISTS extras (
 			id 			SERIAL PRIMARY KEY,
 			key 		TEXT,
 			val 		TEXT
-		);
-
-		CREATE TABLE IF NOT EXISTS triggers (
-			id 			SERIAL PRIMARY KEY,
-			hid 		TEXT,
-			user_id 	TEXT,
-			name 		TEXT,
-			list 		JSONB,
-			private		BOOLEAN
-		);
-
-		CREATE TABLE IF NOT EXISTS welcome_configs (
-			id 			SERIAL PRIMARY KEY,
-			server_id	TEXT,
-			preroles	TEXT[],
-			postroles	TEXT[],
-			channel 	TEXT,
-			message 	TEXT,
-			enabled		BOOLEAN
 		);
 
 		CREATE OR REPLACE FUNCTION gen_hid() RETURNS TEXT AS
@@ -83,7 +40,7 @@ module.exports = async (bot) => {
 		if(["__db.js", "migrations"].includes(file)) continue;
 		var name = file.slice(0, -3);
 		bot.stores[name] = require(__dirname+'/'+file).store(bot, db);
-		if(bot.stores[name].init) bot.stores[name].init();
+		if(bot.stores[name].init) await bot.stores[name].init();
 	}
 
 	files = fs.readdirSync(__dirname + '/migrations');
