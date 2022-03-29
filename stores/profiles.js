@@ -25,6 +25,10 @@ class Profile {
 		for(var k of KEYS)
 			if(data[k] !== null && data[k] !== undefined)
 				this[k] = data[k];
+
+		this.level = parseInt(this.level);
+		this.exp = parseInt(this.exp);
+		this.cash = parseInt(this.cash);
 	}
 
 	async fetch() {
@@ -66,9 +70,9 @@ class ProfileStore {
 				bio			TEXT,
 				color		TEXT,
 				badges		JSONB,
-				level		TEXT,
-				exp			TEXT,
-				cash		TEXT,
+				level		BIGINT,
+				exp			BIGINT,
+				cash		BIGINT,
 				daily		TIMESTAMPTZ,
 				disabled	BOOLEAN
 			);

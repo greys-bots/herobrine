@@ -57,6 +57,36 @@ module.exports = {
 		"9️⃣",
 		"🔟"
 	],
+	pollButtons: [
+		{
+			type: 2,
+			style: 1,
+			label: 'Cast vote',
+			emoji: '✉️',
+			custom_id: 'vote'
+		},
+		{
+			type: 2,
+			style: 2,
+			label: 'See vote',
+			emoji: '👀',
+			custom_id: 'view'
+		},
+		{
+			type: 2,
+			style: 3,
+			label: 'Edit poll',
+			emoji: '📝',
+			custom_id: 'edit'
+		},
+		{
+			type: 2,
+			style: 4,
+			label: 'Close poll',
+			emoji: '🔒',
+			custom_id: 'close'
+		}
+	],
 	"codestab": "abcdefghijklmnopqrstuvwxyz1234567890",
 	"pressf": [
 		"<:pressf:692902549183004673>",

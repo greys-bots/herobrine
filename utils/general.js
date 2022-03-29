@@ -8,7 +8,7 @@ module.exports = {
 	genEmbeds: async (bot, arr, genFunc, info = {}, fieldnum, extras = {}) => {
 		return new Promise(async res => {
 			var embeds = [];
-			var current = { embed: {
+			var current = {
 				title: typeof info.title == "function" ?
 								info.title(arr[0], 0) : info.title,
 						description: typeof info.description == "function" ?
@@ -17,14 +17,14 @@ module.exports = {
 						info.color(arr[0], 0) : info.color,
 				footer: info.footer,
 				fields: []
-			}};
+			};
 			
 			for(let i=0; i<arr.length; i++) {
-				if(current.embed.fields.length < (fieldnum || 10)) {
-					current.embed.fields.push(await genFunc(arr[i], bot));
+				if(current.fields.length < (fieldnum || 10)) {
+					current.fields.push(await genFunc(arr[i], bot));
 				} else {
 					embeds.push(current);
-					current = { embed: {
+					current = {
 						title: typeof info.title == "function" ?
 								info.title(arr[i], i) : info.title,
 						description: typeof info.description == "function" ?
@@ -33,7 +33,7 @@ module.exports = {
 								info.color(arr[i], i) : info.color,
 						footer: info.footer,
 						fields: [await genFunc(arr[i], bot)]
-					}};
+					};
 				}
 			}
 			embeds.push(current);
@@ -44,10 +44,7 @@ module.exports = {
 				if(extras.filter) embeds = embeds.filter(extras.filter);
 				if(extras.map) embeds = embeds.map(extras.map);
 			}
-			if(embeds.length > 1) {
-				for(let i = 0; i < embeds.length; i++)
-					embeds[i].embed.title += (extras.addition != null ? eval("`"+extras.addition+"`") : ` (page ${i+1}/${embeds.length}, ${arr.length} total)`);
-			}
+			
 			res(embeds);
 		})
 	},
@@ -116,6 +113,16 @@ module.exports = {
 				bot.removeListener('messageCreate', msgListener);
 				bot.removeListener('messageReactionAdd', reactListener);
 				bot.removeListener('interactionCreate', intListener)
+
+				intr.update({
+					components: [{
+						type: 1,
+						components: intr.message.components[0].components.map(b => ({
+							...b,
+							disabled: true
+						}))
+					}]
+				})
 				if(BUTTONS[0].includes(intr.customId)) return res({confirmed: true, interaction: intr});
 				else return res({confirmed: false, interaction: intr, msg: 'Action cancelled!'});
 			}
@@ -132,4 +139,55 @@ module.exports = {
 			bot.on('interactionCreate', intListener)
 		})
 	},
+	awaitSelection: async (ctx, choices, msg, options = {min_values: 1, max_values: 1, placeholder: '- - -', ephemeral: false}) => {
+		var components = [{
+			type: 3,
+			custom_id: 'selector',
+			options: choices,
+			...options
+		}]
+
+		if(!ctx.replied && !ctx.deferred) await ctx.deferReply({ephemeral: options.ephemeral});
+		var reply = await ctx.followUp({
+			content: msg,
+			components: [{
+				type: 1,
+				components
+			}],
+			ephemeral: options.ephemeral
+		});
+
+		try {
+			var resp = await reply.awaitMessageComponent({
+				filter: (intr) => intr.user.id == ctx.user.id && intr.customId == 'selector',
+				time: 60000
+			});
+		} catch(e) { }
+		if(!resp) return 'Nothing selected!';
+		await resp.update({
+			components: [{
+				type: 1,
+				components: components.map(c => ({
+					...c,
+					disabled: true,
+					options: choices.map(ch => ({...ch, default: resp.values.includes(ch.value)}))
+				}))
+			}]
+		});
+
+		return resp.values;
+	},
+	async awaitModal(ctx, data, user, ephemeral = false) {
+		await ctx.showModal(data);
+
+		var mod = await ctx.awaitModalSubmit({
+			filter: x => (
+				x.customId == data.custom_id &&
+				x.user.id == user.id
+			), time: 5 * 60 * 1000
+		})
+
+		await mod.deferReply({ephemeral});
+		return mod;
+	}
 }

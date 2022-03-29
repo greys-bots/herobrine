@@ -27,38 +27,9 @@ module.exports = {
 
 		var reply = await ctx.fetchReply();
 		var conf = await ctx.client.utils.getConfirmation(ctx.client, reply, ctx.user);
-		var msg;
-		if(conf.msg) {
-			msg = conf.msg;
-		} else {
-			await profile.delete();
-			msg = 'Profile deleted!';
-		}
+		if(conf.msg) return conf.msg;
 
-		if(conf.interaction) {
-			await conf.interaction.update({
-				content: msg,
-				embeds: [],
-				components: [{
-					type: 1,
-					components: confBtns.map(b => {
-						return {... b, disabled: true};
-					})
-				}]
-			})
-		} else {
-			await ctx.editReply({
-				content: msg,
-				embeds: [],
-				components: [{
-					type: 1,
-					components: confBtns.map(b => {
-						return {... b, disabled: true};
-					})
-				}]
-			})
-		}
-
-		return;
+		await profile.delete();
+		return 'Profile deleted!';
 	}
 }

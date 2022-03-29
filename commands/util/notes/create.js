@@ -18,11 +18,19 @@ module.exports = {
 			}
 		]
 	},
+	usage: [
+		"[title] [body] - Create a new note"	
+	],
 	async execute(ctx) {
-		var title = ctx.options.getString('title')?.trim();
-		var body = ctx.options.getString('body')?.trim();
+		var title = ctx.options.getString('title').trim();
+		var body = ctx.options.getString('body').trim();
 
-		var note = await ctx.client.stores.notes.create(ctx.user.id, {title, body});
+		try {
+			var note = await ctx.client.stores.notes.create(ctx.user.id, {title, body});
+		} catch(e) {
+			return 'Error:\n' + e;
+		}
+		
 		return `Note created! ID: ${note.hid}`;
 	}
 }

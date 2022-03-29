@@ -17,7 +17,7 @@ class InteractionHandler {
 		})
 
 		bot.once('ready', async () => {
-			await this.load(__dirname + '/../slashcommands');
+			await this.load(__dirname + '/../commands');
 			console.log('slash commands loaded!')
 		})
 	}
@@ -258,7 +258,7 @@ class InteractionHandler {
 						components: [
 							{
 								type: 1,
-								components: PAGE
+								components: PAGE(1,res.length)
 							}
 						]
 					}
@@ -369,7 +369,11 @@ class InteractionHandler {
 		}
 
 		await ctx.update({
-			embeds: [data[menu.index]]
+			embeds: [data[menu.index]],
+			components: [{
+				type: 1,
+				components: PAGE(menu.index + 1, data.length)
+			}]
 		})
 	}
 }
