@@ -72,6 +72,25 @@ class Profile {
 		await this.store.delete(this.id);
 	}
 
+	buildEmbed(user) {
+		return {
+			title: this.name || "untitled user profile",
+			description: this.description || "(not set)",
+			author: {
+				name: user.tag,
+				icon_url: user.avatarURL({format: "png", dynamic: true})
+			},
+			color: parseInt(this.color, 16) || parseInt("aaaaaa", 16),
+			fields: [
+				{name: "Level", value: (this.level).toString(), inline: true},
+				{name: "Experience", value: (this.exp).toString(), inline: true}
+			],
+			footer: {
+				text: `Level-up messages ${this.disabled ? "are" : "are not"} disabled for this user`
+			}
+		}
+	}
+
 	async verify(patch = true /* generate patch-only object */) {
 		var obj = {};
 		var errors = []

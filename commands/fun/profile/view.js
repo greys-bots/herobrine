@@ -21,21 +21,6 @@ module.exports = {
 
 		var profile = await bot.stores.profiles.get(user.id);
 
-		return {embeds: [{
-			title: profile.name || "untitled user profile",
-			description: profile.description || "(not set)",
-			author: {
-				name: user.tag,
-				icon_url: user.avatarURL({format: "png", dynamic: true})
-			},
-			color: parseInt(profile.color, 16) || parseInt("aaaaaa", 16),
-			fields: [
-				{name: "Level", value: (profile.level).toString(), inline: true},
-				{name: "Experience", value: (profile.exp).toString(), inline: true}
-			],
-			footer: {
-				text: `Level-up messages ${profile.disabled ? "are" : "are not"} disabled for this user`
-			}
-		}]}
+		return {embeds: [profile.buildEmbed(user)]}
 	}
 }
