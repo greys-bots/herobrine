@@ -12,7 +12,7 @@ const KEYS ={
 		test: (v) => v.length <= 2000,
 		err: "List must be at most 2000 characters"
 	},
-	'privacy': {
+	'private': {
 		patch: true
 	},
 	'overrides': {
