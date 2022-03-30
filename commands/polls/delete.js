@@ -1,4 +1,4 @@
-const { confBtns: BTNS } = require('../../../extras.js');
+const { confBtns: BTNS } = require('../../extras.js');
 
 module.exports = {
 	data: {

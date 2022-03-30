@@ -1,4 +1,4 @@
-const strings = require('../../../strings');
+const strings = require('../../strings');
 
 module.exports = {
 	data: {

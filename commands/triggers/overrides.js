@@ -1,4 +1,4 @@
-const { clearBtns: BTNS } = require('../../../extras.js');
+const { clearBtns: BTNS } = require('../../extras.js');
 
 module.exports = {
 	data: {

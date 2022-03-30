@@ -93,11 +93,11 @@ module.exports = {
 		"<a:fspin:543851155562954753>",
 		"<a:fspinfast:543851120511156224>"
 	],
-	"welc_strings": {
-		"$MEMBER.MENTION":"${member.mention}",
-		"$MEMBER.NAME":"${member.username + '#' + member.discriminator}",
-		"$MEMBER.ID":"${member.id}",
-		"$GUILD.NAME":"${guild.name}"
+	welcome: {
+		"$MEMBER.MENTION": (m) => `${m}`,
+		"$MEMBER.NAME": (m) => `${m.username + '#' + m.discriminator}`,
+		"$MEMBER.ID": (m) => `${m.id}`,
+		"$GUILD.NAME": (m, g) => `${g.name}`
 	},
 	"emoji": {
 		"#": "#️⃣",

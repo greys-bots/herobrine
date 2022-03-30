@@ -50,7 +50,7 @@ module.exports = {
 				var tmp = await ctx.client.utils.genEmbeds(ctx.client, cmds, (c) => {
 					return {name: c.data.name, value: c.data.description}
 				}, e, 10, {addition: ""})
-				embeds = embeds.concat(tmp.map(e => e.embed))
+				embeds = embeds.concat(tmp)
 			}
 
 			if(ug?.[0]) {
@@ -108,9 +108,7 @@ module.exports = {
 			});
 		}
 
-		if(embeds.length > 1)
-			for(var i = 0; i < embeds.length; i++)
-				embeds[i].title += ` (${i+1}/${embeds.length})`
+		console.log(embeds)
 		return embeds;
 	},
 	ephemeral: true

@@ -13,7 +13,8 @@ const bot = new Client({
 		Intents.FLAGS.GUILD_MESSAGES,
 		Intents.FLAGS.GUILD_MESSAGE_REACTIONS,
 		Intents.FLAGS.DIRECT_MESSAGES,
-		Intents.FLAGS.DIRECT_MESSAGE_REACTIONS
+		Intents.FLAGS.DIRECT_MESSAGE_REACTIONS,
+		Intents.FLAGS.GUILD_MEMBERS
 	],
 	partials: [
 		'MESSAGE',
@@ -33,8 +34,8 @@ bot.prefix = process.env.PREFIX; // the bot's prefix
 bot.invite = process.env.INVITE; // the bot's invite
 const statuses = [
 	// function makes sure it's accurate
-	() => `${bot.prefix}h | in ${bot.guilds.size} guilds`,
-	() => `${bot.prefix}h | serving ${bot.users.size} users`
+	() => `/help | in ${bot.guilds.size} guilds`,
+	() => `/help | serving ${bot.users.size} users`
 ]
 
 // handles the bot's activity stuff
@@ -43,7 +44,7 @@ const updateStatus = function(){
 	bot.user.setActivity(typeof status == 'function' ? status() : status)
 	bot.status++;
 	
-	setTimeout(()=> updateStatus(),600000)
+	setTimeout(()=> updateStatus(), 600000)
 }
 
 // actual setup
@@ -51,8 +52,9 @@ async function setup() {
 	var files;
 	bot.db = await require('./stores/__db.js')(bot); //our database and stores
 
-	files = fs.readdirSync("./events");
-	files.forEach(f => bot.on(f.slice(0,-3), (...args) => require("./events/"+f)(...args,bot)));
+	// events unneeded for now bc of stores and handlers managing their own events
+	// files = fs.readdirSync("./events");
+	// files.forEach(f => bot.on(f.slice(0,-3), (...args) => require("./events/"+f)(...args,bot)));
 
 	bot.utils = {};
 	files = fs.readdirSync("./utils");

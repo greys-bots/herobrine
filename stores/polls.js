@@ -135,6 +135,26 @@ class PollStore {
 	constructor(bot, db) {
 		this.db = db;
 		this.bot = bot;
+	}
+
+	async init() {
+		await this.db.query(`
+			CREATE TABLE IF NOT EXISTS polls (
+				id 			SERIAL PRIMARY KEY,
+				hid 		TEXT,
+				server_id 	TEXT,
+				channel_id  TEXT,
+				message_id  TEXT,
+				user_id 	TEXT,
+				title 		TEXT,
+				description	TEXT,
+				choices 	JSONB,
+				active 		BOOLEAN,
+				start_time	TIMESTAMPTZ,
+				end_time 	TIMESTAMPTZ,
+				multi 		BOOLEAN
+			);
+		`)
 
 		this.bot.on('interactionCreate', (ctx) => {
 			if(!ctx.isButton()) return;
@@ -160,26 +180,6 @@ class PollStore {
 				)
 			}
 		})
-	}
-
-	async init() {
-		await this.db.query(`
-			CREATE TABLE IF NOT EXISTS polls (
-				id 			SERIAL PRIMARY KEY,
-				hid 		TEXT,
-				server_id 	TEXT,
-				channel_id  TEXT,
-				message_id  TEXT,
-				user_id 	TEXT,
-				title 		TEXT,
-				description	TEXT,
-				choices 	JSONB,
-				active 		BOOLEAN,
-				start_time	TIMESTAMPTZ,
-				end_time 	TIMESTAMPTZ,
-				multi 		BOOLEAN
-			);
-		`)
 	}
 
 	async create(server, data = {}) {
