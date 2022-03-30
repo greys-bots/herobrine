@@ -1,36 +1,56 @@
 module.exports = {
 	data: {
 		name: 'create',
-		description: 'Create a new note',
-		type: 1,
-		options: [
-			{
-				name: 'title',
-				description: 'The title of the note',
-				type: 3,
-				required: true
-			},
-			{
-				name: 'body',
-				description: 'The text of the note',
-				type: 3,
-				required: true
-			}
-		]
+		description: 'Create a new note'
 	},
 	usage: [
-		"[title] [body] - Create a new note"	
+		"- Create a new note"	
 	],
 	async execute(ctx) {
-		var title = ctx.options.getString('title').trim();
-		var body = ctx.options.getString('body').trim();
+		var mdata = {
+			title: "Create a new poll",
+			custom_id: `poll-create-${ctx.user.id}`,
+			components: [
+				{
+					type: 1,
+					components: [{
+						type: 4,
+						custom_id: 'title',
+						label: "Title",
+						style: 1,
+						max_length: 100,
+						placeholder: "Enter a title",
+						required: true	
+					}]
+				},
+				{
+					type: 1,
+					components: [{
+						type: 4,
+						custom_id: 'body',
+						label: "Body",
+						style: 1,
+						max_length: 2000,
+						placeholder: "Enter a note body",
+						required: true
+					}]
+				}
+			]
+		}
+
+		var mod = await ctx.client.utils.awaitModal(ctx, mdata, ctx.user)
+		if(!mod) return;
+		
+		var title = mod.fields.getField('title').value.trim();
+		var body = mod.fields.getField('body').value.trim();
 
 		try {
 			var note = await ctx.client.stores.notes.create(ctx.user.id, {title, body});
 		} catch(e) {
-			return 'Error:\n' + e;
+			await mod.followUp('Error:\n' + e);
+			return;
 		}
 		
-		return `Note created! ID: ${note.hid}`;
+		await mod.followUp(`Note created! ID: ${note.hid}`);
 	}
 }

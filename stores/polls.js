@@ -26,8 +26,7 @@ const KEYS = {
 			v.length > 2 && v.length <= 10 &&
 			!v.find(x => x.option.length > 100)
 		),
-		err: "Polls need between 2 and 10 choices, each at most 100 characters long",
-		transform: (v) => JSON.stringify(v)
+		err: "Polls need between 2 and 10 choices, each at most 100 characters long"
 	},
 	'active': {
 		patch: true
@@ -67,6 +66,8 @@ class Poll {
 
 	async save(embed = false) {
 		var obj = await this.verify();
+		if(typeof obj.choices != 'string')
+			obj.choices = JSON.stringify(obj.choices);
 
 		var data;
 		if(this.id) data = await this.#store.update(this.id, obj, embed);
@@ -82,7 +83,7 @@ class Poll {
 
 	async buildEmbed() {
 		var user = await this.#store.bot.users.fetch(this.user_id);
-
+		
 		return {
 			title: this.title,
 			description: this.description,
@@ -373,9 +374,9 @@ class PollStore {
 		})
 
 		var msg;
-		await ctx.deferReply({ephemeral: true});
 		switch(type) {
 			case 'view':
+				await ctx.deferReply({ephemeral: true});
 				var existing = poll.choices.filter(c => c.voters?.includes(user.id));
 				if(!existing?.length) msg = "You haven't voted for this poll yet";
 				else {
@@ -390,38 +391,55 @@ class PollStore {
 						content: "This poll doesn't belong to you",
 						ephemeral: true
 					})
+
+				var mdata = {
+					title: "Create a new poll",
+					custom_id: `poll-edit-${ctx.user.id}`,
+					components: [
+						{
+							type: 1,
+							components: [{
+								type: 4,
+								custom_id: 'title',
+								label: "Title",
+								style: 1,
+								max_length: 100,
+								placeholder: "Enter a title",
+								value: poll.title,
+								required: true	
+							}]
+						},
+						{
+							type: 1,
+							components: [{
+								type: 4,
+								custom_id: 'description',
+								label: "Description",
+								style: 1,
+								max_length: 2000,
+								placeholder: "Enter a description",
+								value: poll.description,
+								required: false
+							}]
+						}
+					]
+				}
+
+				var mod = await ctx.client.utils.awaitModal(ctx, mdata, ctx.user, true)
+				if(!mod) return;
 				
-				var edit = await this.bot.utils.awaitSelection(ctx, EDIT, "What do you want to edit?", {
-					min_values: 0, max_values: 1,
-					placeholder: 'Select what to edit',
-					ephemeral: true
-				})
-				if(!Array.isArray(edit)) return await ctx.followUp({
-					content: "Action cancelled!",
-					ephemeral: true
-				})
+				var title = mod.fields.getField('title').value.trim().toLowerCase();
+				var description = mod.fields.getField('description')?.value?.trim();
 
-				edit = edit[0]
-				await ctx.followUp({
-					content: 'Enter the new ' + edit,
-					ephemeral: true
-				})
-				var resp = await ctx.channel.awaitMessages({
-					filter: m => m.author.id == ctx.user.id,
-					max: 1,
-					time: 3 * 60 * 1000
-				})
-				if(!resp?.first()) return await ctx.followUp({
-					content: "Action cancelled!",
-					ephemeral: true
-				})
+				poll.title = title;
+				poll.description = description;
+				await poll.save(true);
+				await mod.followUp("Poll updated!");
 
-				var content = resp.first().content;
-				poll[edit] = content;
-				await resp.first().delete();
-				msg = "Poll updated!"
+				return;
 				break;
 			case 'close':
+				await ctx.deferReply({ephemeral: true});
 				if (poll.user_id !== user.id && !ctx.member.permissions.has('MANAGE_MESSAGES')) {
 					return await ctx.followUp({
 						content: "You don't have permission to close that poll",
@@ -447,6 +465,7 @@ class PollStore {
 				msg = "Poll closed!";
 				break;
 			case 'vote':
+				await ctx.deferReply({ephemeral: true});
 				var votes = await this.bot.utils.awaitSelection(ctx, poll.choices.map((c, i) => {
 					return {
 						label: c.option,
@@ -473,6 +492,7 @@ class PollStore {
 				msg = "Your vote has been cast!";
 				break;
 			case 'delete':
+				await ctx.deferReply({ephemeral: true});
 				if (poll.user_id !== user.id && !ctx.member.permissions.has('MANAGE_MESSAGES')) {
 					return await ctx.followUp({
 						content: "You don't have permission to delete that poll",

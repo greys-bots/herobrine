@@ -178,16 +178,27 @@ module.exports = {
 		return resp.values;
 	},
 	async awaitModal(ctx, data, user, ephemeral = false) {
-		await ctx.showModal(data);
+		return new Promise(async res => {
+			await ctx.showModal(data);
+			
+			async function modListener(m) {
+				if(!m.isModalSubmit()) return;
+				if(!(m.customId == data.custom_id &&
+					m.user.id == user.id))
+					return;
 
-		var mod = await ctx.awaitModalSubmit({
-			filter: x => (
-				x.customId == data.custom_id &&
-				x.user.id == user.id
-			), time: 5 * 60 * 1000
+				clearTimeout(timeout);
+				ctx.client.removeListener('interactionCreate', modListener);
+
+				await m.deferReply({ephemeral});
+				res(m);
+			}
+
+			ctx.client.on("interactionCreate", modListener);
+			const timeout = setTimeout(async () => {
+				ctx.client.removeListener('interactionCreate', modListener)
+				res()
+			}, 30000);
 		})
-
-		await mod.deferReply({ephemeral});
-		return mod;
 	}
 }

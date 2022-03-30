@@ -57,7 +57,7 @@ module.exports = {
 		}
 	},
 	async auto(ctx) {
-		var notes = await ctx.client.stores.notes.getAll(ctx.guild.id);
+		var notes = await ctx.client.stores.notes.getAll(ctx.user.id);
 		var foc = ctx.options.getFocused();
 		if(!notes?.length) return [];
 		if(!foc) return notes.map(n => ({

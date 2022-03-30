@@ -9,45 +9,63 @@ module.exports = {
 				type: 3,
 				autocomplete: true,
 				required: true
-			},
-			{
-				name: 'property',
-				description: "The property to edit",
-				type: 3,
-				choices: [
-					{
-						name: 'title',
-						value: 'title'
-					},
-					{
-						name: 'body',
-						value: 'body'
-					}
-				],
-				required: true
-			},
-			{
-				name: 'value',
-				description: "The new value for the property",
-				type: 3,
-				required: true
 			}
 		]
 	},
+	usage: [
+		"- Edit a note's properties"	
+	],
 	async execute(ctx) {
 		var id = ctx.options.getString('note').trim().toLowerCase();
-		var prop = ctx.options.getString('property').trim().toLowerCase();
-		var val = ctx.options.getString('value').trim();
-
 		var note = await ctx.client.stores.notes.get(ctx.user.id, id);
 		if(!note?.id) return "Note not found";
 
-		note[prop] = val;
+		var mdata = {
+			title: "Create a new poll",
+			custom_id: `poll-create-${ctx.user.id}`,
+			components: [
+				{
+					type: 1,
+					components: [{
+						type: 4,
+						custom_id: 'title',
+						label: "Title",
+						style: 1,
+						max_length: 100,
+						placeholder: "Enter a title",
+						value: note.title,
+						required: true	
+					}]
+				},
+				{
+					type: 1,
+					components: [{
+						type: 4,
+						custom_id: 'body',
+						label: "Body",
+						style: 1,
+						max_length: 2000,
+						placeholder: "Enter a note body",
+						value: note.body,
+						required: true
+					}]
+				}
+			]
+		}
+
+		var mod = await ctx.client.utils.awaitModal(ctx, mdata, ctx.user)
+		if(!mod) return;
+		
+		var title = mod.fields.getField('title').value.trim();
+		var body = mod.fields.getField('body').value.trim();
+
+		note.title = title;
+		note.body = body;
 		await note.save()
-		return "Note edited!";
+		await mod.followUp("Note edited!");
 	},
 	async auto(ctx) {
-		var notes = await ctx.client.stores.notes.getAll(ctx.guild.id);
+		var notes = await ctx.client.stores.notes.getAll(ctx.user.id);
 		var foc = ctx.options.getFocused();
 		if(!notes?.length) return [];
 		if(!foc) return notes.map(n => ({

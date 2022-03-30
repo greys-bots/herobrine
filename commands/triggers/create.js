@@ -43,6 +43,8 @@ module.exports = {
 		}
 
 		var mod = await ctx.client.utils.awaitModal(ctx, mdata, ctx.user)
+		if(!mod) return;
+
 		var list = await ctx.client.stores.triggers.create(ctx.user.id, {
 			name: mod.fields.getField('name').value,
 			list: mod.fields.getField('list').value
