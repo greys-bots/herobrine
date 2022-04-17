@@ -108,7 +108,6 @@ module.exports = {
 			});
 		}
 
-		console.log(embeds)
 		return embeds;
 	},
 	ephemeral: true
