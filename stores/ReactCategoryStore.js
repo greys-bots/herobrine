@@ -76,7 +76,7 @@ class ReactCategoryStore extends Collection {
 				category.posts = (await this.bot.stores.reactPosts.getByRowIDs(server, category.posts)) || [];
 				category.raw_roles = category.roles;
 				category.roles = await this.bot.stores.reactRoles.getByRowIDs(server, category.roles);
-				if(category.raw_posts.length < category.posts.length || category.raw_roles.length < category.roles.length) {
+				if(category.raw_posts?.length < category.posts?.length || category.raw_roles?.length < category.roles?.length) {
 					category.raw_posts = category.raw_posts.filter(x => category.posts.find(p => p.id == x));
 					category.raw_roles = category.raw_roles.filter(x => category.roles.filter(r => r.id == x));
 					await this.update(server, hid, {posts: category.raw_posts, roles: category.raw_roles});
